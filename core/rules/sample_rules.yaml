@@ -1,0 +1,625 @@
+# ============================================================================
+# GRC Zero Trust Platform - Risk Rules Configuration
+# ============================================================================
+# This file contains Segregation of Duties (SoD) and Sensitive Access rules
+# similar to SAP GRC Access Control rulesets.
+#
+# Rule Types:
+#   - segregation_of_duties: Two or more functions that should not be combined
+#   - sensitive_access: Critical access that requires special controls
+#   - critical_action: High-risk transactions requiring monitoring
+#
+# Severity Levels: LOW (10), MEDIUM (30), HIGH (60), CRITICAL (100)
+# ============================================================================
+
+rules:
+
+  # ==========================================================================
+  # FINANCIAL RISKS - Purchase to Pay (P2P)
+  # ==========================================================================
+
+  - rule_id: FI_P2P_001
+    name: Purchase to Pay - Vendor Creation & Payment
+    description: User can create vendors AND execute payments, creating fraud risk
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: Financial
+    conflicts:
+      - name: Vendor Creation vs Payment Execution
+        description: Segregation between vendor master maintenance and payment processing
+        function_a_name: Vendor Creation
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: XK01
+          - auth_object: S_TCODE
+            field: TCD
+            value: FK01
+          - auth_object: S_TCODE
+            field: TCD
+            value: XK02
+        function_b_name: Payment Execution
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: F110
+          - auth_object: S_TCODE
+            field: TCD
+            value: F-53
+          - auth_object: S_TCODE
+            field: TCD
+            value: F-58
+    business_justification: >
+      Prevents ghost vendor fraud where the same person creates fictitious vendors
+      and processes payments to them. This is a primary SOX control point.
+    mitigation_controls:
+      - Dual approval for payments exceeding $10,000
+      - Monthly vendor audit review comparing new vendors to employees
+      - Automated duplicate vendor detection
+      - Bank account change notifications
+    recommended_actions:
+      - Remove payment execution capability from user
+      - Implement payment approval workflow
+      - Assign user to different cost center
+    enabled: true
+    version: "1.0"
+
+  - rule_id: FI_P2P_002
+    name: Purchase to Pay - Vendor & Invoice Entry
+    description: User can maintain vendor master data AND enter invoices
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Financial
+    conflicts:
+      - name: Vendor Maintenance vs Invoice Entry
+        function_a_name: Vendor Master Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: XK01
+          - auth_object: S_TCODE
+            field: TCD
+            value: FK01
+          - auth_object: S_TCODE
+            field: TCD
+            value: XK02
+          - auth_object: S_TCODE
+            field: TCD
+            value: FK02
+        function_b_name: Invoice Entry
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: FB60
+          - auth_object: S_TCODE
+            field: TCD
+            value: MIRO
+          - auth_object: S_TCODE
+            field: TCD
+            value: MIR7
+    business_justification: >
+      Prevents creation of vendors with subsequent fraudulent invoice entry.
+      User could create a vendor and immediately enter invoices against it.
+    mitigation_controls:
+      - Invoice approval workflow for amounts over threshold
+      - Regular vendor-invoice reconciliation
+    enabled: true
+    version: "1.0"
+
+  - rule_id: FI_P2P_003
+    name: Purchase to Pay - PO Creation & Goods Receipt
+    description: User can create purchase orders AND post goods receipts
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Procurement
+    conflicts:
+      - name: PO Creation vs Goods Receipt
+        function_a_name: Purchase Order Creation
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: ME21N
+          - auth_object: S_TCODE
+            field: TCD
+            value: ME22N
+        function_b_name: Goods Receipt Posting
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: MIGO
+          - auth_object: S_TCODE
+            field: TCD
+            value: MB01
+    business_justification: >
+      Prevents fraudulent goods receipt against fictitious or inflated POs.
+      User could create a PO and immediately post goods receipt without actual delivery.
+    mitigation_controls:
+      - Three-way match enforcement
+      - Receipt confirmation workflow
+      - Periodic inventory count reconciliation
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # FINANCIAL RISKS - General Ledger
+  # ==========================================================================
+
+  - rule_id: FI_GL_001
+    name: General Ledger - Post & Park Journal Entries
+    description: User can both post and park journal entries
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Financial
+    conflicts:
+      - name: Journal Entry Posting vs Parking
+        function_a_name: Park Journal Entry
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: FBV1
+          - auth_object: S_TCODE
+            field: TCD
+            value: F-65
+        function_b_name: Post Journal Entry
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: F-02
+          - auth_object: S_TCODE
+            field: TCD
+            value: FB01
+          - auth_object: S_TCODE
+            field: TCD
+            value: FBV2
+    business_justification: >
+      Dual control over journal entries prevents unauthorized postings and
+      potential financial misstatement.
+    mitigation_controls:
+      - Journal entry approval workflow
+      - Monthly reconciliation reviews
+    enabled: true
+    version: "1.0"
+
+  - rule_id: FI_GL_002
+    name: General Ledger - GL Account Creation & Posting
+    description: User can create GL accounts AND post to them
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: Financial
+    conflicts:
+      - name: GL Account Creation vs Posting
+        function_a_name: GL Account Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: FS00
+          - auth_object: S_TCODE
+            field: TCD
+            value: FSS0
+        function_b_name: GL Posting
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: F-02
+          - auth_object: S_TCODE
+            field: TCD
+            value: FB01
+          - auth_object: S_TCODE
+            field: TCD
+            value: FB50
+    business_justification: >
+      Prevents creation of unauthorized GL accounts to hide fraudulent transactions.
+    mitigation_controls:
+      - Chart of accounts approval workflow
+      - Quarterly unused account review
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # FINANCIAL RISKS - Asset Accounting
+  # ==========================================================================
+
+  - rule_id: FI_AA_001
+    name: Asset Accounting - Create & Retire Assets
+    description: User can create assets AND process retirements
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Financial
+    conflicts:
+      - name: Asset Creation vs Retirement
+        function_a_name: Asset Creation
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: AS01
+          - auth_object: S_TCODE
+            field: TCD
+            value: AS91
+        function_b_name: Asset Retirement
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: ABAVN
+          - auth_object: S_TCODE
+            field: TCD
+            value: ABAON
+    business_justification: >
+      Prevents fraudulent asset creation with immediate retirement to hide
+      misappropriation of funds.
+    mitigation_controls:
+      - Physical asset verification
+      - Retirement approval workflow
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # HR / PAYROLL RISKS
+  # ==========================================================================
+
+  - rule_id: HR_PAY_001
+    name: Payroll - Change Employee Bank & Run Payroll
+    description: User can modify employee bank details AND execute payroll
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: HR & Payroll
+    conflicts:
+      - name: Bank Maintenance vs Payroll Execution
+        function_a_name: Employee Bank Details Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PA30
+          - auth_object: P_ORGIN
+            field: INFTY
+            value: "0009"
+        function_b_name: Payroll Execution
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PC00_M99_CALC
+          - auth_object: S_TCODE
+            field: TCD
+            value: PC00_M99_CIPE
+    business_justification: >
+      Prevents payroll fraud through unauthorized bank detail changes followed
+      by immediate payroll run. This is a critical payroll control.
+    mitigation_controls:
+      - Bank change audit trail review before each payroll
+      - Employee self-service for bank changes with verification
+      - Pre-payroll audit report review
+      - Dual control on payroll release
+    enabled: true
+    version: "1.0"
+
+  - rule_id: HR_PAY_002
+    name: Payroll - Create Employee & Run Payroll
+    description: User can create employees AND execute payroll
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: HR & Payroll
+    conflicts:
+      - name: Employee Creation vs Payroll Execution
+        function_a_name: Employee Hiring
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PA40
+          - auth_object: S_TCODE
+            field: TCD
+            value: PA30
+        function_b_name: Payroll Execution
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PC00_M99_CALC
+          - auth_object: S_TCODE
+            field: TCD
+            value: PC00_M99_CIPE
+    business_justification: >
+      Prevents ghost employee fraud where fictitious employees are created
+      and payroll is processed for them.
+    mitigation_controls:
+      - HR new hire verification process
+      - Headcount reconciliation before payroll
+    enabled: true
+    version: "1.0"
+
+  - rule_id: HR_PAY_003
+    name: Payroll - Maintain Pay & Run Payroll
+    description: User can maintain salary/wage data AND execute payroll
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: HR & Payroll
+    conflicts:
+      - name: Pay Maintenance vs Payroll Execution
+        function_a_name: Compensation Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PA30
+          - auth_object: P_ORGIN
+            field: INFTY
+            value: "0008"
+        function_b_name: Payroll Execution
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PC00_M99_CALC
+    business_justification: >
+      Prevents unauthorized pay increases followed by immediate payroll processing.
+    mitigation_controls:
+      - Compensation change approval workflow
+      - Pay change report review before payroll
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # IT SECURITY / BASIS RISKS
+  # ==========================================================================
+
+  - rule_id: IT_SEC_001
+    name: Security - User Creation & Role Assignment
+    description: User can create users AND assign roles
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: IT Security
+    conflicts:
+      - name: User Creation vs Role Assignment
+        function_a_name: User Creation/Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: SU01
+          - auth_object: S_USER_GRP
+            field: ACTVT
+            value: "01"
+        function_b_name: Role Assignment
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: SU01
+          - auth_object: S_USER_AGR
+            field: ACTVT
+            value: "22"
+    business_justification: >
+      Prevents unauthorized elevation of privileges through user/role manipulation.
+      A user with both could create accounts and grant excessive access.
+    mitigation_controls:
+      - Role assignment approval workflow
+      - Periodic access review certification
+    enabled: true
+    version: "1.0"
+
+  - rule_id: IT_SEC_002
+    name: Security - Role Maintenance & User Assignment
+    description: User can maintain roles AND assign them to users
+    rule_type: segregation_of_duties
+    severity: CRITICAL
+    risk_category: IT Security
+    conflicts:
+      - name: Role Maintenance vs Assignment
+        function_a_name: Role Maintenance
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: PFCG
+          - auth_object: S_USER_AGR
+            field: ACTVT
+            value: "02"
+        function_b_name: Role Assignment to Users
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: SU01
+          - auth_object: S_USER_AGR
+            field: ACTVT
+            value: "22"
+    business_justification: >
+      Prevents unauthorized modification of role contents followed by self-assignment.
+    mitigation_controls:
+      - Role change approval workflow
+      - Transport-controlled role movement
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # SENSITIVE ACCESS RULES
+  # ==========================================================================
+
+  - rule_id: IT_SENS_001
+    name: Sensitive - Debug/Replace in Production
+    description: User has debug and replace capability
+    rule_type: sensitive_access
+    severity: CRITICAL
+    risk_category: IT Security
+    sensitive_entitlements:
+      - auth_object: S_DEVELOP
+        field: ACTVT
+        value: "02"
+      - auth_object: S_DEVELOP
+        field: OBJTYPE
+        value: DEBUG
+    business_justification: >
+      Debug with replace allows runtime code modification, completely bypassing
+      all application-level controls and audit trails.
+    mitigation_controls:
+      - Emergency access only via firefighter
+      - Full session recording
+      - Management notification
+      - Post-activity review requirement
+    enabled: true
+    version: "1.0"
+
+  - rule_id: IT_SENS_002
+    name: Sensitive - Direct Table Modification
+    description: User can directly modify database tables (SE16N with change)
+    rule_type: sensitive_access
+    severity: CRITICAL
+    risk_category: IT Security
+    sensitive_entitlements:
+      - auth_object: S_TCODE
+        field: TCD
+        value: SE16N
+      - auth_object: S_TABU_DIS
+        field: ACTVT
+        value: "02"
+    business_justification: >
+      Direct table modification bypasses all application-level controls, validation,
+      and audit trails. Data integrity cannot be guaranteed.
+    mitigation_controls:
+      - Restrict to emergency access only
+      - Full logging and review
+    enabled: true
+    version: "1.0"
+
+  - rule_id: IT_SENS_003
+    name: Sensitive - SAP_ALL Profile
+    description: User has SAP_ALL profile assigned
+    rule_type: sensitive_access
+    severity: CRITICAL
+    risk_category: IT Security
+    sensitive_entitlements:
+      - auth_object: S_TCODE
+        field: TCD
+        value: "*"
+    business_justification: >
+      SAP_ALL provides unrestricted access to all functions. This violates
+      the principle of least privilege and segregation of duties.
+    mitigation_controls:
+      - Immediate review and removal
+      - Document business justification if retained
+      - Enhanced monitoring
+    enabled: true
+    version: "1.0"
+
+  - rule_id: IT_SENS_004
+    name: Sensitive - Client Copy/Delete
+    description: User can copy or delete clients
+    rule_type: sensitive_access
+    severity: CRITICAL
+    risk_category: IT Security
+    sensitive_entitlements:
+      - auth_object: S_TCODE
+        field: TCD
+        value: SCC4
+      - auth_object: S_TCODE
+        field: TCD
+        value: SCC5
+    business_justification: >
+      Client copy/delete can result in complete data loss or unauthorized
+      data duplication.
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # SALES & DISTRIBUTION RISKS
+  # ==========================================================================
+
+  - rule_id: SD_OTC_001
+    name: Order to Cash - Create Customer & Sales Order
+    description: User can create customers AND sales orders
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Sales & Distribution
+    conflicts:
+      - name: Customer Creation vs Sales Order
+        function_a_name: Customer Creation
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: XD01
+          - auth_object: S_TCODE
+            field: TCD
+            value: VD01
+        function_b_name: Sales Order Creation
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: VA01
+          - auth_object: S_TCODE
+            field: TCD
+            value: VA02
+    business_justification: >
+      Prevents creation of fictitious customers with fraudulent sales orders
+      for revenue manipulation or theft.
+    mitigation_controls:
+      - Credit check requirements
+      - Customer verification process
+    enabled: true
+    version: "1.0"
+
+  - rule_id: SD_OTC_002
+    name: Order to Cash - Billing & Credit Memo
+    description: User can create billing documents AND credit memos
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Sales & Distribution
+    conflicts:
+      - name: Billing vs Credit Memo
+        function_a_name: Billing
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: VF01
+          - auth_object: S_TCODE
+            field: TCD
+            value: VF04
+        function_b_name: Credit Memo Processing
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: VF01
+          - auth_object: V_VBRK_FKA
+            field: FKART
+            value: G2
+    business_justification: >
+      Prevents billing fraud through creation of invoices followed by
+      unauthorized credit memos.
+    mitigation_controls:
+      - Credit memo approval workflow
+      - Credit memo reason code enforcement
+    enabled: true
+    version: "1.0"
+
+  # ==========================================================================
+  # INVENTORY / MATERIALS MANAGEMENT RISKS
+  # ==========================================================================
+
+  - rule_id: MM_INV_001
+    name: Inventory - Goods Movement & Inventory Count
+    description: User can post goods movements AND perform inventory counts
+    rule_type: segregation_of_duties
+    severity: HIGH
+    risk_category: Inventory Management
+    conflicts:
+      - name: Goods Movement vs Physical Inventory
+        function_a_name: Goods Movement
+        function_a_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: MIGO
+          - auth_object: S_TCODE
+            field: TCD
+            value: MB1A
+          - auth_object: S_TCODE
+            field: TCD
+            value: MB1B
+        function_b_name: Physical Inventory
+        function_b_entitlements:
+          - auth_object: S_TCODE
+            field: TCD
+            value: MI01
+          - auth_object: S_TCODE
+            field: TCD
+            value: MI04
+          - auth_object: S_TCODE
+            field: TCD
+            value: MI07
+    business_justification: >
+      Prevents inventory theft through manipulation of both goods movements
+      and inventory count results.
+    mitigation_controls:
+      - Independent inventory count verification
+      - Variance analysis and approval
+    enabled: true
+    version: "1.0"

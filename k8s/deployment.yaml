@@ -1,0 +1,340 @@
+# GRC Zero Trust Platform - Kubernetes Deployment
+# Production-ready Kubernetes manifests
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grc-platform
+  labels:
+    app: grc-platform
+    environment: production
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grc-config
+  namespace: grc-platform
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  CORS_ORIGINS: "*"
+  WORKERS: "4"
+  API_PORT: "8000"
+
+---
+# Secret for sensitive data (use external secrets manager in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grc-secrets
+  namespace: grc-platform
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://grc_user:CHANGE_ME@postgres-service:5432/grc_platform"
+  REDIS_URL: "redis://redis-service:6379/0"
+  SECRET_KEY: "CHANGE_ME_TO_SECURE_KEY"
+  JWT_SECRET_KEY: "CHANGE_ME_TO_SECURE_JWT_KEY"
+
+---
+# API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grc-api
+  namespace: grc-platform
+  labels:
+    app: grc-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: grc-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: grc-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: grc-api-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: grc-api
+          image: grc-platform:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: grc-config
+            - secretRef:
+                name: grc-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: grc-api
+                topologyKey: kubernetes.io/hostname
+
+---
+# API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grc-api-service
+  namespace: grc-platform
+  labels:
+    app: grc-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: grc-api
+
+---
+# Worker Deployment (for background jobs)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grc-worker
+  namespace: grc-platform
+  labels:
+    app: grc-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: grc-worker
+  template:
+    metadata:
+      labels:
+        app: grc-worker
+    spec:
+      serviceAccountName: grc-api-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: grc-worker
+          image: grc-platform:latest
+          command: ["python", "-m", "core.scheduler.sync_scheduler"]
+          envFrom:
+            - configMapRef:
+                name: grc-config
+            - secretRef:
+                name: grc-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: grc-api-hpa
+  namespace: grc-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: grc-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+---
+# Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grc-ingress
+  namespace: grc-platform
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+    - hosts:
+        - grc.example.com
+      secretName: grc-tls-secret
+  rules:
+    - host: grc.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grc-api-service
+                port:
+                  number: 80
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grc-api-sa
+  namespace: grc-platform
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: grc-api-pdb
+  namespace: grc-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: grc-api
+
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grc-api-network-policy
+  namespace: grc-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: grc-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app: grc-api
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

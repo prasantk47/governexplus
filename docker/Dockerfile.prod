@@ -1,0 +1,96 @@
+# GRC Zero Trust Platform - Production Dockerfile
+# Multi-stage build for optimized production image
+
+# ==================== Build Stage ====================
+FROM python:3.11-slim as builder
+
+# Set build arguments
+ARG PYRFC_VERSION=3.3
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Install production-only dependencies
+RUN pip install --no-cache-dir \
+    gunicorn \
+    uvloop \
+    httptools \
+    prometheus-client
+
+
+# ==================== Production Stage ====================
+FROM python:3.11-slim as production
+
+# Labels
+LABEL maintainer="GRC Platform Team"
+LABEL version="1.0.0"
+LABEL description="GRC Zero Trust Platform - Production"
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    APP_ENV=production \
+    PORT=8000
+
+# Create non-root user
+RUN groupadd -r grcapp && useradd -r -g grcapp grcapp
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Create app directory
+WORKDIR /app
+
+# Copy application code
+COPY --chown=grcapp:grcapp . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/temp && \
+    chown -R grcapp:grcapp /app
+
+# Switch to non-root user
+USER grcapp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Expose port
+EXPOSE ${PORT}
+
+# Run with Gunicorn + Uvicorn workers
+CMD ["gunicorn", "api.main:app", \
+    "--bind", "0.0.0.0:8000", \
+    "--workers", "4", \
+    "--worker-class", "uvicorn.workers.UvicornWorker", \
+    "--timeout", "120", \
+    "--keep-alive", "5", \
+    "--max-requests", "1000", \
+    "--max-requests-jitter", "50", \
+    "--access-logfile", "-", \
+    "--error-logfile", "-", \
+    "--capture-output", \
+    "--enable-stdio-inheritance"]

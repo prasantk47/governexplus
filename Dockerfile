@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy SAP NW RFC SDK (you need to download this from SAP)
 # Place the extracted SDK in ./sap-nwrfc-sdk/ folder
-COPY sap-nwrfc-sdk/ /usr/local/sap/nwrfcsdk/
+COPY sap-nwrfc-sdk/nwrfcsdk/ /usr/local/sap/nwrfcsdk/
 
 # Set SAP RFC environment variables
 ENV SAPNWRFC_HOME=/usr/local/sap/nwrfcsdk

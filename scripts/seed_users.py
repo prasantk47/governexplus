@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from db.database import db_manager
-from db.models.user import User, Role, UserRole, UserType, UserStatus
+from db.models.user import User, Role, UserRole
 
 
 # Sample data pools
@@ -86,13 +86,13 @@ def generate_email(first_name: str, last_name: str, domain: str = "company.com")
     return f"{first_name.lower()}.{last_name.lower()}@{domain}"
 
 
-def generate_risk_score(user_type: UserType, role_count: int, has_high_risk: bool) -> float:
+def generate_risk_score(user_type: str, role_count: int, has_high_risk: bool) -> float:
     """Generate risk score based on user attributes"""
     base_score = random.uniform(5, 25)
 
-    if user_type == UserType.SERVICE:
+    if user_type == "service":
         base_score += random.uniform(10, 20)
-    elif user_type == UserType.SYSTEM:
+    elif user_type == "system":
         base_score += random.uniform(15, 30)
 
     base_score += role_count * random.uniform(2, 5)
@@ -167,10 +167,10 @@ def create_users(
 
         # Determine user type (mostly dialog, some service accounts)
         user_type_weights = [
-            (UserType.DIALOG, 0.85),
-            (UserType.SERVICE, 0.10),
-            (UserType.SYSTEM, 0.03),
-            (UserType.COMMUNICATION, 0.02)
+            ("dialog", 0.85),
+            ("service", 0.10),
+            ("system", 0.03),
+            ("comm", 0.02)
         ]
         user_type = random.choices(
             [t[0] for t in user_type_weights],
@@ -179,10 +179,10 @@ def create_users(
 
         # Determine status (mostly active)
         status_weights = [
-            (UserStatus.ACTIVE, 0.80),
-            (UserStatus.LOCKED, 0.08),
-            (UserStatus.DISABLED, 0.07),
-            (UserStatus.EXPIRED, 0.05)
+            ("active", 0.80),
+            ("locked", 0.08),
+            ("disabled", 0.07),
+            ("expired", 0.05)
         ]
         status = random.choices(
             [s[0] for s in status_weights],
@@ -197,7 +197,7 @@ def create_users(
         created_at = datetime.utcnow() - timedelta(days=created_days_ago)
 
         last_login = None
-        if status == UserStatus.ACTIVE:
+        if status == "active":
             login_days_ago = random.randint(0, 30)
             last_login = datetime.utcnow() - timedelta(days=login_days_ago)
 
@@ -264,7 +264,7 @@ def create_users(
     total_users = session.query(User).filter(User.tenant_id == tenant_id).count()
     active_users = session.query(User).filter(
         User.tenant_id == tenant_id,
-        User.status == UserStatus.ACTIVE
+        User.status == "active"
     ).count()
     high_risk = session.query(User).filter(
         User.tenant_id == tenant_id,

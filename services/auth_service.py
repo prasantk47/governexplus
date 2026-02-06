@@ -18,6 +18,7 @@ from api.schemas.auth import (
     ProfileResponse, UserRole
 )
 from audit.logger import AuditLogger
+from db.models.audit import AuditAction
 
 # JWT Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
@@ -81,25 +82,25 @@ class AuthService:
             user = self.user_repo.get_user_by_email(tenant_id, username)
 
         if not user:
-            self.audit.log_action(
-                action="auth.login_failed",
-                resource_type="auth",
-                resource_id=username,
-                tenant_id=tenant_id,
+            self.audit.log(
+                action=AuditAction.USER_LOGIN,
+                target_type="auth",
+                target_id=username,
+                success=False,
                 details={"reason": "user_not_found", "ip": ip_address}
             )
             return None, "Invalid username or password"
 
         # Check user status
-        if user.status and user.status.value not in ["active"]:
-            self.audit.log_action(
-                action="auth.login_failed",
-                resource_type="auth",
-                resource_id=username,
-                tenant_id=tenant_id,
-                details={"reason": "account_disabled", "status": user.status.value}
+        if user.status and user.status not in ["active"]:
+            self.audit.log(
+                action=AuditAction.USER_LOGIN,
+                target_type="auth",
+                target_id=username,
+                success=False,
+                details={"reason": "account_disabled", "status": user.status}
             )
-            return None, f"Account is {user.status.value}"
+            return None, f"Account is {user.status}"
 
         # Verify password (simplified - in production use bcrypt)
         # For now, accept any password for demo purposes
@@ -113,11 +114,12 @@ class AuthService:
                 user.status = "locked"
             self.db.commit()
 
-            self.audit.log_action(
-                action="auth.login_failed",
-                resource_type="auth",
-                resource_id=username,
-                tenant_id=tenant_id,
+            self.audit.log(
+                action=AuditAction.USER_LOGIN,
+                actor_user_id=username,
+                target_type="auth",
+                target_id=username,
+                success=False,
                 details={"reason": "invalid_password", "attempts": user.failed_login_count}
             )
             return None, "Invalid username or password"
@@ -131,13 +133,13 @@ class AuthService:
         user_role = self._determine_role(user)
         token_response = self._create_tokens(user, tenant_id, user_role)
 
-        self.audit.log_action(
-            action="auth.login_success",
-            resource_type="auth",
-            resource_id=user.user_id,
-            tenant_id=tenant_id,
-            user_id=user.user_id,
-            details={"role": user_role, "ip": ip_address}
+        self.audit.log(
+            action=AuditAction.USER_LOGIN,
+            actor_user_id=user.user_id,
+            target_type="auth",
+            target_id=user.user_id,
+            source_ip=ip_address,
+            details={"role": user_role}
         )
 
         return token_response, None
@@ -247,8 +249,8 @@ class AuthService:
             if not user:
                 return None, "User not found"
 
-            if user.status and user.status.value not in ["active"]:
-                return None, f"Account is {user.status.value}"
+            if user.status and user.status not in ["active"]:
+                return None, f"Account is {user.status}"
 
             # Generate new tokens
             user_role = self._determine_role(user)
@@ -295,7 +297,7 @@ class AuthService:
             permissions=ROLE_PERMISSIONS.get(user_role, []),
             department=user.department,
             tenant_id=tenant_id,
-            is_active=user.status.value == "active" if user.status else True,
+            is_active=user.status == "active" if user.status else True,
             created_at=user.created_at,
             last_login=user.last_login,
             mfa_enabled=False,
@@ -310,12 +312,11 @@ class AuthService:
     ) -> bool:
         """Logout user (invalidate session)"""
         # In production, add token to blacklist or invalidate session
-        self.audit.log_action(
-            action="auth.logout",
-            resource_type="auth",
-            resource_id=user_id,
-            tenant_id=tenant_id,
-            user_id=user_id
+        self.audit.log(
+            action=AuditAction.USER_LOGOUT,
+            actor_user_id=user_id,
+            target_type="auth",
+            target_id=user_id
         )
         return True
 

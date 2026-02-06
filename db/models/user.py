@@ -66,9 +66,9 @@ class User(Base, TimestampMixin):
     manager_user_id = Column(String(50), nullable=True)
     location = Column(String(100), nullable=True)
 
-    # User type and status
-    user_type = Column(SQLEnum(UserType), default=UserType.DIALOG)
-    status = Column(SQLEnum(UserStatus), default=UserStatus.ACTIVE)
+    # User type and status (stored as varchar for flexibility)
+    user_type = Column(String(20), default='dialog')
+    status = Column(String(20), default='active')
 
     # Validity
     valid_from = Column(DateTime, nullable=True)
@@ -111,8 +111,8 @@ class User(Base, TimestampMixin):
             'full_name': self.full_name,
             'department': self.department,
             'cost_center': self.cost_center,
-            'user_type': self.user_type.value if self.user_type else None,
-            'status': self.status.value if self.status else None,
+            'user_type': self.user_type,
+            'status': self.status,
             'risk_score': self.risk_score,
             'violation_count': self.violation_count,
             'last_login': self.last_login.isoformat() if self.last_login else None
@@ -229,8 +229,8 @@ class UserEntitlement(Base, TimestampMixin):
 
     # Authorization object details (SAP format)
     auth_object = Column(String(50), nullable=False, index=True)  # e.g., S_TCODE
-    field = Column(String(50), nullable=False)                     # e.g., TCD
-    value = Column(String(255), nullable=False)                    # e.g., FK01
+    auth_field = Column(String(50), nullable=False)                # e.g., TCD
+    auth_value = Column(String(255), nullable=False)               # e.g., FK01
     activity = Column(String(10), nullable=True)                   # e.g., 01, 02, 03
 
     # Source
@@ -245,11 +245,11 @@ class UserEntitlement(Base, TimestampMixin):
     user = relationship("User", back_populates="entitlements")
 
     def __repr__(self):
-        return f"<UserEntitlement({self.auth_object}:{self.field}={self.value})>"
+        return f"<UserEntitlement({self.auth_object}:{self.auth_field}={self.auth_value})>"
 
     def to_key(self) -> str:
         """Generate unique key matching core.rules.models.Entitlement format"""
-        base = f"{self.source_system}:{self.auth_object}:{self.field}:{self.value}"
+        base = f"{self.source_system}:{self.auth_object}:{self.auth_field}:{self.auth_value}"
         if self.activity:
             base += f":{self.activity}"
         return base

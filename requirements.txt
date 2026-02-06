@@ -24,7 +24,7 @@ passlib[bcrypt]>=1.7.4
 pyjwt>=2.8.0
 
 # Data Validation & Serialization
-pydantic>=2.5.0
+pydantic[email]>=2.5.0
 pydantic-settings>=2.1.0
 
 # Configuration

@@ -11,6 +11,15 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/api';
+import {
+  Card,
+  Button,
+  Badge,
+  Select,
+  Input,
+  Textarea,
+  RiskBadge,
+} from '../../components/ui';
 
 interface FirefighterId {
   id: string;
@@ -38,78 +47,19 @@ interface ReasonCode {
 }
 
 const firefighterIds: FirefighterId[] = [
-  {
-    id: 'FF_EMERGENCY_SAP_01',
-    name: 'SAP Emergency Admin',
-    description: 'Emergency administrative access to SAP ECC Production',
-    system: 'SAP ECC',
-    riskLevel: 'critical',
-    maxDuration: '4 hours',
-    available: true,
-    requiresApproval: true,
-  },
-  {
-    id: 'FF_EMERGENCY_SAP_02',
-    name: 'SAP Basis Emergency',
-    description: 'Emergency Basis access for system maintenance',
-    system: 'SAP ECC',
-    riskLevel: 'critical',
-    maxDuration: '2 hours',
-    available: true,
-    requiresApproval: true,
-  },
-  {
-    id: 'FF_ADMIN_AWS',
-    name: 'AWS Production Admin',
-    description: 'Emergency admin access to AWS production resources',
-    system: 'AWS',
-    riskLevel: 'critical',
-    maxDuration: '2 hours',
-    available: false,
-    requiresApproval: true,
-  },
-  {
-    id: 'FF_ADMIN_DB',
-    name: 'Database Admin',
-    description: 'Emergency DBA access to production databases',
-    system: 'Oracle DB',
-    riskLevel: 'high',
-    maxDuration: '4 hours',
-    available: true,
-    requiresApproval: true,
-  },
-  {
-    id: 'FF_HR_ADMIN',
-    name: 'HR Emergency Admin',
-    description: 'Emergency access to HR systems for critical updates',
-    system: 'Workday',
-    riskLevel: 'high',
-    maxDuration: '2 hours',
-    available: true,
-    requiresApproval: false,
-  },
-  {
-    id: 'FF_NETWORK_ADMIN',
-    name: 'Network Emergency',
-    description: 'Emergency network administration access',
-    system: 'Network Infrastructure',
-    riskLevel: 'critical',
-    maxDuration: '1 hour',
-    available: true,
-    requiresApproval: true,
-  },
+  { id: 'FF_EMERGENCY_SAP_01', name: 'SAP Emergency Admin', description: 'Emergency administrative access to SAP ECC Production', system: 'SAP ECC', riskLevel: 'critical', maxDuration: '4 hours', available: true, requiresApproval: true },
+  { id: 'FF_EMERGENCY_SAP_02', name: 'SAP Basis Emergency', description: 'Emergency Basis access for system maintenance', system: 'SAP ECC', riskLevel: 'critical', maxDuration: '2 hours', available: true, requiresApproval: true },
+  { id: 'FF_ADMIN_AWS', name: 'AWS Production Admin', description: 'Emergency admin access to AWS production resources', system: 'AWS', riskLevel: 'critical', maxDuration: '2 hours', available: false, requiresApproval: true },
+  { id: 'FF_ADMIN_DB', name: 'Database Admin', description: 'Emergency DBA access to production databases', system: 'Oracle DB', riskLevel: 'high', maxDuration: '4 hours', available: true, requiresApproval: true },
+  { id: 'FF_HR_ADMIN', name: 'HR Emergency Admin', description: 'Emergency access to HR systems for critical updates', system: 'Workday', riskLevel: 'high', maxDuration: '2 hours', available: true, requiresApproval: false },
+  { id: 'FF_NETWORK_ADMIN', name: 'Network Emergency', description: 'Emergency network administration access', system: 'Network Infrastructure', riskLevel: 'critical', maxDuration: '1 hour', available: true, requiresApproval: true },
 ];
 
-const riskConfig = {
-  high: { color: 'bg-orange-100 text-orange-800', label: 'High Risk' },
-  critical: { color: 'bg-red-100 text-red-800', label: 'Critical Risk' },
-};
-
-const priorityColors: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-blue-100 text-blue-800',
-  high: 'bg-orange-100 text-orange-800',
-  critical: 'bg-red-100 text-red-800',
+const priorityVariant: Record<string, 'neutral' | 'info' | 'warning' | 'danger'> = {
+  low: 'neutral',
+  medium: 'info',
+  high: 'warning',
+  critical: 'danger',
 };
 
 export function FirefighterRequest() {
@@ -126,7 +76,6 @@ export function FirefighterRequest() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch reason codes on mount
   useEffect(() => {
     const fetchReasonCodes = async () => {
       try {
@@ -134,7 +83,6 @@ export function FirefighterRequest() {
         setReasonCodes(response.data.reason_codes);
       } catch (error) {
         console.warn('Failed to fetch reason codes, using defaults');
-        // Fallback reason codes
         setReasonCodes([
           { code: 'prod_incident', label: 'Production Incident', description: 'Resolution of active production incident', requires_ticket: true, requires_justification: true, default_priority: 'critical', max_duration_hours: 4, approval_chain: ['ff_owner', 'it_manager'], sla_minutes: 15, auto_approve_eligible: false, controller_review_sla_hours: 24 },
           { code: 'change_management', label: 'Change Management', description: 'Implementation of pre-approved change', requires_ticket: true, requires_justification: false, default_priority: 'medium', max_duration_hours: 8, approval_chain: ['ff_owner'], sla_minutes: 60, auto_approve_eligible: true, controller_review_sla_hours: 48 },
@@ -151,7 +99,6 @@ export function FirefighterRequest() {
     fetchReasonCodes();
   }, []);
 
-  // Update duration options when reason code changes
   const getDurationOptions = () => {
     const maxHours = selectedReasonCode?.max_duration_hours || 8;
     const options = [];
@@ -177,8 +124,6 @@ export function FirefighterRequest() {
 
   const handleSubmit = async () => {
     if (!selectedFF || !selectedReasonCode || !acknowledged || isSubmitting) return;
-
-    // Validate required fields based on reason code
     if (selectedReasonCode.requires_ticket && !ticketNumber) {
       toast.error('This reason code requires a ticket reference.');
       return;
@@ -190,13 +135,7 @@ export function FirefighterRequest() {
 
     setIsSubmitting(true);
     try {
-      // Get current user info (would come from auth context in production)
-      const userInfo = {
-        user_id: 'CURRENT_USER',
-        name: 'Current User',
-        email: 'user@company.com'
-      };
-
+      const userInfo = { user_id: 'CURRENT_USER', name: 'Current User', email: 'user@company.com' };
       await api.post('/firefighter/requests', {
         requester_user_id: userInfo.user_id,
         requester_name: userInfo.name,
@@ -232,31 +171,27 @@ export function FirefighterRequest() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <Link
-            to="/firefighter"
-            className="mr-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Request Emergency Access</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Request firefighter/emergency privileged access
-            </p>
-          </div>
+      <div className="flex items-center">
+        <Link
+          to="/firefighter"
+          className="mr-4 p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-white/50 transition-colors"
+        >
+          <ArrowLeftIcon className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Request Emergency Access</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Request firefighter/emergency privileged access
+          </p>
         </div>
       </div>
 
       {/* Warning Banner */}
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="p-4 bg-red-50/80 border border-red-200/60 rounded-xl backdrop-blur-sm">
         <div className="flex items-start">
           <ShieldExclamationIcon className="h-6 w-6 text-red-600 mt-0.5" />
           <div className="ml-3">
-            <h3 className="text-sm font-semibold text-red-800">
-              Emergency Access Only
-            </h3>
+            <h3 className="text-sm font-semibold text-red-800">Emergency Access Only</h3>
             <p className="mt-1 text-sm text-red-700">
               Firefighter access is for emergency situations only. All actions will be logged
               and audited. Misuse of emergency access is a policy violation.
@@ -267,219 +202,167 @@ export function FirefighterRequest() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Firefighter ID Selection */}
-        <div className="lg:col-span-2 bg-white shadow rounded-lg">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Select Firefighter ID</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Choose the emergency access profile you need
-            </p>
-          </div>
-
-          <div className="p-6 space-y-3">
-            {firefighterIds.map((ff) => {
-              const riskInfo = riskConfig[ff.riskLevel];
-              const isSelected = selectedFF?.id === ff.id;
-
-              return (
-                <div
-                  key={ff.id}
-                  onClick={() => ff.available && setSelectedFF(ff)}
-                  className={`p-4 border rounded-lg ${
-                    !ff.available
-                      ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60'
-                      : isSelected
-                      ? 'border-orange-500 bg-orange-50 cursor-pointer'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start">
-                      <div
-                        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          isSelected
-                            ? 'border-orange-600 bg-orange-600'
-                            : 'border-gray-300'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="w-2 h-2 bg-white rounded-full" />
+        <div className="lg:col-span-2">
+          <Card>
+            <div className="px-6 py-4 border-b border-white/20">
+              <h2 className="text-sm font-semibold text-gray-900">Select Firefighter ID</h2>
+              <p className="mt-1 text-xs text-gray-500">Choose the emergency access profile you need</p>
+            </div>
+            <div className="p-6 space-y-3">
+              {firefighterIds.map((ff) => {
+                const isSelected = selectedFF?.id === ff.id;
+                return (
+                  <div
+                    key={ff.id}
+                    onClick={() => ff.available && setSelectedFF(ff)}
+                    className={`p-4 border rounded-xl transition-all duration-200 ${
+                      !ff.available
+                        ? 'bg-gray-50/50 border-gray-200/50 cursor-not-allowed opacity-60'
+                        : isSelected
+                        ? 'border-orange-400 bg-orange-50/50 cursor-pointer shadow-sm'
+                        : 'border-white/40 bg-white/30 hover:border-gray-300 hover:bg-white/50 cursor-pointer'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start">
+                        <div
+                          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'border-orange-600 bg-orange-600' : 'border-gray-300'
+                          }`}
+                        >
+                          {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
+                        </div>
+                        <div className="ml-3">
+                          <div className="flex items-center">
+                            <FireIcon className="h-4 w-4 text-orange-500 mr-1" />
+                            <span className="text-sm font-medium text-gray-900">{ff.name}</span>
+                            <span className="ml-2 text-xs text-gray-500">({ff.id})</span>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500">{ff.description}</p>
+                          <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                            <span className="flex items-center">
+                              <ClockIcon className="h-3 w-3 mr-1" />
+                              Max: {ff.maxDuration}
+                            </span>
+                            <Badge variant="neutral" size="sm">{ff.system}</Badge>
+                            {!ff.available && <Badge variant="danger" size="sm">In Use</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <RiskBadge level={ff.riskLevel} />
+                        {ff.requiresApproval && (
+                          <span className="text-xs text-gray-500">Requires Approval</span>
                         )}
                       </div>
-                      <div className="ml-3">
-                        <div className="flex items-center">
-                          <FireIcon className="h-4 w-4 text-orange-500 mr-1" />
-                          <span className="text-sm font-medium text-gray-900">
-                            {ff.name}
-                          </span>
-                          <span className="ml-2 text-xs text-gray-500">({ff.id})</span>
-                        </div>
-                        <p className="mt-1 text-sm text-gray-500">{ff.description}</p>
-                        <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <ClockIcon className="h-3 w-3 mr-1" />
-                            Max: {ff.maxDuration}
-                          </span>
-                          <span className="inline-flex px-2 py-0.5 rounded bg-gray-100">
-                            {ff.system}
-                          </span>
-                          {!ff.available && (
-                            <span className="inline-flex px-2 py-0.5 rounded bg-red-100 text-red-700">
-                              In Use
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${riskInfo.color}`}
-                      >
-                        {riskInfo.label}
-                      </span>
-                      {ff.requiresApproval && (
-                        <span className="text-xs text-gray-500">Requires Approval</span>
-                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </Card>
         </div>
 
         {/* Request Details */}
         <div className="space-y-6">
-          {/* Reason Code Selection */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Reason Code *</h3>
-            <select
+            <Select
               value={selectedReasonCode?.code || ''}
               onChange={(e) => {
                 const code = reasonCodes.find(rc => rc.code === e.target.value);
                 setSelectedReasonCode(code || null);
-                // Reset duration if new code has lower max
                 if (code && parseInt(duration) / 60 > code.max_duration_hours) {
                   setDuration(String(code.max_duration_hours * 60));
                 }
               }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-orange-500 focus:border-orange-500"
-            >
-              <option value="">Select a reason code...</option>
-              {reasonCodes.map((rc) => (
-                <option key={rc.code} value={rc.code}>
-                  {rc.label}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: 'Select a reason code...' },
+                ...reasonCodes.map((rc) => ({ value: rc.code, label: rc.label })),
+              ]}
+            />
             {selectedReasonCode && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs">
+              <div className="mt-3 p-3 bg-white/40 backdrop-blur-sm rounded-xl text-xs">
                 <p className="text-gray-600 mb-2">{selectedReasonCode.description}</p>
                 <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${priorityColors[selectedReasonCode.default_priority]}`}>
+                  <Badge variant={priorityVariant[selectedReasonCode.default_priority] || 'neutral'} size="sm">
                     {selectedReasonCode.default_priority.toUpperCase()} Priority
-                  </span>
-                  <span className="inline-flex px-2 py-0.5 rounded bg-gray-200 text-gray-700">
-                    Max {selectedReasonCode.max_duration_hours}h
-                  </span>
-                  <span className="inline-flex px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                    SLA: {selectedReasonCode.sla_minutes} min
-                  </span>
+                  </Badge>
+                  <Badge variant="neutral" size="sm">Max {selectedReasonCode.max_duration_hours}h</Badge>
+                  <Badge variant="info" size="sm">SLA: {selectedReasonCode.sla_minutes} min</Badge>
                   {selectedReasonCode.requires_ticket && (
-                    <span className="inline-flex px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">
-                      Ticket Required
-                    </span>
+                    <Badge variant="warning" size="sm">Ticket Required</Badge>
                   )}
                   {selectedReasonCode.auto_approve_eligible && (
-                    <span className="inline-flex px-2 py-0.5 rounded bg-green-100 text-green-700">
-                      Auto-approve Eligible
-                    </span>
+                    <Badge variant="success" size="sm">Auto-approve Eligible</Badge>
                   )}
                 </div>
               </div>
             )}
-          </div>
+          </Card>
 
-          {/* Duration */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Access Duration</h3>
-            <select
+            <Select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-orange-500 focus:border-orange-500"
-            >
-              {getDurationOptions().map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-gray-500">
-              Session will auto-terminate after this duration
-            </p>
-          </div>
+              options={getDurationOptions()}
+            />
+            <p className="mt-2 text-xs text-gray-500">Session will auto-terminate after this duration</p>
+          </Card>
 
-          {/* Ticket Number */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <h3 className="text-sm font-medium text-gray-900 mb-3">
               Incident/Change Ticket {selectedReasonCode?.requires_ticket ? '*' : ''}
             </h3>
-            <input
-              type="text"
+            <Input
               value={ticketNumber}
               onChange={(e) => setTicketNumber(e.target.value)}
               placeholder="e.g., INC0012345"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-orange-500 focus:border-orange-500"
             />
             <p className="mt-2 text-xs text-gray-500">
               {selectedReasonCode?.requires_ticket ? 'Required for this reason code' : 'Optional: Link to related ticket'}
             </p>
-          </div>
+          </Card>
 
-          {/* Business Justification */}
           {selectedReasonCode?.requires_justification && (
-            <div className="bg-white shadow rounded-lg p-6">
+            <Card padding="lg">
               <h3 className="text-sm font-medium text-gray-900 mb-3">Business Justification *</h3>
-              <textarea
+              <Textarea
                 value={businessJustification}
                 onChange={(e) => setBusinessJustification(e.target.value)}
                 rows={3}
                 placeholder="Explain why this access is necessary..."
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-orange-500 focus:border-orange-500"
               />
-            </div>
+            </Card>
           )}
 
-          {/* Additional Reason/Description */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Additional Details</h3>
-            <textarea
+            <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               placeholder="Any additional details about the access needed..."
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-orange-500 focus:border-orange-500"
             />
-          </div>
+          </Card>
 
-          {/* Planned Actions */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Planned Actions</h3>
             <p className="text-xs text-gray-500 mb-3">
               List the specific actions you plan to perform during this session
             </p>
             <div className="flex gap-2 mb-3">
-              <input
-                type="text"
+              <Input
                 value={newAction}
                 onChange={(e) => setNewAction(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addPlannedAction()}
                 placeholder="e.g., Run PA30 for employee update"
-                className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-orange-500 focus:border-orange-500"
               />
               <button
                 onClick={addPlannedAction}
                 type="button"
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                className="px-3 py-2 bg-white/50 backdrop-blur-sm text-gray-700 rounded-xl border border-white/40 hover:bg-white/70 transition-colors"
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
@@ -487,22 +370,18 @@ export function FirefighterRequest() {
             {plannedActions.length > 0 && (
               <ul className="space-y-2">
                 {plannedActions.map((action, index) => (
-                  <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <li key={index} className="flex items-center justify-between p-2 bg-white/40 backdrop-blur-sm rounded-xl">
                     <span className="text-sm text-gray-700">{action}</span>
-                    <button
-                      onClick={() => removePlannedAction(index)}
-                      className="text-gray-400 hover:text-red-500"
-                    >
+                    <button onClick={() => removePlannedAction(index)} className="text-gray-400 hover:text-red-500 transition-colors">
                       <XMarkIcon className="h-4 w-4" />
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
 
-          {/* Acknowledgment */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <Card padding="lg">
             <div className="flex items-start">
               <input
                 type="checkbox"
@@ -516,20 +395,19 @@ export function FirefighterRequest() {
                 will be logged and audited. I understand misuse is a policy violation.
               </label>
             </div>
-          </div>
+          </Card>
 
-          {/* Submit Button */}
-          <button
+          <Button
+            fullWidth
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="w-full px-4 py-3 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            icon={<FireIcon className="h-5 w-5" />}
+            loading={isSubmitting}
           >
-            <FireIcon className="h-5 w-5 inline mr-2" />
-            {isSubmitting ? 'Submitting...' : 'Request Emergency Access'}
-          </button>
+            Request Emergency Access
+          </Button>
 
-          {/* Info */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-blue-50/80 border border-blue-200/60 rounded-xl backdrop-blur-sm">
             <div className="flex items-start">
               <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5" />
               <div className="ml-2 text-xs text-blue-700">
@@ -537,7 +415,7 @@ export function FirefighterRequest() {
                   <>
                     <p className="font-medium mb-1">Approval Process:</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Approval chain: {selectedReasonCode.approval_chain.join(' → ')}</li>
+                      <li>Approval chain: {selectedReasonCode.approval_chain.join(' \u2192 ')}</li>
                       <li>Approval SLA: {selectedReasonCode.sla_minutes} minutes</li>
                       <li>Post-session review: {selectedReasonCode.controller_review_sla_hours} hours</li>
                     </ul>

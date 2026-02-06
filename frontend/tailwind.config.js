@@ -19,7 +19,23 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         }
-      }
+      },
+      borderRadius: {
+        'glass': '16px',
+        'btn': '12px',
+      },
+      boxShadow: {
+        'glass': '0 4px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+        'glass-hover': '0 8px 40px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+        'glass-sm': '0 2px 10px rgba(0, 0, 0, 0.06)',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+      },
+      fontSize: {
+        'xxs': ['10px', '14px'],
+      },
     },
   },
   plugins: [],

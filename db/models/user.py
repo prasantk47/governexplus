@@ -79,6 +79,13 @@ class User(Base, TimestampMixin):
     failed_login_count = Column(Integer, default=0)
     password_changed_at = Column(DateTime, nullable=True)
 
+    # Profile
+    title = Column(String(100), nullable=True)
+
+    # Platform authentication
+    password_hash = Column(String(255), nullable=True)
+    is_platform_user = Column(Boolean, default=False)
+
     # Risk metrics
     risk_score = Column(Float, default=0.0)
     violation_count = Column(Integer, default=0)

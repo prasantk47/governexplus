@@ -9,3 +9,10 @@ services:
     environment:
       - SAPNWRFC_HOME=/usr/local/sap/nwrfcsdk
       - LD_LIBRARY_PATH=/usr/local/sap/nwrfcsdk/lib
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "4500:80"
+    depends_on:
+      - api

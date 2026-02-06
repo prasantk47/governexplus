@@ -19,7 +19,7 @@ ENV LD_LIBRARY_PATH=/usr/local/sap/nwrfcsdk/lib:$LD_LIBRARY_PATH
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt || \
-    pip install --no-cache-dir fastapi uvicorn sqlalchemy pydantic pyyaml python-dotenv python-jose passlib httpx
+    pip install --no-cache-dir fastapi uvicorn sqlalchemy pydantic pyyaml python-dotenv python-jose passlib httpx python-multipart aiohttp structlog networkx pandas numpy scikit-learn
 
 # Copy application code
 COPY . .

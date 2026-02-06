@@ -19,7 +19,7 @@ import hashlib
 import secrets
 from pathlib import Path
 
-router = APIRouter(prefix="/admin", tags=["Super Admin"])
+router = APIRouter(tags=["Super Admin"])
 
 
 # ==================== Models ====================

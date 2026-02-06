@@ -48,6 +48,8 @@ from api.routers import (
     approvals,
     # Simple reports for demo
     reports,
+    # JWT Authentication
+    auth,
 )
 from api.middleware import TenantMiddleware
 from db.database import init_db, db_manager
@@ -368,6 +370,13 @@ app.include_router(
     reports.router,
     prefix="/reports",
     tags=["Reports"]
+)
+
+# JWT Authentication (new enterprise-grade auth)
+app.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["Authentication"]
 )
 
 

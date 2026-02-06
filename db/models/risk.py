@@ -45,8 +45,11 @@ class RiskViolation(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Violation identity
-    violation_id = Column(String(100), unique=True, nullable=False, index=True)
+    violation_id = Column(String(100), nullable=False, index=True)
 
     # Rule reference
     rule_id = Column(String(50), nullable=False, index=True)
@@ -132,8 +135,11 @@ class MitigationControl(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Control identity
-    control_id = Column(String(50), unique=True, nullable=False, index=True)
+    control_id = Column(String(50), nullable=False, index=True)
     control_name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
@@ -179,8 +185,11 @@ class RiskRuleModel(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Rule identity
-    rule_id = Column(String(50), unique=True, nullable=False, index=True)
+    rule_id = Column(String(50), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 

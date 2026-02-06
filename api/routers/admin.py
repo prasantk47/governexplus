@@ -460,7 +460,7 @@ async def create_tenant(request: CreateTenantRequest):
         "admin_credentials": {
             "email": request.admin_email,
             "password": admin_password,
-            "login_url": f"https://{slug}.governex.io/login"
+            "login_url": f"https://governexplus.com/login"
         },
         "message": f"Tenant '{request.company_name}' created successfully"
     }

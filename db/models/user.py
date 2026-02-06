@@ -7,7 +7,7 @@ synchronized from SAP and other connected systems.
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Text,
-    ForeignKey, Table, JSON, Float, Enum as SQLEnum
+    ForeignKey, Table, JSON, Float, Enum as SQLEnum, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -40,11 +40,17 @@ class User(Base, TimestampMixin):
     Stores both local GRC user info and synchronized data from SAP.
     """
     __tablename__ = 'users'
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'user_id', name='uq_tenant_user_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Identity
-    user_id = Column(String(50), unique=True, nullable=False, index=True)
+    user_id = Column(String(50), nullable=False, index=True)
     username = Column(String(100), nullable=False)
     email = Column(String(255), nullable=True)
     full_name = Column(String(255), nullable=True)
@@ -111,11 +117,17 @@ class Role(Base, TimestampMixin):
     Role model representing authorization roles from connected systems.
     """
     __tablename__ = 'roles'
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'role_id', name='uq_tenant_role_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Role identity
-    role_id = Column(String(100), unique=True, nullable=False, index=True)
+    role_id = Column(String(100), nullable=False, index=True)
     role_name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
@@ -165,6 +177,9 @@ class UserRole(Base, TimestampMixin):
     __tablename__ = 'user_roles'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
 
     # Foreign keys
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon,
@@ -9,137 +10,43 @@ import {
   ShieldCheckIcon,
   UserCircleIcon,
   XMarkIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { usersApi, CreateUserRequest } from '../../services/api';
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  title: string;
-  manager: string;
-  status: 'active' | 'inactive' | 'suspended';
-  riskScore: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  totalRoles: number;
-  activeViolations: number;
-  lastLogin: string;
+  id: number;
+  user_id: string;
+  username: string;
+  email: string | null;
+  full_name: string | null;
+  department: string | null;
+  title: string | null;
+  status: string;
+  risk_score: number;
+  risk_level: string;
+  violation_count: number;
+  role_count: number;
+  last_login: string | null;
 }
 
-const mockUsers: User[] = [
-  {
-    id: 'USR-001',
-    name: 'John Smith',
-    email: 'jsmith@company.com',
-    department: 'Finance',
-    title: 'Senior Accountant',
-    manager: 'Sarah Director',
-    status: 'active',
-    riskScore: 72,
-    riskLevel: 'high',
-    totalRoles: 8,
-    activeViolations: 2,
-    lastLogin: '2024-01-20',
-  },
-  {
-    id: 'USR-002',
-    name: 'Mary Brown',
-    email: 'mbrown@company.com',
-    department: 'IT',
-    title: 'System Administrator',
-    manager: 'IT Manager',
-    status: 'active',
-    riskScore: 65,
-    riskLevel: 'high',
-    totalRoles: 12,
-    activeViolations: 1,
-    lastLogin: '2024-01-20',
-  },
-  {
-    id: 'USR-003',
-    name: 'Tom Davis',
-    email: 'tdavis@company.com',
-    department: 'Procurement',
-    title: 'Purchasing Manager',
-    manager: 'Procurement Director',
-    status: 'active',
-    riskScore: 45,
-    riskLevel: 'medium',
-    totalRoles: 5,
-    activeViolations: 0,
-    lastLogin: '2024-01-19',
-  },
-  {
-    id: 'USR-004',
-    name: 'Alice Wilson',
-    email: 'awilson@company.com',
-    department: 'HR',
-    title: 'HR Specialist',
-    manager: 'HR Director',
-    status: 'active',
-    riskScore: 38,
-    riskLevel: 'medium',
-    totalRoles: 4,
-    activeViolations: 1,
-    lastLogin: '2024-01-20',
-  },
-  {
-    id: 'USR-005',
-    name: 'Bob Johnson',
-    email: 'bjohnson@company.com',
-    department: 'Finance',
-    title: 'Financial Analyst',
-    manager: 'Sarah Director',
-    status: 'active',
-    riskScore: 85,
-    riskLevel: 'critical',
-    totalRoles: 10,
-    activeViolations: 3,
-    lastLogin: '2024-01-18',
-  },
-  {
-    id: 'USR-006',
-    name: 'Carol White',
-    email: 'cwhite@company.com',
-    department: 'Sales',
-    title: 'Sales Representative',
-    manager: 'Sales Manager',
-    status: 'inactive',
-    riskScore: 15,
-    riskLevel: 'low',
-    totalRoles: 2,
-    activeViolations: 0,
-    lastLogin: '2023-10-15',
-  },
-  {
-    id: 'USR-007',
-    name: 'David Lee',
-    email: 'dlee@company.com',
-    department: 'Engineering',
-    title: 'DevOps Engineer',
-    manager: 'Engineering Manager',
-    status: 'active',
-    riskScore: 58,
-    riskLevel: 'high',
-    totalRoles: 15,
-    activeViolations: 1,
-    lastLogin: '2024-01-20',
-  },
-  {
-    id: 'USR-008',
-    name: 'Emma Garcia',
-    email: 'egarcia@company.com',
-    department: 'Finance',
-    title: 'AP Clerk',
-    manager: 'Sarah Director',
-    status: 'suspended',
-    riskScore: 25,
-    riskLevel: 'low',
-    totalRoles: 3,
-    activeViolations: 0,
-    lastLogin: '2024-01-10',
-  },
-];
+interface UsersResponse {
+  items: User[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+interface UserStats {
+  total_users: number;
+  active_users: number;
+  inactive_users: number;
+  suspended_users: number;
+  high_risk_users: number;
+  users_with_violations: number;
+  departments: { name: string; count: number }[];
+}
 
 const riskLevelConfig = {
   low: { color: 'bg-green-100 text-green-800', barColor: 'bg-green-500' },
@@ -152,50 +59,119 @@ const statusConfig = {
   active: { color: 'bg-green-100 text-green-800', label: 'Active' },
   inactive: { color: 'bg-gray-100 text-gray-800', label: 'Inactive' },
   suspended: { color: 'bg-red-100 text-red-800', label: 'Suspended' },
+  locked: { color: 'bg-yellow-100 text-yellow-800', label: 'Locked' },
+  deleted: { color: 'bg-gray-100 text-gray-500', label: 'Deleted' },
 };
 
 export function UserList() {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [page, setPage] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newUser, setNewUser] = useState({
-    name: '',
+  const [newUser, setNewUser] = useState<CreateUserRequest>({
+    user_id: '',
+    username: '',
+    full_name: '',
     email: '',
     department: '',
     title: '',
-    manager: '',
-    role: 'end_user',
+    password: '',
   });
 
-  const departments = [...new Set(mockUsers.map((u) => u.department))];
+  const limit = 20;
+
+  // Fetch users from API
+  const { data: usersData, isLoading, error, refetch } = useQuery<UsersResponse>({
+    queryKey: ['users', { searchTerm, statusFilter, riskFilter, departmentFilter, page }],
+    queryFn: async () => {
+      const response = await usersApi.list({
+        search: searchTerm || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        risk_level: riskFilter !== 'all' ? riskFilter : undefined,
+        department: departmentFilter !== 'all' ? departmentFilter : undefined,
+        limit,
+        offset: page * limit,
+      });
+      return response.data;
+    },
+  });
+
+  // Fetch user statistics
+  const { data: statsData } = useQuery<UserStats>({
+    queryKey: ['userStats'],
+    queryFn: async () => {
+      const response = await usersApi.getStats();
+      return response.data;
+    },
+  });
+
+  // Fetch departments for filter
+  const { data: departmentsData } = useQuery<string[]>({
+    queryKey: ['userDepartments'],
+    queryFn: async () => {
+      const response = await usersApi.getDepartments();
+      return response.data;
+    },
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: (userData: CreateUserRequest) => usersApi.create(userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['userStats'] });
+      toast.success('User created successfully!');
+      setShowAddModal(false);
+      setNewUser({
+        user_id: '',
+        username: '',
+        full_name: '',
+        email: '',
+        department: '',
+        title: '',
+        password: '',
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to create user');
+    },
+  });
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => usersApi.delete(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['userStats'] });
+      toast.success('User deleted successfully!');
+    },
+    onError: () => {
+      toast.error('Failed to delete user');
+    },
+  });
 
   const handleAddUser = () => {
-    if (!newUser.name || !newUser.email) {
-      toast.error('Name and email are required');
+    if (!newUser.user_id || !newUser.username || !newUser.full_name) {
+      toast.error('User ID, username, and full name are required');
       return;
     }
-    toast.success(`User ${newUser.name} created successfully!`);
-    setShowAddModal(false);
-    setNewUser({ name: '', email: '', department: '', title: '', manager: '', role: 'end_user' });
+    createUserMutation.mutate(newUser);
   };
 
-  const filteredUsers = mockUsers.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    const matchesRisk = riskFilter === 'all' || user.riskLevel === riskFilter;
-    const matchesDept = departmentFilter === 'all' || user.department === departmentFilter;
-    return matchesSearch && matchesStatus && matchesRisk && matchesDept;
-  });
+  const users = usersData?.items || [];
+  const total = usersData?.total || 0;
+  const departments = departmentsData || [];
 
-  const highRiskCount = mockUsers.filter(
-    (u) => u.riskLevel === 'high' || u.riskLevel === 'critical'
-  ).length;
-  const violationsCount = mockUsers.reduce((acc, u) => acc + u.activeViolations, 0);
+  // Statistics
+  const stats = statsData || {
+    total_users: 0,
+    active_users: 0,
+    high_risk_users: 0,
+    users_with_violations: 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -207,13 +183,22 @@ export function UserList() {
             Manage users and monitor their access risk profiles
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
-        >
-          <UserPlusIcon className="h-5 w-5 mr-2" />
-          Add User
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <ArrowPathIcon className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+          >
+            <UserPlusIcon className="h-5 w-5 mr-2" />
+            Add User
+          </button>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -225,7 +210,7 @@ export function UserList() {
             </div>
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-500">Total Users</div>
-              <div className="text-2xl font-bold text-gray-900">{mockUsers.length}</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.total_users}</div>
             </div>
           </div>
         </div>
@@ -236,9 +221,7 @@ export function UserList() {
             </div>
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-500">Active</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {mockUsers.filter((u) => u.status === 'active').length}
-              </div>
+              <div className="text-2xl font-bold text-gray-900">{stats.active_users}</div>
             </div>
           </div>
         </div>
@@ -249,7 +232,7 @@ export function UserList() {
             </div>
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-500">High Risk</div>
-              <div className="text-2xl font-bold text-orange-600">{highRiskCount}</div>
+              <div className="text-2xl font-bold text-orange-600">{stats.high_risk_users}</div>
             </div>
           </div>
         </div>
@@ -259,8 +242,8 @@ export function UserList() {
               <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
             </div>
             <div className="ml-4">
-              <div className="text-sm font-medium text-gray-500">Violations</div>
-              <div className="text-2xl font-bold text-red-600">{violationsCount}</div>
+              <div className="text-sm font-medium text-gray-500">With Violations</div>
+              <div className="text-2xl font-bold text-red-600">{stats.users_with_violations}</div>
             </div>
           </div>
         </div>
@@ -275,7 +258,10 @@ export function UserList() {
               type="text"
               placeholder="Search by name, email, or ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -283,17 +269,24 @@ export function UserList() {
             <FunnelIcon className="h-5 w-5 text-gray-400" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
               className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended</option>
+              <option value="locked">Locked</option>
             </select>
             <select
               value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
+              onChange={(e) => {
+                setRiskFilter(e.target.value);
+                setPage(0);
+              }}
               className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">All Risk Levels</option>
@@ -304,7 +297,10 @@ export function UserList() {
             </select>
             <select
               value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
+              onChange={(e) => {
+                setDepartmentFilter(e.target.value);
+                setPage(0);
+              }}
               className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">All Departments</option>
@@ -318,118 +314,162 @@ export function UserList() {
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Department
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Risk Score
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Roles
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Violations
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => {
-              const riskInfo = riskLevelConfig[user.riskLevel];
-              const statusInfo = statusConfig[user.status];
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">Failed to load users. Please try again.</p>
+        </div>
+      )}
 
-              return (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-600">
-                            {user.name
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')}
-                          </span>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="bg-white shadow rounded-lg p-8 text-center">
+          <ArrowPathIcon className="h-8 w-8 text-gray-400 animate-spin mx-auto" />
+          <p className="mt-2 text-gray-500">Loading users...</p>
+        </div>
+      )}
+
+      {/* Users Table */}
+      {!isLoading && !error && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  User
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Risk Score
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Roles
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Violations
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((user) => {
+                const riskInfo = riskLevelConfig[user.risk_level as keyof typeof riskLevelConfig] || riskLevelConfig.low;
+                const statusInfo = statusConfig[user.status as keyof typeof statusConfig] || statusConfig.active;
+
+                return (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-sm font-medium text-gray-600">
+                              {(user.full_name || user.username)
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .toUpperCase()
+                                .slice(0, 2)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.full_name || user.username}</div>
+                          <div className="text-sm text-gray-500">{user.email || user.user_id}</div>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{user.department}</div>
-                    <div className="text-sm text-gray-500">{user.title}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                        <div
-                          className={`h-2 rounded-full ${riskInfo.barColor}`}
-                          style={{ width: `${user.riskScore}%` }}
-                        />
-                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{user.department || '-'}</div>
+                      <div className="text-sm text-gray-500">{user.title || ''}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${riskInfo.color}`}
+                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
                       >
-                        {user.riskScore}
+                        {statusInfo.label}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.totalRoles}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user.activeViolations > 0 ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        {user.activeViolations}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-500">None</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`/users/${user.id}`}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      View Profile
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                          <div
+                            className={`h-2 rounded-full ${riskInfo.barColor}`}
+                            style={{ width: `${Math.min(user.risk_score, 100)}%` }}
+                          />
+                        </div>
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${riskInfo.color}`}
+                        >
+                          {Math.round(user.risk_score)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.role_count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.violation_count > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          {user.violation_count}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-500">None</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Link
+                        to={`/users/${user.user_id}`}
+                        className="text-primary-600 hover:text-primary-900"
+                      >
+                        View Profile
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <UserCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-gray-500">No users found matching your criteria</p>
-          </div>
-        )}
-      </div>
+          {users.length === 0 && (
+            <div className="text-center py-12">
+              <UserCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-gray-500">No users found matching your criteria</p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {total > limit && (
+            <div className="bg-gray-50 px-6 py-3 flex items-center justify-between border-t border-gray-200">
+              <div className="text-sm text-gray-700">
+                Showing {page * limit + 1} to {Math.min((page + 1) * limit, total)} of {total} users
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 0}
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={!usersData?.has_more}
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add User Modal */}
       {showAddModal && (
@@ -444,18 +484,40 @@ export function UserList() {
                 </button>
               </div>
               <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User ID *</label>
+                    <input
+                      type="text"
+                      value={newUser.user_id}
+                      onChange={(e) => setNewUser({ ...newUser, user_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="USR001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+                    <input
+                      type="text"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="jsmith"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                   <input
                     type="text"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    value={newUser.full_name}
+                    onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                     placeholder="John Smith"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
                     value={newUser.email}
@@ -479,40 +541,28 @@ export function UserList() {
                       <option value="Procurement">Procurement</option>
                       <option value="Sales">Sales</option>
                       <option value="Engineering">Engineering</option>
+                      <option value="Operations">Operations</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                    <select
-                      value={newUser.role}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                    <input
+                      type="text"
+                      value={newUser.title}
+                      onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="end_user">End User</option>
-                      <option value="manager">Manager</option>
-                      <option value="security_admin">Security Admin</option>
-                      <option value="admin">Administrator</option>
-                    </select>
+                      placeholder="Senior Accountant"
+                    />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password (optional)</label>
                   <input
-                    type="text"
-                    value={newUser.title}
-                    onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Senior Accountant"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Manager</label>
-                  <input
-                    type="text"
-                    value={newUser.manager}
-                    onChange={(e) => setNewUser({ ...newUser, manager: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Manager name or email"
+                    placeholder="For platform login (min 8 chars)"
                   />
                 </div>
               </div>
@@ -525,9 +575,10 @@ export function UserList() {
                 </button>
                 <button
                   onClick={handleAddUser}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                  disabled={createUserMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
                 >
-                  Create User
+                  {createUserMutation.isPending ? 'Creating...' : 'Create User'}
                 </button>
               </div>
             </div>

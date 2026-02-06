@@ -215,16 +215,93 @@ export const riskApi = {
 };
 
 // ==================== Users API ====================
-export const usersApi = {
-  list: (params?: any) => api.get('/users', { params }),
+export interface UserFilters {
+  search?: string;
+  status?: string;
+  department?: string;
+  risk_level?: string;
+  user_type?: string;
+  has_violations?: boolean;
+  limit?: number;
+  offset?: number;
+}
 
+export interface CreateUserRequest {
+  user_id: string;
+  username: string;
+  full_name: string;
+  email?: string;
+  department?: string;
+  title?: string;
+  cost_center?: string;
+  manager_user_id?: string;
+  location?: string;
+  user_type?: string;
+  password?: string;
+}
+
+export interface UpdateUserRequest {
+  username?: string;
+  full_name?: string;
+  email?: string;
+  department?: string;
+  title?: string;
+  cost_center?: string;
+  manager_user_id?: string;
+  location?: string;
+  status?: string;
+  user_type?: string;
+}
+
+export interface RoleAssignmentRequest {
+  role_id: string;
+  valid_from?: string;
+  valid_to?: string;
+  justification?: string;
+}
+
+export const usersApi = {
+  // List users with pagination and filters
+  list: (params?: UserFilters) => api.get('/users', { params }),
+
+  // Get user statistics
+  getStats: () => api.get('/users/stats'),
+
+  // Get departments list
+  getDepartments: () => api.get('/users/departments'),
+
+  // Get single user details
   get: (userId: string) => api.get(`/users/${userId}`),
 
+  // Create new user
+  create: (data: CreateUserRequest) => api.post('/users', data),
+
+  // Update user
+  update: (userId: string, data: UpdateUserRequest) =>
+    api.put(`/users/${userId}`, data),
+
+  // Delete user (soft delete)
+  delete: (userId: string) => api.delete(`/users/${userId}`),
+
+  // Role operations
   getRoles: (userId: string) => api.get(`/users/${userId}/roles`),
 
+  assignRole: (userId: string, data: RoleAssignmentRequest) =>
+    api.post(`/users/${userId}/roles`, data),
+
+  revokeRole: (userId: string, roleId: string) =>
+    api.delete(`/users/${userId}/roles/${roleId}`),
+
+  // Entitlements and transactions
   getEntitlements: (userId: string) => api.get(`/users/${userId}/entitlements`),
 
+  getTransactions: (userId: string) => api.get(`/users/${userId}/transactions`),
+
+  // Risk operations
   getRiskProfile: (userId: string) => api.get(`/users/${userId}/risk-profile`),
+
+  recalculateRisk: (userId: string) =>
+    api.post(`/users/${userId}/recalculate-risk`),
 };
 
 // ==================== Roles API ====================

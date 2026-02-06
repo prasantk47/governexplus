@@ -451,6 +451,8 @@ DEMO_USERS = {
     "user": {"name": "End User", "department": "Finance", "email": "user@governexplus.com", "role": "end_user"},
     "JSMITH": {"name": "John Smith", "department": "Finance", "email": "jsmith@governexplus.com", "role": "end_user"},
     "MBROWN": {"name": "Mary Brown", "department": "Procurement", "email": "mbrown@governexplus.com", "role": "manager"},
+    # Tenant admins (created during onboarding)
+    "demo@demo.com": {"name": "Demo Admin", "department": "Administration", "email": "demo@demo.com", "role": "admin"},
 }
 
 @app.post("/auth/login", tags=["Auth"])

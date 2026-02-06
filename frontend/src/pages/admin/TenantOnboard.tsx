@@ -22,6 +22,7 @@ import {
   StarIcon,
   FireIcon,
   BeakerIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';

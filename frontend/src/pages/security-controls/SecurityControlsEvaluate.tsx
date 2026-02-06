@@ -82,11 +82,11 @@ export function SecurityControlsEvaluate() {
     },
     onSuccess: (data) => {
       // Map API response to expected format
-      const results = (data.evaluations || []).map((eval: any) => ({
-        control_id: eval.control_id,
-        risk_rating: eval.risk_rating,
-        message: eval.finding || eval.message || '',
-        recommendation: eval.recommendation || '',
+      const results = (data.evaluations || []).map((item: any) => ({
+        control_id: item.control_id,
+        risk_rating: item.risk_rating,
+        message: item.finding || item.message || '',
+        recommendation: item.recommendation || '',
       }));
       setEvaluationResults(results);
       queryClient.invalidateQueries({ queryKey: ['securityControlsDashboard'] });

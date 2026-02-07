@@ -4,7 +4,14 @@
  * Client for the provisioning engine API endpoints.
  */
 
-const API_BASE = 'http://localhost:8000';
+const getApiBase = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) return envUrl;
+  if (import.meta.env.DEV) return 'http://localhost:9000';
+  return '/api';
+};
+
+const API_BASE = getApiBase();
 
 export interface ConnectorType {
   type_id: string;
@@ -105,10 +112,12 @@ class ProvisioningApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = localStorage.getItem('accessToken');
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });

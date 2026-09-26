@@ -457,7 +457,7 @@ export function CommandCenter() {
   // Data queries — fall back to mock on error
   const { data: healthScore, isLoading: healthLoading } = useQuery({
     queryKey: ['grc-health-score'],
-    queryFn: () => intelligenceApi.getHealthScore().then((r) => r.data),
+    queryFn: () => intelligenceApi.getHealthScore().then((r) => r.data ?? MOCK_HEALTH),
     placeholderData: MOCK_HEALTH,
     retry: false,
   });
@@ -465,14 +465,20 @@ export function CommandCenter() {
   const { data: attentionItems, isLoading: attentionLoading } = useQuery({
     queryKey: ['grc-attention'],
     queryFn: () =>
-      intelligenceApi.getAttentionItems({ role: user?.role }).then((r) => r.data),
+      intelligenceApi.getAttentionItems({ role: user?.role }).then((r) => {
+        const d = r.data;
+        return Array.isArray(d) ? d : (d as any)?.items ?? [];
+      }),
     placeholderData: MOCK_ATTENTION,
     retry: false,
   });
 
   const { data: insights, isLoading: insightsLoading } = useQuery({
     queryKey: ['grc-insights'],
-    queryFn: () => intelligenceApi.getInsights().then((r) => r.data),
+    queryFn: () => intelligenceApi.getInsights().then((r) => {
+      const d = r.data;
+      return Array.isArray(d) ? d : (d as any)?.items ?? [];
+    }),
     placeholderData: MOCK_INSIGHTS,
     retry: false,
   });

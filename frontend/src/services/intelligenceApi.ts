@@ -92,10 +92,10 @@ export interface PersonalizedDashboard {
 }
 
 export const intelligenceApi = {
-  getHealthScore: () => api.get<HealthScore>('/grc-intelligence/health-score'),
+  getHealthScore: () => api.get<HealthScore>('/grc-intelligence/health'),
   getAttentionItems: (params?: { role?: string }) =>
     api.get<AttentionItem[]>('/grc-intelligence/attention', { params }),
-  getInsights: () => api.get<Insight[]>('/grc-intelligence/insights'),
+  getInsights: () => api.get<Insight[]>('/grc-intelligence/attention'),
   explain: (objectType: string, objectId: string) =>
     api.post<ExplainResult>('/grc-intelligence/explain', {
       object_type: objectType,

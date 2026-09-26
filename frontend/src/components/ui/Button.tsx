@@ -15,17 +15,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'btn-primary glossy text-white',
-  secondary: 'btn-secondary',
-  danger: 'bg-gradient-to-br from-red-500 to-red-700 text-white border-none rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300',
-  ghost: 'bg-transparent text-gray-600 hover:bg-white/50 rounded-xl border border-transparent hover:border-white/30 transition-all duration-300',
-  success: 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-none rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300',
+  primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md',
+  secondary: 'bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm',
+  danger: 'bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md',
+  ghost: 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200',
+  success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-xs gap-1.5',
   md: 'px-4 py-2 text-sm gap-2',
-  lg: 'px-6 py-3 text-base gap-2.5',
+  lg: 'px-6 py-2.5 text-base gap-2.5',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const classes = [
-      'inline-flex items-center justify-center font-medium transition-all duration-200',
+      'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150',
       variantClasses[variant],
       sizeClasses[size],
       fullWidth ? 'w-full' : '',

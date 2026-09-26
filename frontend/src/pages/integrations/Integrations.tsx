@@ -15,7 +15,6 @@ import {
   ExclamationTriangleIcon,
   ServerIcon,
   CloudIcon,
-  CircleStackIcon,
   CogIcon,
   EyeIcon,
   EyeSlashIcon,
@@ -75,7 +74,7 @@ const statusConfig: Record<ConnectionStatus, { label: string; icon: typeof Check
 
 export function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [connectorTypes, setConnectorTypes] = useState<ConnectorType[]>([]);
+  const [_connectorTypes, setConnectorTypes] = useState<ConnectorType[]>([]);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -142,9 +141,7 @@ export function Integrations() {
       }));
       setIntegrations(mapped);
     } catch (error) {
-      // If API not available, fall back to mock data in development
-      console.warn('Failed to load integrations from API, using mock data:', error);
-      setIntegrations(mockIntegrations);
+      toast.error('Failed to load integrations');
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +153,6 @@ export function Integrations() {
       setConnectorTypes(response.types);
     } catch (error) {
       // Use built-in connector types if API unavailable
-      console.warn('Failed to load connector types from API, using defaults:', error);
     }
   };
 
@@ -330,7 +326,6 @@ export function Integrations() {
         await provisioningApi.disconnectConnector(id);
         toast.success('Integration disconnected');
       } catch (error) {
-        console.warn('Failed to disconnect integration via API, updating locally', error);
       }
     } else {
       toast.success('Integration enabled');
@@ -1002,103 +997,3 @@ export function Integrations() {
   );
 }
 
-// Mock data for when API is not available
-const mockIntegrations: Integration[] = [
-  {
-    id: 'INT-001',
-    name: 'SAP ECC Production',
-    type: 'sap_ecc',
-    description: 'Main SAP ERP Central Component for finance and logistics',
-    status: 'connected',
-    host: 'sap-ecc.company.com',
-    port: 3300,
-    username: 'RFC_USER',
-    lastSync: '2025-01-19T05:30:00Z',
-    lastSyncStatus: 'success',
-    syncInterval: 60,
-    enabled: true,
-    usersCount: 1250,
-    rolesCount: 485,
-    createdAt: '2024-01-15T10:00:00Z',
-    modifiedAt: '2025-01-10T14:30:00Z',
-    operationCount: 0,
-    errorCount: 0,
-  },
-  {
-    id: 'INT-002',
-    name: 'SAP S/4HANA Cloud',
-    type: 'sap_s4hana_cloud',
-    description: 'SAP S/4HANA Cloud for procurement and finance',
-    status: 'connected',
-    host: 'company.s4hana.ondemand.com',
-    username: 'API_USER',
-    lastSync: '2025-01-19T05:00:00Z',
-    lastSyncStatus: 'success',
-    syncInterval: 30,
-    enabled: true,
-    usersCount: 850,
-    rolesCount: 320,
-    createdAt: '2024-03-20T09:00:00Z',
-    modifiedAt: '2025-01-18T11:00:00Z',
-    operationCount: 0,
-    errorCount: 0,
-  },
-  {
-    id: 'INT-003',
-    name: 'AWS IAM',
-    type: 'aws_iam',
-    description: 'Amazon Web Services Identity and Access Management',
-    status: 'connected',
-    host: 'iam.amazonaws.com',
-    username: 'grc-service-account',
-    lastSync: '2025-01-19T05:15:00Z',
-    lastSyncStatus: 'success',
-    syncInterval: 15,
-    enabled: true,
-    usersCount: 340,
-    rolesCount: 125,
-    createdAt: '2024-02-10T08:00:00Z',
-    modifiedAt: '2025-01-15T16:45:00Z',
-    operationCount: 0,
-    errorCount: 0,
-  },
-  {
-    id: 'INT-004',
-    name: 'Azure AD',
-    type: 'azure_ad',
-    description: 'Microsoft Azure Active Directory for SSO and identity',
-    status: 'connected',
-    host: 'login.microsoftonline.com',
-    username: 'grc-app@company.onmicrosoft.com',
-    lastSync: '2025-01-19T05:10:00Z',
-    lastSyncStatus: 'success',
-    syncInterval: 15,
-    enabled: true,
-    usersCount: 2500,
-    rolesCount: 180,
-    createdAt: '2024-01-20T11:00:00Z',
-    modifiedAt: '2025-01-12T09:30:00Z',
-    operationCount: 0,
-    errorCount: 0,
-  },
-  {
-    id: 'INT-005',
-    name: 'Workday HCM',
-    type: 'workday',
-    description: 'Workday Human Capital Management for HR data',
-    status: 'error',
-    host: 'wd5-impl.workday.com',
-    username: 'ISU_GRC',
-    lastSync: '2025-01-18T22:00:00Z',
-    lastSyncStatus: 'failed',
-    syncInterval: 60,
-    enabled: true,
-    usersCount: 2100,
-    rolesCount: 0,
-    errorMessage: 'Authentication failed: Invalid credentials',
-    createdAt: '2024-04-05T14:00:00Z',
-    modifiedAt: '2025-01-18T22:05:00Z',
-    operationCount: 0,
-    errorCount: 3,
-  },
-];

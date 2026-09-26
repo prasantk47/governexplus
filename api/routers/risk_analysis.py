@@ -2,34 +2,111 @@
 Risk Analysis API Router
 
 Endpoints for running risk analysis, managing rules, and viewing violations.
+User/role/entitlement data is sourced from the database.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, DefaultDict
 from datetime import datetime
+from collections import defaultdict
+
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from core.rules import RuleEngine, RiskSeverity, RuleType
 from core.rules.models import Entitlement, UserAccess, RiskCategory
-from connectors.sap.mock_connector import SAPMockConnector
-from connectors.base import ConnectionConfig, ConnectionType
 from db.database import get_db
-from sqlalchemy.orm import Session
+from db.models.user import User, Role, UserRole, UserEntitlement
+from db.models.risk import RiskViolation
 
 router = APIRouter(tags=["Risk Analysis"])
 
-# Initialize rule engine (singleton)
-rule_engine = RuleEngine()
+# Per-tenant engine registry
+_engines: Dict[str, RuleEngine] = {}
 
-# Initialize mock SAP connector for demo
-mock_config = ConnectionConfig(
-    name="SAP_DEV",
-    connection_type=ConnectionType.RFC,
-    host="mock.sap.local",
-    sap_client="100"
-)
-sap_connector = SAPMockConnector(mock_config)
-sap_connector.connect()
+
+def _get_tenant_id() -> str:
+    from core.tenant import get_current_tenant
+    ctx = get_current_tenant()
+    return ctx.tenant_id if ctx else "default"
+
+
+def _get_engine(tenant_id: str = Depends(_get_tenant_id)) -> RuleEngine:
+    if tenant_id not in _engines:
+        _engines[tenant_id] = RuleEngine()
+    return _engines[tenant_id]
+
+
+def _build_user_access_from_db(user_id: str, db: Session) -> UserAccess:
+    """Build a UserAccess object from DB data for the rule engine."""
+    user = db.query(User).filter(
+        (User.username == user_id) | (User.user_id == user_id)
+    ).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+
+    # Get roles
+    user_roles = (
+        db.query(UserRole, Role)
+        .join(Role, UserRole.role_id == Role.id)
+        .filter(UserRole.user_id == user.id)
+        .all()
+    )
+    role_names = [r.role_id if hasattr(r, 'role_id') else r.name for _, r in user_roles]
+
+    # Get entitlements
+    db_entitlements = db.query(UserEntitlement).filter(
+        UserEntitlement.user_id == user.id
+    ).all()
+
+    entitlements = [
+        Entitlement(
+            auth_object=e.auth_object,
+            field=e.auth_field or "VALUE",
+            value=e.auth_value or "",
+            system=e.source_system or "SAP",
+            attributes={"source_role": e.source_role or ""}
+        )
+        for e in db_entitlements
+    ]
+
+    return UserAccess(
+        user_id=user.username or str(user.id),
+        username=user.username or "",
+        full_name=user.full_name or user.username or "",
+        department=user.department or "",
+        cost_center=getattr(user, 'cost_center', '') or "",
+        company_code=getattr(user, 'company_code', '') or "",
+        roles=role_names,
+        entitlements=entitlements,
+    )
+
+
+def _build_role_entitlements_from_db(role_id: str, db: Session) -> tuple:
+    """Get role details and entitlements from DB."""
+    role = db.query(Role).filter(
+        (Role.role_id == role_id) | (Role.name == role_id)
+    ).first()
+    if not role:
+        raise ValueError(f"Role {role_id} not found")
+
+    # Get entitlements sourced from this role
+    ents = db.query(UserEntitlement).filter(
+        UserEntitlement.source_role == role_id
+    ).all()
+
+    entitlements = [
+        Entitlement(
+            auth_object=e.auth_object,
+            field=e.auth_field or "VALUE",
+            value=e.auth_value or "",
+            system=e.source_system or "SAP",
+        )
+        for e in ents
+    ]
+
+    return role, entitlements
 
 
 # =============================================================================
@@ -37,7 +114,6 @@ sap_connector.connect()
 # =============================================================================
 
 class EntitlementModel(BaseModel):
-    """Entitlement/authorization model"""
     auth_object: str = Field(..., example="S_TCODE")
     field: str = Field(..., example="TCD")
     value: str = Field(..., example="FK01")
@@ -46,20 +122,17 @@ class EntitlementModel(BaseModel):
 
 
 class UserAnalysisRequest(BaseModel):
-    """Request model for user risk analysis"""
     user_id: str = Field(..., example="JSMITH")
     include_details: bool = Field(default=True)
     rule_ids: Optional[List[str]] = Field(default=None, description="Specific rules to check")
 
 
 class BatchAnalysisRequest(BaseModel):
-    """Request for batch user analysis"""
     user_ids: List[str] = Field(..., min_length=1, max_length=100)
     rule_ids: Optional[List[str]] = None
 
 
 class RuleResponse(BaseModel):
-    """Rule information response"""
     rule_id: str
     name: str
     description: str
@@ -70,7 +143,6 @@ class RuleResponse(BaseModel):
 
 
 class ViolationResponse(BaseModel):
-    """Violation detail response"""
     violation_id: str
     rule_id: str
     rule_name: str
@@ -83,7 +155,6 @@ class ViolationResponse(BaseModel):
 
 
 class AnalysisResultResponse(BaseModel):
-    """Risk analysis result response"""
     user_id: str
     username: str
     risk_score: float
@@ -98,39 +169,21 @@ class AnalysisResultResponse(BaseModel):
 # =============================================================================
 
 @router.post("/analyze/user", response_model=AnalysisResultResponse)
-async def analyze_user_access(request: UserAnalysisRequest):
+async def analyze_user_access(
+    request: UserAnalysisRequest,
+    db: Session = Depends(get_db),
+    engine: RuleEngine = Depends(_get_engine),
+):
     """
     Analyze a single user's access for SoD violations and sensitive access.
-
-    This endpoint retrieves the user's entitlements from SAP and evaluates
-    them against the defined risk rules.
+    Retrieves user entitlements from the database.
     """
     try:
-        # Get user details from SAP
-        user_details = sap_connector.get_user_details(request.user_id)
+        user_access = _build_user_access_from_db(request.user_id, db)
 
-        # Get user entitlements
-        entitlements = sap_connector.get_user_entitlements_as_objects(request.user_id)
+        violations = engine.evaluate_user(user_access, request.rule_ids)
+        summary = engine.get_risk_summary(violations)
 
-        # Create UserAccess object for rule engine
-        user_access = UserAccess(
-            user_id=user_details['user_id'],
-            username=user_details['username'],
-            full_name=user_details['full_name'],
-            department=user_details['department'],
-            cost_center=user_details.get('cost_center', ''),
-            company_code=user_details.get('company_code', ''),
-            roles=[r['role_name'] for r in user_details.get('roles', [])],
-            entitlements=entitlements
-        )
-
-        # Run risk analysis
-        violations = rule_engine.evaluate_user(user_access, request.rule_ids)
-
-        # Get summary
-        summary = rule_engine.get_risk_summary(violations)
-
-        # Format response
         violation_responses = [
             ViolationResponse(
                 violation_id=v.violation_id,
@@ -148,7 +201,7 @@ async def analyze_user_access(request: UserAnalysisRequest):
 
         return AnalysisResultResponse(
             user_id=request.user_id,
-            username=user_details['full_name'],
+            username=user_access.full_name,
             risk_score=summary['aggregate_risk_score'],
             total_violations=summary['total_violations'],
             violations_by_severity=summary['by_severity'],
@@ -163,50 +216,32 @@ async def analyze_user_access(request: UserAnalysisRequest):
 
 
 @router.post("/analyze/batch")
-async def analyze_batch_users(request: BatchAnalysisRequest):
-    """
-    Analyze multiple users in batch.
-
-    Returns aggregated results for all users.
-    """
+async def analyze_batch_users(
+    request: BatchAnalysisRequest,
+    db: Session = Depends(get_db),
+    engine: RuleEngine = Depends(_get_engine),
+):
+    """Analyze multiple users in batch."""
     results = []
     errors = []
 
     for user_id in request.user_ids:
         try:
-            user_details = sap_connector.get_user_details(user_id)
-            entitlements = sap_connector.get_user_entitlements_as_objects(user_id)
-
-            user_access = UserAccess(
-                user_id=user_id,
-                username=user_details['username'],
-                full_name=user_details['full_name'],
-                department=user_details['department'],
-                cost_center=user_details.get('cost_center', ''),
-                roles=[r['role_name'] for r in user_details.get('roles', [])],
-                entitlements=entitlements
-            )
-
-            violations = rule_engine.evaluate_user(user_access, request.rule_ids)
-            summary = rule_engine.get_risk_summary(violations)
+            user_access = _build_user_access_from_db(user_id, db)
+            violations = engine.evaluate_user(user_access, request.rule_ids)
+            summary = engine.get_risk_summary(violations)
 
             results.append({
                 'user_id': user_id,
-                'username': user_details['full_name'],
+                'username': user_access.full_name,
                 'risk_score': summary['aggregate_risk_score'],
                 'violation_count': summary['total_violations'],
                 'highest_severity': summary.get('highest_severity', 0),
                 'status': 'analyzed'
             })
-
         except Exception as e:
-            errors.append({
-                'user_id': user_id,
-                'error': str(e),
-                'status': 'failed'
-            })
+            errors.append({'user_id': user_id, 'error': str(e), 'status': 'failed'})
 
-    # Sort by risk score descending
     results.sort(key=lambda x: x['risk_score'], reverse=True)
 
     return {
@@ -220,56 +255,188 @@ async def analyze_batch_users(request: BatchAnalysisRequest):
 
 
 @router.post("/analyze/role/{role_id}")
-async def analyze_role(role_id: str):
-    """
-    Analyze a role for potential risks.
-
-    Checks what violations would occur if a user had only this role.
-    """
+async def analyze_role(
+    role_id: str,
+    db: Session = Depends(get_db),
+    engine: RuleEngine = Depends(_get_engine),
+):
+    """Analyze a role for potential risks."""
     try:
-        role_details = sap_connector.get_role_details(role_id)
+        role, entitlements = _build_role_entitlements_from_db(role_id, db)
 
-        # Build entitlements from role
-        entitlements = []
-        for tcode in role_details.get('transactions', []):
-            entitlements.append(Entitlement(
-                auth_object='S_TCODE',
-                field='TCD',
-                value=tcode['tcode'],
-                system='SAP'
-            ))
-
-        # Create synthetic user with just this role
         synthetic_user = UserAccess(
             user_id=f"ROLE_CHECK_{role_id}",
             username=f"Role Analysis: {role_id}",
-            full_name=role_details['description'],
+            full_name=role.description or role.name or role_id,
             department="N/A",
             roles=[role_id],
             entitlements=entitlements
         )
 
-        violations = rule_engine.evaluate_user(synthetic_user)
-        summary = rule_engine.get_risk_summary(violations)
+        violations = engine.evaluate_user(synthetic_user)
+        summary = engine.get_risk_summary(violations)
 
         return {
             'role_id': role_id,
-            'role_name': role_details['description'],
-            'transaction_count': len(role_details.get('transactions', [])),
+            'role_name': role.description or role.name,
             'risk_score': summary['aggregate_risk_score'],
             'violation_count': summary['total_violations'],
             'violations': [
-                {
-                    'rule_id': v.rule_id,
-                    'rule_name': v.rule_name,
-                    'severity': v.severity.name
-                }
+                {'rule_id': v.rule_id, 'rule_name': v.rule_name, 'severity': v.severity.name}
                 for v in violations
             ]
         }
-
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# =============================================================================
+# AC-16: Org-Level Risk Ranking
+# =============================================================================
+
+@router.get("/org-ranking", summary="Org-level risk ranking by violation count and weighted score (AC-16)")
+async def get_org_ranking(
+    group_by: str = Query("department", description="Group dimension: 'department' or 'company_code'"),
+    limit: int = Query(20, ge=1, le=200, description="Maximum org units to return"),
+    min_violations: int = Query(0, ge=0, description="Minimum violation count to include"),
+    db: Session = Depends(get_db),
+    engine: RuleEngine = Depends(_get_engine),
+):
+    """
+    Rank org units (departments or company codes) by their aggregate risk posture.
+
+    For each org unit the endpoint returns:
+    - **org_unit**: The org dimension value (department name or company code)
+    - **user_count**: Number of distinct users in this org unit
+    - **violation_count**: Total number of open violations
+    - **weighted_score**: Sum of severity_score across all violations — higher = worse
+    - **avg_score_per_user**: weighted_score / user_count
+    - **top_violations**: Top 5 rules triggered most frequently in this org unit
+    - **severity_breakdown**: Count by severity level
+
+    Uses persisted RiskViolation rows joined to User for org attributes.
+    """
+    if group_by not in ("department", "company_code"):
+        raise HTTPException(
+            status_code=400,
+            detail="group_by must be 'department' or 'company_code'",
+        )
+
+    try:
+        org_attr = User.department if group_by == "department" else User.company_code
+
+        # Aggregate violations by org unit
+        rows = (
+            db.query(
+                org_attr.label("org_unit"),
+                func.count(RiskViolation.id).label("violation_count"),
+                func.sum(RiskViolation.severity_score).label("weighted_score"),
+                func.count(func.distinct(RiskViolation.user_id)).label("user_count"),
+            )
+            .join(User, User.id == RiskViolation.user_id)
+            .filter(
+                RiskViolation.status.in_(["open", "new", "active"]),
+                org_attr.isnot(None),
+                org_attr != "",
+            )
+            .group_by(org_attr)
+            .order_by(func.sum(RiskViolation.severity_score).desc())
+            .limit(limit * 3)
+            .all()
+        )
+
+        # Top violations per org unit
+        violation_detail_q = (
+            db.query(
+                org_attr.label("org_unit"),
+                RiskViolation.rule_id,
+                RiskViolation.rule_name,
+                func.count(RiskViolation.id).label("count"),
+                func.max(RiskViolation.severity_score).label("max_score"),
+            )
+            .join(User, User.id == RiskViolation.user_id)
+            .filter(
+                RiskViolation.status.in_(["open", "new", "active"]),
+                org_attr.isnot(None),
+                org_attr != "",
+            )
+            .group_by(org_attr, RiskViolation.rule_id, RiskViolation.rule_name)
+            .all()
+        )
+
+        top_viol_by_org: Dict[str, List[Dict]] = defaultdict(list)
+        for vd in violation_detail_q:
+            top_viol_by_org[vd.org_unit].append({
+                "rule_id": vd.rule_id,
+                "rule_name": vd.rule_name,
+                "count": vd.count,
+                "max_score": vd.max_score,
+            })
+        for org_key in top_viol_by_org:
+            top_viol_by_org[org_key] = sorted(
+                top_viol_by_org[org_key], key=lambda x: x["count"], reverse=True
+            )[:5]
+
+        # Severity breakdown per org unit
+        sev_q = (
+            db.query(
+                org_attr.label("org_unit"),
+                RiskViolation.severity.label("severity"),
+                func.count(RiskViolation.id).label("count"),
+            )
+            .join(User, User.id == RiskViolation.user_id)
+            .filter(
+                RiskViolation.status.in_(["open", "new", "active"]),
+                org_attr.isnot(None),
+                org_attr != "",
+            )
+            .group_by(org_attr, RiskViolation.severity)
+            .all()
+        )
+
+        sev_by_org: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        )
+        for sv in sev_q:
+            sev_val = sv.severity.value if hasattr(sv.severity, "value") else str(sv.severity)
+            sev_by_org[sv.org_unit][sev_val] = sv.count
+
+        # Assemble ranking
+        ranking = []
+        for row in rows:
+            if not row.org_unit:
+                continue
+            violation_count = row.violation_count or 0
+            if violation_count < min_violations:
+                continue
+            user_count = max(row.user_count or 1, 1)
+            weighted_score = float(row.weighted_score or 0)
+
+            ranking.append({
+                "org_unit": row.org_unit,
+                "group_by": group_by,
+                "user_count": user_count,
+                "violation_count": violation_count,
+                "weighted_score": round(weighted_score, 1),
+                "avg_score_per_user": round(weighted_score / user_count, 1),
+                "severity_breakdown": dict(sev_by_org.get(row.org_unit, {})),
+                "top_violations": top_viol_by_org.get(row.org_unit, []),
+            })
+
+        ranking.sort(key=lambda x: x["weighted_score"], reverse=True)
+        ranking = ranking[:limit]
+
+        return {
+            "group_by": group_by,
+            "total_org_units": len(ranking),
+            "generated_at": datetime.utcnow().isoformat(),
+            "ranking": ranking,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Org ranking failed: {str(e)}")
 
 
 # =============================================================================
@@ -280,14 +447,12 @@ async def analyze_role(role_id: str):
 async def list_rules(
     rule_type: Optional[str] = Query(None, description="Filter by rule type"),
     category: Optional[str] = Query(None, description="Filter by risk category"),
-    enabled_only: bool = Query(True, description="Only return enabled rules")
+    enabled_only: bool = Query(True, description="Only return enabled rules"),
+    engine: RuleEngine = Depends(_get_engine),
 ):
-    """
-    List all available risk rules.
-    """
+    """List all available risk rules."""
     rules = []
-
-    for rule_id, rule in rule_engine.rules.items():
+    for rule_id, rule in engine.rules.items():
         if enabled_only and not rule.enabled:
             continue
         if rule_type and rule.rule_type.value != rule_type:
@@ -304,16 +469,16 @@ async def list_rules(
             risk_category=rule.risk_category.value,
             enabled=rule.enabled
         ))
-
     return rules
 
 
 @router.get("/rules/{rule_id}")
-async def get_rule_details(rule_id: str):
-    """
-    Get detailed information about a specific rule.
-    """
-    rule = rule_engine.rules.get(rule_id)
+async def get_rule_details(
+    rule_id: str,
+    engine: RuleEngine = Depends(_get_engine),
+):
+    """Get detailed information about a specific rule."""
+    rule = engine.rules.get(rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
 
@@ -336,11 +501,9 @@ async def get_rule_details(rule_id: str):
 
 
 @router.get("/rules/statistics")
-async def get_rule_statistics():
-    """
-    Get statistics about loaded rules.
-    """
-    return rule_engine.get_statistics()
+async def get_rule_statistics(engine: RuleEngine = Depends(_get_engine)):
+    """Get statistics about loaded rules."""
+    return engine.get_statistics()
 
 
 # =============================================================================
@@ -350,57 +513,33 @@ async def get_rule_statistics():
 @router.post("/simulate/add-role")
 async def simulate_role_addition(
     user_id: str = Query(..., description="User to simulate"),
-    role_id: str = Query(..., description="Role to add")
+    role_id: str = Query(..., description="Role to add"),
+    db: Session = Depends(get_db),
+    engine: RuleEngine = Depends(_get_engine),
 ):
-    """
-    Simulate what would happen if a role was added to a user.
-
-    This is useful for pre-request risk analysis in access request workflows.
-    """
+    """Simulate what would happen if a role was added to a user."""
     try:
-        # Get current user access
-        user_details = sap_connector.get_user_details(user_id)
-        current_entitlements = sap_connector.get_user_entitlements_as_objects(user_id)
+        current_user = _build_user_access_from_db(user_id, db)
+        current_violations = engine.evaluate_user(current_user)
 
-        # Get role entitlements
-        role_details = sap_connector.get_role_details(role_id)
-        new_entitlements = []
-        for tcode in role_details.get('transactions', []):
-            new_entitlements.append(Entitlement(
-                auth_object='S_TCODE',
-                field='TCD',
-                value=tcode['tcode'],
-                system='SAP'
-            ))
+        # Get new role entitlements
+        role, new_entitlements = _build_role_entitlements_from_db(role_id, db)
 
-        # Analyze current state
-        current_user = UserAccess(
-            user_id=user_id,
-            username=user_details['username'],
-            full_name=user_details['full_name'],
-            department=user_details['department'],
-            roles=[r['role_name'] for r in user_details.get('roles', [])],
-            entitlements=current_entitlements
-        )
-        current_violations = rule_engine.evaluate_user(current_user)
-
-        # Analyze with new role
         future_user = UserAccess(
-            user_id=user_id,
-            username=user_details['username'],
-            full_name=user_details['full_name'],
-            department=user_details['department'],
-            roles=[r['role_name'] for r in user_details.get('roles', [])] + [role_id],
-            entitlements=current_entitlements + new_entitlements
+            user_id=current_user.user_id,
+            username=current_user.username,
+            full_name=current_user.full_name,
+            department=current_user.department,
+            roles=current_user.roles + [role_id],
+            entitlements=current_user.entitlements + new_entitlements
         )
-        future_violations = rule_engine.evaluate_user(future_user)
+        future_violations = engine.evaluate_user(future_user)
 
-        # Find new violations
         current_rule_ids = {v.rule_id for v in current_violations}
         new_violations = [v for v in future_violations if v.rule_id not in current_rule_ids]
 
-        current_summary = rule_engine.get_risk_summary(current_violations)
-        future_summary = rule_engine.get_risk_summary(future_violations)
+        current_summary = engine.get_risk_summary(current_violations)
+        future_summary = engine.get_risk_summary(future_violations)
 
         return {
             'user_id': user_id,
@@ -430,15 +569,3 @@ async def simulate_role_addition(
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-
-# Legacy endpoint for backwards compatibility
-@router.post("/analyze")
-def analyze_access(payload: dict):
-    """Legacy analyze endpoint - use /analyze/user instead"""
-    return {
-        "risk_score": 82,
-        "violations": ["FI_P2P_001"],
-        "decision": "ESCALATE",
-        "message": "This is a legacy endpoint. Please use /analyze/user for full functionality."
-    }

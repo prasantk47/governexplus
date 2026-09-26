@@ -12,7 +12,6 @@ from enum import Enum
 from collections import defaultdict
 import uuid
 import math
-import random
 
 
 class RiskCategory(Enum):
@@ -331,6 +330,9 @@ class RiskPredictor:
         profile.total_roles = len(roles)
         profile.total_permissions = len(permissions)
 
+        # Stash raw role list so _calculate_risk_factors can inspect names.
+        profile._raw_roles = roles  # type: ignore[attr-defined]
+
         # Count sensitive permissions (simplified check)
         sensitive_keywords = ["ADMIN", "DELETE", "CREATE", "MODIFY", "ALL", "DEBUG"]
         profile.sensitive_permissions = sum(
@@ -338,12 +340,39 @@ class RiskPredictor:
             if any(kw in str(p).upper() for kw in sensitive_keywords)
         )
 
-        # Simulate other metrics (in production, query actual data)
-        profile.sod_violations_count = user_data.get("sod_violations", random.randint(0, 5))
-        profile.access_changes_90d = user_data.get("access_changes", random.randint(0, 15))
-        profile.firefighter_usage_90d = user_data.get("firefighter_usage", random.randint(0, 3))
-        profile.after_hours_activity_pct = user_data.get("after_hours_pct", random.uniform(0, 20))
-        profile.unused_permissions = int(profile.total_permissions * random.uniform(0.1, 0.4))
+        # Populate metrics from real DB data when not supplied in user_data.
+        # Falls back to 0 / 0.0 when data is unavailable rather than generating
+        # fake random numbers that would produce misleading risk scores.
+        if "sod_violations" in user_data:
+            profile.sod_violations_count = user_data["sod_violations"]
+        else:
+            profile.sod_violations_count = self._query_sod_violations(user_id)
+
+        if "access_changes" in user_data:
+            profile.access_changes_90d = user_data["access_changes"]
+        else:
+            profile.access_changes_90d = self._query_access_changes_90d(user_id)
+
+        if "firefighter_usage" in user_data:
+            profile.firefighter_usage_90d = user_data["firefighter_usage"]
+        else:
+            profile.firefighter_usage_90d = self._query_firefighter_usage_90d(user_id)
+
+        # After-hours activity cannot be computed without login-time data; default
+        # to 0.0 and flag data quality accordingly.
+        profile.after_hours_activity_pct = user_data.get("after_hours_pct", 0.0)
+
+        # Unused permissions cannot be determined without usage telemetry; default
+        # to 0 so the risk model does not penalise users on fabricated evidence.
+        profile.unused_permissions = user_data.get("unused_permissions", 0)
+
+        # Record whether we relied on estimated (non-DB) values so callers can
+        # surface data quality warnings in the UI.
+        profile._data_quality = "real" if (
+            "sod_violations" in user_data
+            or "access_changes" in user_data
+            or "firefighter_usage" in user_data
+        ) else "estimated"
 
         # Peer comparison
         if profile.department:
@@ -359,9 +388,11 @@ class RiskPredictor:
                     if avg_peer_perms > 0 else 0
                 )
 
-        # Time-based
-        profile.days_since_review = user_data.get("days_since_review", random.randint(30, 365))
-        profile.account_age_days = user_data.get("account_age", random.randint(100, 1500))
+        # Time-based — default to conservative/safe values when not supplied;
+        # 0 days since review means "just reviewed" (low risk), 0 age means
+        # brand-new account.  Callers should pass real values from the DB.
+        profile.days_since_review = user_data.get("days_since_review", 0)
+        profile.account_age_days = user_data.get("account_age", 0)
 
         return profile
 
@@ -473,8 +504,20 @@ class RiskPredictor:
             evidence=[{"days": profile.days_since_review}]
         ))
 
-        # Privileged Roles
-        priv_count = sum(1 for r in range(profile.total_roles) if random.random() > 0.7)  # Simulated
+        # Privileged Roles — count roles whose names/IDs indicate elevated privilege.
+        # user_data["roles"] is a list of role name strings when provided by the
+        # caller; fall back to 0 when role detail is unavailable rather than
+        # fabricating a random count.
+        privileged_keywords = ["ADMIN", "BASIS", "ALL", "SUPER", "ROOT", "FULL",
+                               "EMERGENCY", "FIREFIGHTER", "SAP_ALL", "SAP_NEW"]
+        role_list: List[str] = [str(r) for r in (
+            self.user_profiles.get(profile.user_id, UserRiskProfile(profile.user_id))
+            .__dict__.get("_raw_roles") or []
+        )]
+        priv_count = sum(
+            1 for r in role_list
+            if any(kw in r.upper() for kw in privileged_keywords)
+        )
         priv_norm = min(1.0, priv_count / 3)
         factors.append(RiskFactor(
             factor_id="privileged_roles",
@@ -746,6 +789,82 @@ class RiskPredictor:
             account_age_days=profile.account_age_days
         )
         return simulated
+
+    # ------------------------------------------------------------------
+    # Real-data DB query helpers
+    # ------------------------------------------------------------------
+
+    def _query_sod_violations(self, user_id: str) -> int:
+        """Return the count of OPEN SoD violations for a user from the DB.
+
+        Returns 0 if the DB is unreachable or the user has no record yet.
+        Data quality is flagged as 'estimated' by the caller in that case.
+        """
+        try:
+            from db.database import db_manager
+            from db.models.risk import RiskViolation, ViolationStatus
+            from db.models.user import User
+            if not db_manager._initialized:
+                return 0
+            with db_manager.session_scope() as session:
+                user_row = session.query(User).filter(
+                    User.user_id == user_id
+                ).first()
+                if user_row is None:
+                    return 0
+                count = session.query(RiskViolation).filter(
+                    RiskViolation.user_id == user_row.id,
+                    RiskViolation.status == ViolationStatus.OPEN,
+                ).count()
+            return count
+        except Exception:
+            return 0
+
+    def _query_access_changes_90d(self, user_id: str) -> int:
+        """Return the count of role assignments made in the last 90 days.
+
+        Counts UserRole rows for the user whose assigned_at is within the
+        90-day window.  Returns 0 on any error.
+        """
+        try:
+            from db.database import db_manager
+            from db.models.user import User, UserRole
+            if not db_manager._initialized:
+                return 0
+            cutoff = datetime.utcnow() - timedelta(days=90)
+            with db_manager.session_scope() as session:
+                user_row = session.query(User).filter(
+                    User.user_id == user_id
+                ).first()
+                if user_row is None:
+                    return 0
+                count = session.query(UserRole).filter(
+                    UserRole.user_id == user_row.id,
+                    UserRole.assigned_at >= cutoff,
+                ).count()
+            return count
+        except Exception:
+            return 0
+
+    def _query_firefighter_usage_90d(self, user_id: str) -> int:
+        """Return the count of firefighter sessions initiated by the user in 90 days.
+
+        Returns 0 on any error or if the firefighter tables don't exist yet.
+        """
+        try:
+            from db.database import db_manager
+            from db.models.firefighter import FirefighterSession
+            if not db_manager._initialized:
+                return 0
+            cutoff = datetime.utcnow() - timedelta(days=90)
+            with db_manager.session_scope() as session:
+                count = session.query(FirefighterSession).filter(
+                    FirefighterSession.requester_user_id == user_id,
+                    FirefighterSession.start_time >= cutoff,
+                ).count()
+            return count
+        except Exception:
+            return 0
 
     def get_high_risk_users(self, threshold: float = 75.0, limit: int = 50) -> List[Dict]:
         """Get users with risk scores above threshold"""

@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
 from datetime import datetime
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class QueryType(Enum):
@@ -114,62 +117,114 @@ class GRCAssistant:
             "my approvals": self._quick_my_approvals,
         }
 
-        # Demo data
-        self._demo_data = self._initialize_demo_data()
+        # Live data cache (populated lazily from DB)
+        self._demo_data: Dict[str, Any] = {}
 
-    def _initialize_demo_data(self) -> Dict[str, Any]:
-        """Initialize demo data for responses"""
-        return {
-            "current_user": {
-                "id": "JSMITH",
-                "name": "John Smith",
-                "department": "Finance",
-                "manager": "Mary Williams",
-                "risk_score": 65,
-                "violations": 3
-            },
-            "pending_approvals": [
-                {
-                    "id": "REQ-2024-001",
-                    "requester": "Alice Wilson",
-                    "type": "Role Request",
-                    "role": "FI_AP_MANAGER",
-                    "risk": "medium",
-                    "submitted": "2 hours ago"
-                },
-                {
-                    "id": "REQ-2024-002",
-                    "requester": "Bob Johnson",
-                    "type": "Emergency Access",
-                    "system": "PRD",
-                    "risk": "high",
-                    "submitted": "30 minutes ago"
-                }
-            ],
-            "my_requests": [
-                {
-                    "id": "REQ-2024-005",
-                    "type": "Role Request",
-                    "role": "FI_GL_MANAGER",
-                    "status": "Pending Manager Approval",
-                    "submitted": "Yesterday"
-                }
-            ],
-            "violations": [
-                {
-                    "id": "SOD-001",
-                    "rule": "AP Invoice vs Payment",
-                    "risk": "high",
-                    "status": "Open"
-                },
-                {
-                    "id": "SOD-002",
-                    "rule": "Vendor Master vs AP Payment",
-                    "risk": "critical",
-                    "status": "Open"
-                }
-            ]
+    def _initialize_demo_data(self, user_id: str = "") -> Dict[str, Any]:
+        """
+        Query real data from the database for the given user.
+        Returns empty collections if no data is present — never fake records.
+        """
+        from db.database import db_manager
+        from db.models.audit import AccessRequestLog
+        from db.models.risk import RiskViolation, ViolationStatus
+        from db.models.user import User
+
+        result: Dict[str, Any] = {
+            "current_user": {},
+            "pending_approvals": [],
+            "my_requests": [],
+            "violations": [],
         }
+
+        try:
+            if not db_manager._initialized:
+                db_manager.init()
+
+            with db_manager.session_scope() as db:
+                # Current user profile
+                if user_id:
+                    user = db.query(User).filter(User.user_id == user_id).first()
+                    if user:
+                        result["current_user"] = {
+                            "id": user.user_id,
+                            "name": user.full_name or user.username,
+                            "department": user.department or "",
+                            "manager": user.manager_user_id or "",
+                            "risk_score": int(user.risk_score or 0),
+                            "violations": user.violation_count or 0,
+                        }
+
+                # Pending approvals — requests where current user is the approver
+                # (AccessRequestLog stores approver in the approval workflow JSON;
+                #  as a practical proxy, load all pending requests that are not owned
+                #  by the current user so the approver inbox is meaningful.)
+                pending_rows = (
+                    db.query(AccessRequestLog)
+                    .filter(AccessRequestLog.status == "pending")
+                    .order_by(AccessRequestLog.submitted_at.desc())
+                    .limit(20)
+                    .all()
+                )
+                for row in pending_rows:
+                    entry: Dict[str, Any] = {
+                        "id": row.request_id,
+                        "requester": row.requester_name or row.requester_user_id,
+                        "type": row.request_type,
+                        "risk": "medium",
+                        "submitted": row.submitted_at.isoformat() if row.submitted_at else "",
+                    }
+                    if row.requested_roles:
+                        entry["role"] = row.requested_roles[0] if isinstance(row.requested_roles, list) else str(row.requested_roles)
+                    result["pending_approvals"].append(entry)
+
+                # My own in-flight requests
+                if user_id:
+                    my_rows = (
+                        db.query(AccessRequestLog)
+                        .filter(
+                            AccessRequestLog.requester_user_id == user_id,
+                            AccessRequestLog.status == "pending",
+                        )
+                        .order_by(AccessRequestLog.submitted_at.desc())
+                        .limit(10)
+                        .all()
+                    )
+                    for row in my_rows:
+                        entry = {
+                            "id": row.request_id,
+                            "type": row.request_type,
+                            "status": row.status,
+                            "submitted": row.submitted_at.isoformat() if row.submitted_at else "",
+                        }
+                        if row.requested_roles:
+                            entry["role"] = row.requested_roles[0] if isinstance(row.requested_roles, list) else str(row.requested_roles)
+                        result["my_requests"].append(entry)
+
+                # Open risk violations for this user
+                if user_id:
+                    viol_rows = (
+                        db.query(RiskViolation)
+                        .filter(
+                            RiskViolation.user_external_id == user_id,
+                            RiskViolation.status == ViolationStatus.OPEN,
+                        )
+                        .order_by(RiskViolation.created_at.desc())
+                        .limit(20)
+                        .all()
+                    )
+                    for v in viol_rows:
+                        result["violations"].append({
+                            "id": v.violation_id,
+                            "rule": v.rule_name,
+                            "risk": v.severity.value if v.severity else "medium",
+                            "status": v.status.value if v.status else "open",
+                        })
+
+        except Exception as exc:
+            logger.warning("assistant._initialize_demo_data: DB query failed — %s", exc)
+
+        return result
 
     # ==================== Main Entry Point ====================
 
@@ -198,6 +253,9 @@ class GRCAssistant:
         # Update context
         context.last_activity = datetime.utcnow()
         context.history.append({"role": "user", "content": message})
+
+        # Refresh live data for this user before handling the message
+        self._demo_data = self._initialize_demo_data(user_id)
 
         # Check for quick actions first
         lower_msg = message.lower().strip()
@@ -391,17 +449,14 @@ class GRCAssistant:
         # Check if asking about team/department
         if any(word in lower for word in ["team", "department", "finance", "it"]):
             return AssistantResponse(
-                message="Finance department risk summary:\n\n"
-                       "**Average Risk Score:** 52/100\n"
-                       "**High-Risk Users:** 3 of 45\n"
-                       "**Open Violations:** 12\n\n"
-                       "Your score of 65 is above the department average.",
+                message="Department risk data is available in the Risk Analysis section. "
+                       "Navigate there for aggregated department risk scores and violation counts.",
                 query_type=QueryType.RISK_CHECK,
                 visualization="bar_chart",
                 suggestions=[
-                    "Who are the high-risk users?",
-                    "Show violation breakdown",
-                    "Compare to other departments"
+                    "Show my risks",
+                    "Go to Risk Analysis",
+                    "Show organization summary"
                 ]
             )
 
@@ -707,9 +762,8 @@ class GRCAssistant:
             if context.current_intent == QueryType.ACCESS_REQUEST:
                 return AssistantResponse(
                     message="**Access request submitted!**\n\n"
-                           "Request ID: REQ-2024-099\n"
-                           "Status: Pending Manager Approval\n\n"
-                           "I'll notify you when there's an update.",
+                           "Your request has been submitted and is pending manager approval. "
+                           "You can track its status in the Access Requests section.",
                     query_type=QueryType.ACCESS_REQUEST,
                     actions=[{"type": "track", "label": "Track Request"}],
                     suggestions=["Track this request", "Submit another", "Go to dashboard"]
@@ -747,10 +801,11 @@ class GRCAssistant:
 
     def get_proactive_suggestions(self, user_id: str) -> List[Dict[str, Any]]:
         """Get proactive suggestions for a user based on their context"""
+        data = self._initialize_demo_data(user_id)
         suggestions = []
 
         # Check for pending approvals
-        approvals = self._demo_data["pending_approvals"]
+        approvals = data["pending_approvals"]
         if approvals:
             suggestions.append({
                 "type": "action",
@@ -759,30 +814,28 @@ class GRCAssistant:
                 "priority": "high"
             })
 
-        # Check for overdue reviews
-        suggestions.append({
-            "type": "reminder",
-            "title": "Access review due in 5 days",
-            "action": "Start review",
-            "priority": "medium"
-        })
-
-        # Risk score increase
-        suggestions.append({
-            "type": "alert",
-            "title": "Your risk score increased by 5 points this week",
-            "action": "See why",
-            "priority": "low"
-        })
+        # Check for open violations
+        violations = data["violations"]
+        if violations:
+            suggestions.append({
+                "type": "alert",
+                "title": f"You have {len(violations)} open SoD violation(s)",
+                "action": "See violations",
+                "priority": "high"
+            })
 
         return suggestions
 
     def get_quick_stats(self, user_id: str) -> Dict[str, Any]:
         """Get quick stats for dashboard widget"""
+        data = self._initialize_demo_data(user_id)
+        current_user = data["current_user"]
+        name = current_user.get("name", user_id)
+        risk_score = current_user.get("risk_score", 0)
         return {
-            "risk_score": 65,
-            "pending_approvals": 2,
-            "open_violations": 3,
-            "requests_in_progress": 1,
-            "greeting": "Good morning, John! Here's your GRC summary."
+            "risk_score": risk_score,
+            "pending_approvals": len(data["pending_approvals"]),
+            "open_violations": len(data["violations"]),
+            "requests_in_progress": len(data["my_requests"]),
+            "greeting": f"Hello, {name}! Here's your GRC summary.",
         }

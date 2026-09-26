@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -10,7 +11,7 @@ import {
   PlusIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import { api, firefighterApi } from '../../services/api';
 import {
   Card,
   Button,
@@ -46,7 +47,7 @@ interface ReasonCode {
   controller_review_sla_hours: number;
 }
 
-const firefighterIds: FirefighterId[] = [
+const DEFAULT_FIREFIGHTER_IDS: FirefighterId[] = [
   { id: 'FF_EMERGENCY_SAP_01', name: 'SAP Emergency Admin', description: 'Emergency administrative access to SAP ECC Production', system: 'SAP ECC', riskLevel: 'critical', maxDuration: '4 hours', available: true, requiresApproval: true },
   { id: 'FF_EMERGENCY_SAP_02', name: 'SAP Basis Emergency', description: 'Emergency Basis access for system maintenance', system: 'SAP ECC', riskLevel: 'critical', maxDuration: '2 hours', available: true, requiresApproval: true },
   { id: 'FF_ADMIN_AWS', name: 'AWS Production Admin', description: 'Emergency admin access to AWS production resources', system: 'AWS', riskLevel: 'critical', maxDuration: '2 hours', available: false, requiresApproval: true },
@@ -64,6 +65,30 @@ const priorityVariant: Record<string, 'neutral' | 'info' | 'warning' | 'danger'>
 
 export function FirefighterRequest() {
   const navigate = useNavigate();
+
+  const { data: firefighterIdsData } = useQuery({
+    queryKey: ['firefighter', 'ids'],
+    queryFn: () =>
+      firefighterApi.listFirefighters().then((r) => {
+        const items = r.data?.firefighter_ids ?? r.data ?? [];
+        return items.map((entry: any) => ({
+          id: entry.firefighter_id ?? entry.id ?? '',
+          name: entry.name ?? entry.firefighter_id ?? entry.id ?? '',
+          description: entry.description ?? '',
+          system: entry.system ?? entry.target_system ?? '',
+          riskLevel: (entry.risk_level ?? 'critical') as FirefighterId['riskLevel'],
+          maxDuration: entry.max_duration ?? entry.maxDuration ?? '4 hours',
+          available: entry.available ?? entry.is_available ?? true,
+          requiresApproval: entry.requires_approval ?? entry.requiresApproval ?? true,
+        }));
+      }),
+    retry: false,
+  });
+  const firefighterIds: FirefighterId[] =
+    firefighterIdsData && firefighterIdsData.length > 0
+      ? firefighterIdsData
+      : DEFAULT_FIREFIGHTER_IDS;
+
   const [selectedFF, setSelectedFF] = useState<FirefighterId | null>(null);
   const [reasonCodes, setReasonCodes] = useState<ReasonCode[]>([]);
   const [selectedReasonCode, setSelectedReasonCode] = useState<ReasonCode | null>(null);
@@ -82,7 +107,6 @@ export function FirefighterRequest() {
         const response = await api.get('/firefighter/reason-codes');
         setReasonCodes(response.data.reason_codes);
       } catch (error) {
-        console.warn('Failed to fetch reason codes, using defaults');
         setReasonCodes([
           { code: 'prod_incident', label: 'Production Incident', description: 'Resolution of active production incident', requires_ticket: true, requires_justification: true, default_priority: 'critical', max_duration_hours: 4, approval_chain: ['ff_owner', 'it_manager'], sla_minutes: 15, auto_approve_eligible: false, controller_review_sla_hours: 24 },
           { code: 'change_management', label: 'Change Management', description: 'Implementation of pre-approved change', requires_ticket: true, requires_justification: false, default_priority: 'medium', max_duration_hours: 8, approval_chain: ['ff_owner'], sla_minutes: 60, auto_approve_eligible: true, controller_review_sla_hours: 48 },
@@ -181,7 +205,7 @@ export function FirefighterRequest() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Request Emergency Access</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Request firefighter/emergency privileged access
+            Request emergency privileged access
           </p>
         </div>
       </div>
@@ -193,7 +217,7 @@ export function FirefighterRequest() {
           <div className="ml-3">
             <h3 className="text-sm font-semibold text-red-800">Emergency Access Only</h3>
             <p className="mt-1 text-sm text-red-700">
-              Firefighter access is for emergency situations only. All actions will be logged
+              Privileged access is for emergency situations only. All actions will be logged
               and audited. Misuse of emergency access is a policy violation.
             </p>
           </div>
@@ -205,7 +229,7 @@ export function FirefighterRequest() {
         <div className="lg:col-span-2">
           <Card>
             <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-sm font-semibold text-gray-900">Select Firefighter ID</h2>
+              <h2 className="text-sm font-semibold text-gray-900">Select Privileged Access ID</h2>
               <p className="mt-1 text-xs text-gray-500">Choose the emergency access profile you need</p>
             </div>
             <div className="p-6 space-y-3">

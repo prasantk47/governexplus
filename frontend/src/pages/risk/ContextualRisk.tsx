@@ -3,7 +3,6 @@ import {
   ClockIcon,
   GlobeAltIcon,
   DevicePhoneMobileIcon,
-  ComputerDesktopIcon,
   MapPinIcon,
   ExclamationTriangleIcon,
   ShieldCheckIcon,

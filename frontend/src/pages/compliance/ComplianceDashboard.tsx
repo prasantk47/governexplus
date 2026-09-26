@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../services/api';
 import {
   ShieldCheckIcon,
   DocumentCheckIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon,
   ClockIcon,
   ChartBarIcon,
   ArrowTrendingUpIcon,
@@ -43,157 +44,26 @@ interface ControlGap {
   owner: string;
 }
 
-const frameworks: ComplianceFramework[] = [
-  {
-    id: 'SOX',
-    name: 'Sarbanes-Oxley Act',
-    shortName: 'SOX',
-    description: 'Financial reporting and internal controls',
-    totalControls: 42,
-    compliantControls: 38,
-    partialControls: 3,
-    nonCompliantControls: 1,
-    complianceScore: 92,
-    lastAssessment: '2024-01-15',
-    nextAssessment: '2024-04-15',
-    trend: 'up',
-    trendValue: 3,
-  },
-  {
-    id: 'ISO27001',
-    name: 'ISO 27001',
-    shortName: 'ISO 27001',
-    description: 'Information security management',
-    totalControls: 114,
-    compliantControls: 98,
-    partialControls: 12,
-    nonCompliantControls: 4,
-    complianceScore: 86,
-    lastAssessment: '2024-01-10',
-    nextAssessment: '2024-07-10',
-    trend: 'up',
-    trendValue: 5,
-  },
-  {
-    id: 'SOC2',
-    name: 'SOC 2 Type II',
-    shortName: 'SOC 2',
-    description: 'Trust services criteria',
-    totalControls: 64,
-    compliantControls: 54,
-    partialControls: 8,
-    nonCompliantControls: 2,
-    complianceScore: 84,
-    lastAssessment: '2024-01-08',
-    nextAssessment: '2024-07-08',
-    trend: 'stable',
-    trendValue: 0,
-  },
-  {
-    id: 'GDPR',
-    name: 'General Data Protection Regulation',
-    shortName: 'GDPR',
-    description: 'EU data privacy and protection',
-    totalControls: 28,
-    compliantControls: 25,
-    partialControls: 2,
-    nonCompliantControls: 1,
-    complianceScore: 89,
-    lastAssessment: '2024-01-12',
-    nextAssessment: '2024-04-12',
-    trend: 'up',
-    trendValue: 2,
-  },
-  {
-    id: 'HIPAA',
-    name: 'Health Insurance Portability Act',
-    shortName: 'HIPAA',
-    description: 'Healthcare data protection',
-    totalControls: 54,
-    compliantControls: 48,
-    partialControls: 4,
-    nonCompliantControls: 2,
-    complianceScore: 89,
-    lastAssessment: '2024-01-05',
-    nextAssessment: '2024-04-05',
-    trend: 'down',
-    trendValue: -1,
-  },
-  {
-    id: 'PCIDSS',
-    name: 'Payment Card Industry DSS',
-    shortName: 'PCI DSS',
-    description: 'Payment card data security',
-    totalControls: 78,
-    compliantControls: 70,
-    partialControls: 6,
-    nonCompliantControls: 2,
-    complianceScore: 90,
-    lastAssessment: '2024-01-14',
-    nextAssessment: '2024-04-14',
-    trend: 'up',
-    trendValue: 4,
-  },
-];
-
-const controlGaps: ControlGap[] = [
-  {
-    id: 'GAP-001',
-    framework: 'SOX',
-    controlId: 'AC-2',
-    controlName: 'Account Management',
-    status: 'non_compliant',
-    severity: 'high',
-    description: 'Quarterly access reviews not completed for 3 systems',
-    remediationPlan: 'Complete pending access reviews and implement automation',
-    dueDate: '2024-02-01',
-    owner: 'Security Admin',
-  },
-  {
-    id: 'GAP-002',
-    framework: 'ISO27001',
-    controlId: 'A.9.2.3',
-    controlName: 'Management of Privileged Access',
-    status: 'partial',
-    severity: 'critical',
-    description: 'PAM solution not fully deployed across all critical systems',
-    remediationPlan: 'Complete PAM rollout to remaining 5 systems',
-    dueDate: '2024-02-15',
-    owner: 'IT Security',
-  },
-  {
-    id: 'GAP-003',
-    framework: 'SOC2',
-    controlId: 'CC6.1',
-    controlName: 'Security Event Monitoring',
-    status: 'partial',
-    severity: 'medium',
-    description: 'SIEM coverage incomplete for cloud workloads',
-    remediationPlan: 'Extend SIEM monitoring to AWS and Azure environments',
-    dueDate: '2024-03-01',
-    owner: 'Security Operations',
-  },
-  {
-    id: 'GAP-004',
-    framework: 'GDPR',
-    controlId: 'Art.17',
-    controlName: 'Right to Erasure',
-    status: 'non_compliant',
-    severity: 'high',
-    description: 'Automated data deletion process not implemented',
-    remediationPlan: 'Implement data retention and deletion workflows',
-    dueDate: '2024-02-28',
-    owner: 'Data Privacy',
-  },
-];
-
 export function ComplianceDashboard() {
-  const [selectedFramework, setSelectedFramework] = useState<string | null>(null);
+  const [_selectedFramework, setSelectedFramework] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'gaps' | 'controls'>('overview');
 
-  const overallScore = Math.round(
-    frameworks.reduce((acc, f) => acc + f.complianceScore, 0) / frameworks.length
-  );
+  const { data: frameworksData } = useQuery({
+    queryKey: ['complianceFrameworks'],
+    queryFn: () => api.get('/compliance/frameworks').then((r) => r.data),
+  });
+
+  const { data: controlGapsData } = useQuery({
+    queryKey: ['complianceControlGaps'],
+    queryFn: () => api.get('/compliance/gaps').then((r) => r.data),
+  });
+
+  const frameworks: ComplianceFramework[] = frameworksData || [];
+  const controlGaps: ControlGap[] = controlGapsData || [];
+
+  const overallScore = frameworks.length
+    ? Math.round(frameworks.reduce((acc, f) => acc + f.complianceScore, 0) / frameworks.length)
+    : 0;
 
   const totalGaps = controlGaps.length;
   const criticalGaps = controlGaps.filter((g) => g.severity === 'critical').length;

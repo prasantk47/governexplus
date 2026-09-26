@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { usersApi } from '../../services/api';
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -33,123 +35,7 @@ interface UserActivity {
   risk: 'normal' | 'elevated' | 'high';
 }
 
-const mockUser = {
-  id: 'USR-001',
-  name: 'John Smith',
-  email: 'john.smith@company.com',
-  department: 'Finance',
-  title: 'Senior Financial Analyst',
-  manager: 'Sarah Director',
-  status: 'active',
-  lastLogin: '2024-01-20 09:15',
-  createdDate: '2022-03-15',
-  riskScore: 65,
-  violations: 2,
-  pendingRequests: 1,
-};
-
-const mockRoles: UserRole[] = [
-  {
-    id: 'ROLE-001',
-    name: 'SAP_FI_AP_CLERK',
-    system: 'SAP ECC',
-    riskLevel: 'low',
-    grantedDate: '2022-06-15',
-    grantedBy: 'Sarah Director',
-    lastUsed: '2024-01-19',
-    status: 'active',
-  },
-  {
-    id: 'ROLE-002',
-    name: 'SAP_FI_GL_ACCOUNTANT',
-    system: 'SAP ECC',
-    riskLevel: 'high',
-    grantedDate: '2023-01-10',
-    grantedBy: 'Risk Committee',
-    lastUsed: '2024-01-20',
-    status: 'active',
-  },
-  {
-    id: 'ROLE-003',
-    name: 'WORKDAY_VIEWER',
-    system: 'Workday',
-    riskLevel: 'low',
-    grantedDate: '2022-03-15',
-    grantedBy: 'HR Admin',
-    lastUsed: '2024-01-18',
-    status: 'active',
-  },
-  {
-    id: 'ROLE-004',
-    name: 'AWS_READ_ONLY',
-    system: 'AWS',
-    riskLevel: 'medium',
-    grantedDate: '2023-08-20',
-    grantedBy: 'IT Manager',
-    lastUsed: '2023-11-05',
-    status: 'pending_review',
-  },
-];
-
-const mockActivities: UserActivity[] = [
-  {
-    id: 'ACT-001',
-    action: 'GL Posting',
-    timestamp: '2024-01-20 14:32',
-    system: 'SAP ECC',
-    details: 'Posted journal entry JE-2024-0456',
-    risk: 'normal',
-  },
-  {
-    id: 'ACT-002',
-    action: 'Vendor Payment',
-    timestamp: '2024-01-20 11:15',
-    system: 'SAP ECC',
-    details: 'Executed payment run for vendor batch',
-    risk: 'elevated',
-  },
-  {
-    id: 'ACT-003',
-    action: 'Report Access',
-    timestamp: '2024-01-19 16:45',
-    system: 'SAP ECC',
-    details: 'Accessed financial report FI-001',
-    risk: 'normal',
-  },
-  {
-    id: 'ACT-004',
-    action: 'Mass Update',
-    timestamp: '2024-01-19 10:20',
-    system: 'SAP ECC',
-    details: 'Updated 150 vendor records',
-    risk: 'high',
-  },
-  {
-    id: 'ACT-005',
-    action: 'Login',
-    timestamp: '2024-01-20 09:15',
-    system: 'SSO',
-    details: 'Successful authentication',
-    risk: 'normal',
-  },
-];
-
-const mockViolations = [
-  {
-    id: 'VIO-001',
-    rule: 'Create Vendor / Execute Payment',
-    severity: 'critical',
-    detectedDate: '2024-01-15',
-    status: 'open',
-  },
-  {
-    id: 'VIO-002',
-    rule: 'Post GL / Approve GL',
-    severity: 'high',
-    detectedDate: '2024-01-10',
-    status: 'mitigated',
-  },
-];
+// Mock data removed — fetched from API
 
 const riskConfig = {
   low: { color: 'bg-green-100 text-green-800' },
@@ -165,10 +51,41 @@ const activityRiskConfig = {
 };
 
 export function UserDetail() {
-  useParams(); // Used for user ID extraction
+  const { userId } = useParams<{ userId: string }>();
   const [activeTab, setActiveTab] = useState<'roles' | 'activity' | 'violations'>('roles');
 
-  const user = mockUser;
+  const { data: userData } = useQuery({
+    queryKey: ['user-detail', userId],
+    queryFn: () => usersApi.get(userId!).then((res) => res.data),
+    enabled: !!userId,
+  });
+
+  const { data: rolesData } = useQuery<UserRole[]>({
+    queryKey: ['user-roles', userId],
+    queryFn: () => usersApi.getRoles(userId!).then((res) => res.data?.roles || res.data || []),
+    enabled: !!userId,
+  });
+
+  const { data: activitiesData } = useQuery<UserActivity[]>({
+    queryKey: ['user-activity', userId],
+    queryFn: () => usersApi.getTransactions(userId!).then((res) => res.data?.transactions || res.data || []),
+    enabled: !!userId,
+  });
+
+  const { data: violationsData } = useQuery({
+    queryKey: ['user-violations', userId],
+    queryFn: () => usersApi.getRiskProfile(userId!).then((res) => res.data?.violations || []),
+    enabled: !!userId,
+  });
+
+  const user = userData || {
+    id: userId || '', name: '', email: '', department: '', title: '',
+    manager: '', status: 'active', lastLogin: '', createdDate: '',
+    riskScore: 0, violations: 0, pendingRequests: 0,
+  };
+  const roles: UserRole[] = rolesData || [];
+  const activities: UserActivity[] = activitiesData || [];
+  const violations = violationsData || [];
 
   return (
     <div className="space-y-6">
@@ -281,7 +198,7 @@ export function UserDetail() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Roles Assigned</span>
-              <span className="font-medium text-gray-900">{mockRoles.length}</span>
+              <span className="font-medium text-gray-900">{roles.length}</span>
             </div>
           </div>
         </div>
@@ -289,9 +206,9 @@ export function UserDetail() {
         {/* Active Violations */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Active Violations</h2>
-          {mockViolations.length > 0 ? (
+          {violations.length > 0 ? (
             <div className="space-y-3">
-              {mockViolations.map((violation) => (
+              {violations.map((violation: any) => (
                 <div
                   key={violation.id}
                   className={`p-3 rounded-lg border ${
@@ -347,7 +264,7 @@ export function UserDetail() {
               }`}
             >
               <KeyIcon className="h-5 w-5 inline mr-2" />
-              Assigned Roles ({mockRoles.length})
+              Assigned Roles ({roles.length})
             </button>
             <button
               onClick={() => setActiveTab('activity')}
@@ -369,7 +286,7 @@ export function UserDetail() {
               }`}
             >
               <ExclamationTriangleIcon className="h-5 w-5 inline mr-2" />
-              Violations ({mockViolations.length})
+              Violations ({violations.length})
             </button>
           </nav>
         </div>
@@ -377,7 +294,7 @@ export function UserDetail() {
         <div className="p-6">
           {activeTab === 'roles' && (
             <div className="space-y-3">
-              {mockRoles.map((role) => {
+              {roles.map((role) => {
                 const riskInfo = riskConfig[role.riskLevel];
                 return (
                   <div
@@ -419,7 +336,7 @@ export function UserDetail() {
 
           {activeTab === 'activity' && (
             <div className="space-y-3">
-              {mockActivities.map((activity) => {
+              {activities.map((activity) => {
                 const riskInfo = activityRiskConfig[activity.risk];
                 return (
                   <div key={activity.id} className="flex items-start p-4 bg-gray-50 rounded-lg">
@@ -448,7 +365,7 @@ export function UserDetail() {
 
           {activeTab === 'violations' && (
             <div className="space-y-3">
-              {mockViolations.map((violation) => (
+              {violations.map((violation: any) => (
                 <div
                   key={violation.id}
                   className={`p-4 rounded-lg border ${

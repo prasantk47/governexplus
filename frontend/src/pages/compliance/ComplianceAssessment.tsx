@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   ClipboardDocumentCheckIcon,
@@ -14,6 +14,7 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface Framework {
   framework_id: string;
@@ -129,20 +130,19 @@ export function ComplianceAssessment() {
         const objective = objectives.find((o: Objective) => o.objective_id === objectiveId);
         if (!objective) continue;
 
-        // Simulate assessment (in real app, would call API)
-        const statuses = ['compliant', 'partially_compliant', 'non_compliant'];
-        const randomStatus = statuses[Math.floor(Math.random() * 10) > 7 ? Math.floor(Math.random() * 3) : 0];
-        const score = randomStatus === 'compliant' ? 100 : randomStatus === 'partially_compliant' ? 65 : 30;
+        // Derive status from objective data; default to compliant if no status set
+        const status = objective.status && objective.status !== 'not_assessed' ? objective.status : 'compliant';
+        const score = status === 'compliant' ? 100 : status === 'partially_compliant' ? 65 : 30;
 
         const result: AssessmentResult = {
           objective_id: objectiveId,
           reference_id: objective.reference_id,
           name: objective.name,
-          status: randomStatus,
+          status,
           score,
-          findings: randomStatus !== 'compliant' ? [`Finding for ${objective.reference_id}`] : [],
-          gaps: randomStatus === 'non_compliant' ? [`Gap identified in ${objective.reference_id}`] : [],
-          recommendations: randomStatus !== 'compliant' ? [`Review and remediate ${objective.reference_id}`] : [],
+          findings: status !== 'compliant' ? [`Finding for ${objective.reference_id}`] : [],
+          gaps: status === 'non_compliant' ? [`Gap identified in ${objective.reference_id}`] : [],
+          recommendations: status !== 'compliant' ? [`Review and remediate ${objective.reference_id}`] : [],
         };
 
         results.push(result);
@@ -150,7 +150,7 @@ export function ComplianceAssessment() {
         // Create assessment via API
         try {
           await api.post(`/compliance/objectives/${objectiveId}/assessments`, {
-            status: randomStatus,
+            status,
             score,
             findings: result.findings,
             gaps: result.gaps,
@@ -159,7 +159,7 @@ export function ComplianceAssessment() {
             params: { assessed_by: 'admin@governexplus.com' }
           });
         } catch (err) {
-          console.error('Failed to save assessment:', err);
+          toast.error('Failed to save assessment');
         }
       }
 

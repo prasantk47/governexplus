@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { usersApi, api } from '../../services/api';
 import {
   ArrowLeftIcon,
   DocumentDuplicateIcon,
-  UserGroupIcon,
   MagnifyingGlassIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -24,16 +25,6 @@ interface BulkUser {
   errorMessage?: string;
 }
 
-const mockUsers: BulkUser[] = [
-  { id: '1', username: 'jsmith', displayName: 'John Smith', email: 'john.smith@company.com', department: 'Finance', selected: false },
-  { id: '2', username: 'mjones', displayName: 'Mary Jones', email: 'mary.jones@company.com', department: 'Finance', selected: false },
-  { id: '3', username: 'rwilson', displayName: 'Robert Wilson', email: 'robert.wilson@company.com', department: 'IT', selected: false },
-  { id: '4', username: 'sbrown', displayName: 'Sarah Brown', email: 'sarah.brown@company.com', department: 'HR', selected: false },
-  { id: '5', username: 'dlee', displayName: 'David Lee', email: 'david.lee@company.com', department: 'Sales', selected: false },
-  { id: '6', username: 'agarcia', displayName: 'Ana Garcia', email: 'ana.garcia@company.com', department: 'Procurement', selected: false },
-  { id: '7', username: 'tchen', displayName: 'Tom Chen', email: 'tom.chen@company.com', department: 'IT', selected: false },
-  { id: '8', username: 'kpatel', displayName: 'Kavita Patel', email: 'kavita.patel@company.com', department: 'Finance', selected: false },
-];
 
 type BulkMode = 'template' | 'csv' | 'manual';
 
@@ -42,7 +33,27 @@ export function BulkAccessRequest() {
   const [step, setStep] = useState(1);
   const [bulkMode, setBulkMode] = useState<BulkMode>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<RequestTemplate | null>(null);
-  const [users, setUsers] = useState<BulkUser[]>(mockUsers);
+  const [users, setUsers] = useState<BulkUser[]>([]);
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => usersApi.list(),
+  });
+  const apiUsers: BulkUser[] = ((usersData as any)?.data?.items ?? []).map((u: any) => ({
+    id: u.id ?? u.user_id ?? String(u.username),
+    username: u.username ?? '',
+    displayName: u.full_name ?? u.display_name ?? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim(),
+    email: u.email ?? '',
+    department: u.department ?? '',
+    selected: false,
+  }));
+
+  useEffect(() => {
+    if (apiUsers.length > 0 && users.length === 0) {
+      setUsers(apiUsers);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usersData]);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [justification, setJustification] = useState('');
@@ -72,19 +83,23 @@ export function BulkAccessRequest() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-
-    // Simulate submission for each user
     for (let i = 0; i < selectedUsers.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === selectedUsers[i].id
-            ? { ...u, status: Math.random() > 0.1 ? 'success' : 'error', errorMessage: Math.random() > 0.1 ? undefined : 'SoD conflict detected' }
-            : u
-        )
-      );
+      try {
+        await api.post('/access-requests', {
+          target_user_id: selectedUsers[i].id,
+          request_type: 'bulk_provision',
+          requested_items: (selectedUsers[i] as any).roles?.map((r: string) => ({ access_id: r, access_type: 'role' })) || [],
+          justification: justification || 'Bulk access request',
+        });
+        setUsers((prev) =>
+          prev.map((u) => u.id === selectedUsers[i].id ? { ...u, status: 'success' } : u)
+        );
+      } catch (err: any) {
+        setUsers((prev) =>
+          prev.map((u) => u.id === selectedUsers[i].id ? { ...u, status: 'error', errorMessage: err?.response?.data?.detail || 'Request failed' } : u)
+        );
+      }
     }
-
     setIsSubmitting(false);
     setSubmissionComplete(true);
   };
@@ -332,7 +347,7 @@ export function BulkAccessRequest() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
-                            {user.displayName.split(' ').map((n) => n[0]).join('')}
+                            {user.displayName.split(' ').map((n) => n[0] ?? '').filter(Boolean).join('')}
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{user.displayName}</div>

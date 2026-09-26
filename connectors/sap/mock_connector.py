@@ -27,6 +27,12 @@ class SAPMockConnector(BaseConnector):
     """
 
     def __init__(self, config: ConnectionConfig):
+        import os
+        if os.getenv("APP_ENV", "").lower() == "production":
+            raise RuntimeError(
+                "SAPMockConnector cannot be used in production. "
+                "Install pyrfc and configure SAP RFC connection parameters."
+            )
         super().__init__(config)
         self._initialize_mock_data()
 
@@ -401,6 +407,20 @@ class SAPMockConnector(BaseConnector):
             return {
                 'success': True,
                 'message': 'User locked successfully',
+                'firefighter_id': firefighter_id
+            }
+        return {
+            'success': False,
+            'message': 'User not found',
+            'firefighter_id': firefighter_id
+        }
+
+    def set_temporary_password(self, firefighter_id: str, password: str) -> Dict:
+        """Set a temporary password for a firefighter account (mock)"""
+        if firefighter_id in self.mock_users:
+            return {
+                'success': True,
+                'message': 'Temporary password set',
                 'firefighter_id': firefighter_id
             }
         return {

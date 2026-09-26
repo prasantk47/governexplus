@@ -67,6 +67,13 @@ from .providers import (
     OKTA_ATTRIBUTE_MAPPING, HR_ATTRIBUTE_MAPPING,
 )
 
+# AD-SAP Mapping Engine
+from .ad_sap_mapping import (
+    ADSAPMappingEngine, ADSAPMapping, GroupChange, SyncResult,
+    BulkSyncResult, ChangeType, ProvisioningActionType,
+    ProvisioningStatus, ProvisioningAction,
+)
+
 __all__ = [
     # User Profile
     "UserProfileService",
@@ -157,4 +164,14 @@ __all__ = [
     "AZURE_AD_ATTRIBUTE_MAPPING",
     "OKTA_ATTRIBUTE_MAPPING",
     "HR_ATTRIBUTE_MAPPING",
+    # AD-SAP Mapping
+    "ADSAPMappingEngine",
+    "ADSAPMapping",
+    "GroupChange",
+    "SyncResult",
+    "BulkSyncResult",
+    "ChangeType",
+    "ProvisioningActionType",
+    "ProvisioningStatus",
+    "ProvisioningAction",
 ]

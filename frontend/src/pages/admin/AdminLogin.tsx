@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
 import {
   ShieldCheckIcon,
   KeyIcon,
@@ -8,7 +9,6 @@ import {
   EyeIcon,
   EyeSlashIcon,
   LockClosedIcon,
-  SparklesIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -40,13 +40,8 @@ export function AdminLogin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
+      const response = await api.post('/admin/login', { email, password });
+      const data = response.data;
 
       if (data.success) {
         setLoginSuccess(true);
@@ -56,21 +51,8 @@ export function AdminLogin() {
       } else {
         setError(data.message || 'Invalid credentials');
       }
-    } catch (err) {
-      // Demo mode fallback
-      if (email === 'admin@governex.local' && password === 'admin123') {
-        setLoginSuccess(true);
-        localStorage.setItem('admin_token', 'demo_token_' + Date.now());
-        localStorage.setItem('admin_user', JSON.stringify({
-          email: 'admin@governex.local',
-          name: 'Platform Administrator',
-          role: 'super_admin',
-          avatar: null
-        }));
-        setTimeout(() => navigate('/admin/dashboard'), 800);
-      } else {
-        setError('Invalid credentials');
-      }
+    } catch {
+      setError('Invalid credentials');
     }
 
     if (!loginSuccess) {
@@ -257,23 +239,6 @@ export function AdminLogin() {
                     </button>
                   </form>
 
-                  {/* Demo Credentials */}
-                  <div className="mt-6 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/20">
-                    <div className="flex items-center gap-2 mb-3">
-                      <SparklesIcon className="h-4 w-4 text-indigo-400" />
-                      <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wide">Demo Credentials</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-indigo-300/50 text-xs">Email</p>
-                        <p className="text-indigo-200 font-mono">admin@governex.local</p>
-                      </div>
-                      <div>
-                        <p className="text-indigo-300/50 text-xs">Password</p>
-                        <p className="text-indigo-200 font-mono">admin123</p>
-                      </div>
-                    </div>
-                  </div>
                 </>
               )}
             </div>

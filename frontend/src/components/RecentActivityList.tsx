@@ -1,62 +1,45 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   UserPlusIcon,
   KeyIcon,
 } from '@heroicons/react/24/outline';
+import { auditApi } from '../services/api';
+
+const iconMap: Record<string, { icon: typeof CheckCircleIcon; color: string }> = {
+  access_granted: { icon: CheckCircleIcon, color: 'text-green-500' },
+  violation_detected: { icon: ExclamationTriangleIcon, color: 'text-red-500' },
+  user_created: { icon: UserPlusIcon, color: 'text-blue-500' },
+  firefighter_session: { icon: KeyIcon, color: 'text-orange-500' },
+  access_revoked: { icon: CheckCircleIcon, color: 'text-gray-500' },
+};
 
 interface RecentActivityListProps {
   limit?: number;
 }
 
 export function RecentActivityList({ limit = 5 }: RecentActivityListProps) {
-  const activities = [
-    {
-      id: 1,
-      type: 'access_granted',
-      icon: CheckCircleIcon,
-      iconColor: 'text-green-500',
-      message: 'Access granted to John Smith for SAP_MM_BUYER',
-      time: '10 minutes ago',
-    },
-    {
-      id: 2,
-      type: 'violation_detected',
-      icon: ExclamationTriangleIcon,
-      iconColor: 'text-red-500',
-      message: 'SoD violation detected for Mary Brown',
-      time: '25 minutes ago',
-    },
-    {
-      id: 3,
-      type: 'user_created',
-      icon: UserPlusIcon,
-      iconColor: 'text-blue-500',
-      message: 'New user created: Alice Wilson',
-      time: '1 hour ago',
-    },
-    {
-      id: 4,
-      type: 'firefighter_session',
-      icon: KeyIcon,
-      iconColor: 'text-orange-500',
-      message: 'Firefighter session started by Tom Davis',
-      time: '2 hours ago',
-    },
-    {
-      id: 5,
-      type: 'access_revoked',
-      icon: CheckCircleIcon,
-      iconColor: 'text-gray-500',
-      message: 'Access revoked for David Chen',
-      time: '3 hours ago',
-    },
-  ].slice(0, limit);
+  const { data: activitiesData } = useQuery({
+    queryKey: ['recent-activity', limit],
+    queryFn: () => auditApi.getLogs({ limit }).then((res) => res.data?.logs || res.data || []),
+  });
+
+  const activities = (activitiesData || []).slice(0, limit).map((a: any, idx: number) => {
+    const mapping = iconMap[a.action] || iconMap['access_granted'];
+    return {
+      id: a.id || idx,
+      icon: mapping.icon,
+      iconColor: mapping.color,
+      message: a.message || `${a.action}: ${a.details || a.target_id || ''}`,
+      time: a.timestamp || a.created_at || '',
+    };
+  });
 
   return (
     <div className="flow-root">
       <ul className="-mb-8">
-        {activities.map((activity, activityIdx) => (
+        {activities.map((activity: any, activityIdx: number) => (
           <li key={activity.id}>
             <div className="relative pb-8">
               {activityIdx !== activities.length - 1 && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { api } from '../../services/api';
 import {
   BuildingOffice2Icon,
   UserGroupIcon,
@@ -19,12 +20,10 @@ import {
   PauseIcon,
   PencilIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   GlobeAltIcon,
   ShieldCheckIcon,
   BellIcon,
   Cog6ToothIcon,
-  SparklesIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
   ArrowPathIcon,
@@ -102,42 +101,20 @@ export function AdminDashboard() {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      const statsRes = await fetch('/api/admin/dashboard/stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-      });
-      if (statsRes.ok) {
-        setStats(await statsRes.json());
-      }
+      const statsRes = await api.get('/admin/dashboard/stats');
+      setStats(statsRes.data);
 
-      const tenantsRes = await fetch('/api/admin/tenants', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-      });
-      if (tenantsRes.ok) {
-        const data = await tenantsRes.json();
-        setTenants(data.tenants || []);
+      const tenantsRes = await api.get('/admin/tenants');
+      setTenants(tenantsRes.data?.tenants || []);
+
+      try {
+        const actRes = await api.get('/admin/activities');
+        setActivities(actRes.data?.activities || []);
+      } catch {
+        // Activities endpoint may not exist yet — leave empty
       }
     } catch (err) {
-      // Mock data for demo
-      setStats({
-        tenants: { total: 12, active: 8, trial: 3, suspended: 1 },
-        users: { total: 1847, active_today: 423, new_this_month: 156 },
-        revenue: { mrr: 47500, arr: 570000, growth: 18.5 },
-        systems: { connected: 34, sync_healthy: 97 }
-      });
-      setTenants([
-        { id: 'tenant_acme', name: 'Acme Corporation', slug: 'acme', admin_email: 'admin@acme.com', tier: 'enterprise', status: 'active', users_count: 456, created_at: '2024-06-15', last_activity: '2026-01-24' },
-        { id: 'tenant_globex', name: 'Globex Industries', slug: 'globex', admin_email: 'cto@globex.com', tier: 'professional', status: 'active', users_count: 189, created_at: '2024-08-22', last_activity: '2026-01-24' },
-        { id: 'tenant_wayne', name: 'Wayne Enterprises', slug: 'wayne', admin_email: 'security@wayne.com', tier: 'enterprise', status: 'active', users_count: 892, created_at: '2024-03-10', last_activity: '2026-01-24' },
-        { id: 'tenant_stark', name: 'Stark Industries', slug: 'stark', admin_email: 'jarvis@stark.com', tier: 'enterprise', status: 'trial', users_count: 234, created_at: '2026-01-10', last_activity: '2026-01-24' },
-        { id: 'tenant_initech', name: 'Initech Solutions', slug: 'initech', admin_email: 'admin@initech.com', tier: 'starter', status: 'trial', users_count: 23, created_at: '2026-01-17', last_activity: '2026-01-23' },
-        { id: 'tenant_umbrella', name: 'Umbrella Corp', slug: 'umbrella', admin_email: 'security@umbrella.com', tier: 'professional', status: 'suspended', users_count: 67, created_at: '2024-09-01', last_activity: '2026-01-10' },
-      ]);
-      setActivities([
-        { id: '1', type: 'tenant_created', message: 'New tenant "Stark Industries" started trial', time: '2 hours ago', tenant: 'Stark Industries' },
-        { id: '2', type: 'payment', message: 'Payment received from Acme Corporation', time: '4 hours ago', tenant: 'Acme Corporation' },
-        { id: '3', type: 'user_login', message: '156 new users this month across all tenants', time: '1 day ago' },
-        { id: '4', type: 'alert', message: 'High API usage detected for Wayne Enterprises', time: '2 days ago', tenant: 'Wayne Enterprises' },
-      ]);
+      toast.error('Failed to load dashboard data');
     }
     setIsLoading(false);
   };
@@ -150,10 +127,7 @@ export function AdminDashboard() {
 
   const handleSuspendTenant = async (tenantId: string) => {
     try {
-      await fetch(`/api/admin/tenants/${tenantId}/suspend`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-      });
+      await api.post(`/admin/tenants/${tenantId}/suspend`);
       fetchDashboardData();
     } catch (err) {
       setTenants(tenants.map(t => t.id === tenantId ? { ...t, status: 'suspended' } : t));
@@ -163,10 +137,7 @@ export function AdminDashboard() {
 
   const handleActivateTenant = async (tenantId: string) => {
     try {
-      await fetch(`/api/admin/tenants/${tenantId}/activate`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-      });
+      await api.post(`/admin/tenants/${tenantId}/activate`);
       fetchDashboardData();
     } catch (err) {
       setTenants(tenants.map(t => t.id === tenantId ? { ...t, status: 'active' } : t));
@@ -562,7 +533,7 @@ export function AdminDashboard() {
             </div>
 
             <div className="p-4 space-y-4">
-              {activities.map((activity, idx) => (
+              {activities.map((activity) => (
                 <div key={activity.id} className="flex gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
                   <div className={clsx(
                     'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',

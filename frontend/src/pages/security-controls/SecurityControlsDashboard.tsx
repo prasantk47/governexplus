@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -28,7 +27,7 @@ const ratingConfig = {
 };
 
 export function SecurityControlsDashboard() {
-  const { data: dashboardData, isLoading } = useQuery<DashboardStats>({
+  const { data: dashboardData, isLoading: _isLoading } = useQuery<DashboardStats>({
     queryKey: ['securityControlsDashboard'],
     queryFn: async () => {
       const response = await securityControlsApi.getDashboard();

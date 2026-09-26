@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { firefighterApi } from '../../services/api';
+import toast from 'react-hot-toast';
 import {
   EyeIcon,
   ExclamationTriangleIcon,
   StopIcon,
   PlayIcon,
-  ClockIcon,
+  // ClockIcon,
   UserIcon,
   ServerIcon,
   CommandLineIcon,
   ShieldExclamationIcon,
-  ArrowPathIcon,
+  // ArrowPathIcon,
   BellAlertIcon,
   VideoCameraIcon,
 } from '@heroicons/react/24/outline';
@@ -46,99 +49,32 @@ interface ActivityLog {
   flagged: boolean;
 }
 
-const mockSessions: ActiveSession[] = [
-  {
-    id: 'FF-001',
-    user: 'John Smith',
-    userId: 'jsmith',
-    firefighterId: 'FF_SAP_ADMIN_01',
-    system: 'SAP S/4HANA Production',
-    reason: 'Critical month-end batch job failure',
-    startTime: '2024-01-18 09:30:00',
-    duration: 95,
-    maxDuration: 240,
-    riskLevel: 'high',
-    status: 'active',
-    activityCount: 47,
-    anomalyCount: 2,
-    recentCommands: [
-      { timestamp: '10:05:23', command: 'SM37 - View Background Jobs', risk: 'safe' },
-      { timestamp: '10:04:15', command: 'SM21 - System Log', risk: 'safe' },
-      { timestamp: '10:02:45', command: 'SE16 - Table Display (BKPF)', risk: 'sensitive' },
-    ],
-  },
-  {
-    id: 'FF-002',
-    user: 'Mary Jones',
-    userId: 'mjones',
-    firefighterId: 'FF_DB_ADMIN_01',
-    system: 'Oracle Database Production',
-    reason: 'Performance issue investigation',
-    startTime: '2024-01-18 08:45:00',
-    duration: 140,
-    maxDuration: 180,
-    riskLevel: 'critical',
-    status: 'warning',
-    activityCount: 89,
-    anomalyCount: 5,
-    recentCommands: [
-      { timestamp: '10:04:55', command: 'SELECT * FROM V$SESSION', risk: 'safe' },
-      { timestamp: '10:03:12', command: 'ALTER SYSTEM KILL SESSION', risk: 'dangerous' },
-      { timestamp: '10:01:30', command: 'EXPLAIN PLAN FOR SELECT...', risk: 'safe' },
-    ],
-  },
-  {
-    id: 'FF-003',
-    user: 'Robert Wilson',
-    userId: 'rwilson',
-    firefighterId: 'FF_AD_ADMIN_01',
-    system: 'Active Directory',
-    reason: 'User lockout - VIP executive',
-    startTime: '2024-01-18 10:00:00',
-    duration: 15,
-    maxDuration: 60,
-    riskLevel: 'medium',
-    status: 'active',
-    activityCount: 8,
-    anomalyCount: 0,
-    recentCommands: [
-      { timestamp: '10:05:00', command: 'Unlock-ADAccount -Identity CEO', risk: 'sensitive' },
-      { timestamp: '10:03:30', command: 'Get-ADUser -Identity CEO', risk: 'safe' },
-    ],
-  },
-];
-
-const mockActivityLog: ActivityLog[] = [
-  { id: 'ACT-001', sessionId: 'FF-001', timestamp: '10:05:23', type: 'transaction', action: 'SM37', target: 'Background Job Monitor', risk: 'safe', flagged: false },
-  { id: 'ACT-002', sessionId: 'FF-001', timestamp: '10:04:15', type: 'transaction', action: 'SM21', target: 'System Log', risk: 'safe', flagged: false },
-  { id: 'ACT-003', sessionId: 'FF-001', timestamp: '10:02:45', type: 'data_access', action: 'SE16', target: 'Table BKPF (Accounting Doc Header)', risk: 'sensitive', flagged: true },
-  { id: 'ACT-004', sessionId: 'FF-002', timestamp: '10:03:12', type: 'command', action: 'ALTER SYSTEM', target: 'Kill Session SID 1234', risk: 'dangerous', flagged: true },
-  { id: 'ACT-005', sessionId: 'FF-002', timestamp: '10:01:30', type: 'command', action: 'SELECT', target: 'V$SESSION', risk: 'safe', flagged: false },
-];
-
 export function LiveSessionMonitor() {
-  const [sessions, setSessions] = useState<ActiveSession[]>(mockSessions);
+  const queryClient = useQueryClient();
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(10);
+  const [emergencyStopping, setEmergencyStopping] = useState(false);
 
-  // Simulate live updates
+  const { data: sessionsData, refetch: refetchSessions } = useQuery({
+    queryKey: ['firefighter', 'activeSessions'],
+    queryFn: () => firefighterApi.getActiveSessions().then(r => r.data),
+    refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
+  });
+  const sessions: ActiveSession[] = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.sessions || [];
+
+  const { data: activitiesData } = useQuery({
+    queryKey: ['firefighter', 'sessionActivities', selectedSession?.id],
+    queryFn: () => firefighterApi.getSessionActivities(selectedSession!.id).then(r => r.data),
+    enabled: !!selectedSession,
+  });
+  const activityLog: ActivityLog[] = Array.isArray(activitiesData) ? activitiesData : (activitiesData as any)?.activities || [];
+
   useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      setSessions((prev) =>
-        prev.map((s) => ({
-          ...s,
-          duration: s.duration + (refreshInterval / 60),
-          activityCount: s.activityCount + Math.floor(Math.random() * 2),
-          status: s.duration >= s.maxDuration * 0.9 ? 'warning' : s.duration >= s.maxDuration ? 'overtime' : 'active',
-        }))
-      );
-    }, refreshInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval]);
+    if (autoRefresh) {
+      refetchSessions();
+    }
+  }, [autoRefresh, refetchSessions]);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -169,6 +105,40 @@ export function LiveSessionMonitor() {
     if (pct >= 75) return 'bg-orange-500';
     if (pct >= 50) return 'bg-yellow-500';
     return 'bg-green-500';
+  };
+
+  const handleTerminateSession = async (sessionId: string) => {
+    try {
+      const userId = localStorage.getItem('userId') || 'admin';
+      await firefighterApi.revokeSession(sessionId, userId, 'Terminated via live monitor');
+      toast.success(`Session ${sessionId} terminated`);
+      queryClient.invalidateQueries({ queryKey: ['firefighter', 'activeSessions'] });
+    } catch {
+      toast.error(`Failed to terminate session ${sessionId}`);
+    }
+  };
+
+  const handleEmergencyStopAll = async () => {
+    if (!sessions.length) return;
+    setEmergencyStopping(true);
+    const userId = localStorage.getItem('userId') || 'admin';
+    let succeeded = 0;
+    let failed = 0;
+    for (const session of sessions) {
+      try {
+        await firefighterApi.revokeSession(session.id, userId, 'Emergency stop all');
+        succeeded++;
+      } catch {
+        failed++;
+      }
+    }
+    setEmergencyStopping(false);
+    queryClient.invalidateQueries({ queryKey: ['firefighter', 'activeSessions'] });
+    if (failed > 0) {
+      toast.error(`Stopped ${succeeded} sessions, ${failed} failed`);
+    } else {
+      toast.success(`All ${succeeded} sessions terminated`);
+    }
   };
 
   return (
@@ -204,9 +174,13 @@ export function LiveSessionMonitor() {
               <option value={60}>60s</option>
             </select>
           </div>
-          <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm flex items-center gap-2">
+          <button
+            onClick={handleEmergencyStopAll}
+            disabled={emergencyStopping || sessions.length === 0}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm flex items-center gap-2 disabled:opacity-50"
+          >
             <StopIcon className="h-4 w-4" />
-            Emergency Stop All
+            {emergencyStopping ? 'Stopping...' : 'Emergency Stop All'}
           </button>
         </div>
       </div>
@@ -313,6 +287,7 @@ export function LiveSessionMonitor() {
                     <EyeIcon className="h-4 w-4" />
                   </button>
                   <button
+                    onClick={() => handleTerminateSession(session.id)}
                     className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
                     title="Terminate Session"
                   >
@@ -388,7 +363,7 @@ export function LiveSessionMonitor() {
           </div>
         </div>
         <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-          {mockActivityLog.map((activity) => (
+          {activityLog.map((activity) => (
             <div
               key={activity.id}
               className={`px-4 py-3 hover:bg-gray-50 ${activity.flagged ? 'bg-red-50' : ''}`}
@@ -476,7 +451,10 @@ export function LiveSessionMonitor() {
                   <VideoCameraIcon className="h-4 w-4" />
                   View Session Recording
                 </button>
-                <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm flex items-center gap-2">
+                <button
+                  onClick={() => { handleTerminateSession(selectedSession.id); setSelectedSession(null); }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm flex items-center gap-2"
+                >
                   <StopIcon className="h-4 w-4" />
                   Terminate
                 </button>

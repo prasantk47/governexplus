@@ -13,6 +13,7 @@ Key Features:
 """
 
 import uuid
+import re
 import secrets
 import hashlib
 import logging
@@ -22,6 +23,15 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import asyncio
+
+from db.database import db_manager
+from db.models.firefighter import (
+    FirefighterRequest as DBFirefighterRequest,
+    FirefighterSession as DBFirefighterSession,
+    FFRequestStatus,
+    FFSessionStatus,
+    FFPriority,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -521,7 +531,8 @@ class FirefighterManager:
     def __init__(self,
                  storage_backend=None,
                  notification_handler: Optional[Callable] = None,
-                 sap_connector=None):
+                 sap_connector=None,
+                 tenant_id: str = "tenant_default"):
         """
         Initialize Firefighter Manager.
 
@@ -529,16 +540,23 @@ class FirefighterManager:
             storage_backend: Database/storage for persistence (optional, uses in-memory if None)
             notification_handler: Callback for sending notifications
             sap_connector: SAP connector for provisioning access
+            tenant_id: Tenant identifier for multi-tenant isolation
         """
         self.storage = storage_backend
+        self._tenant_id = tenant_id
+        self._loaded = False
 
-        # In-memory storage for development/testing
+        # In-memory storage (cache, loaded from DB on first access)
         self.requests: Dict[str, FirefighterRequest] = {}
         self.sessions: Dict[str, FirefighterSession] = {}
         self.active_sessions_by_ff: Dict[str, str] = {}  # firefighter_id -> session_id
 
         self.notification_handler = notification_handler
         self.sap_connector = sap_connector
+
+        # Evidence engine for hash-chained audit trail
+        from core.evidence import EvidenceEngine
+        self.evidence_engine = EvidenceEngine()
 
         # Configuration
         self.config = {
@@ -560,6 +578,256 @@ class FirefighterManager:
         }
 
         logger.info("FirefighterManager initialized")
+
+    # ==========================================================================
+    # Database Persistence Helpers
+    # ==========================================================================
+
+    def _ensure_loaded(self) -> None:
+        """Load requests and sessions from DB into in-memory cache on first access."""
+        if self._loaded:
+            return
+        self._loaded = True
+
+        try:
+            if not db_manager._initialized:
+                db_manager.init()
+                db_manager.create_tables()
+
+            with db_manager.session_scope() as session:
+                # Load requests
+                db_requests = session.query(DBFirefighterRequest).filter_by(
+                    tenant_id=self._tenant_id
+                ).all()
+                for dbr in db_requests:
+                    # Map DB status back to in-memory enum
+                    status_map = {
+                        FFRequestStatus.REQUESTED: SessionStatus.REQUESTED,
+                        FFRequestStatus.PENDING_APPROVAL: SessionStatus.PENDING_APPROVAL,
+                        FFRequestStatus.APPROVED: SessionStatus.APPROVED,
+                        FFRequestStatus.REJECTED: SessionStatus.REJECTED,
+                        FFRequestStatus.CANCELLED: SessionStatus.REQUESTED,
+                    }
+                    priority_map = {
+                        FFPriority.LOW: RequestPriority.LOW,
+                        FFPriority.MEDIUM: RequestPriority.MEDIUM,
+                        FFPriority.HIGH: RequestPriority.HIGH,
+                        FFPriority.CRITICAL: RequestPriority.CRITICAL,
+                    }
+                    reason_code = ReasonCode.OTHER
+                    try:
+                        if dbr.category:
+                            reason_code = ReasonCode(dbr.category)
+                    except (ValueError, KeyError):
+                        pass
+
+                    req = FirefighterRequest(
+                        request_id=dbr.request_id,
+                        requester_user_id=dbr.requester_user_id,
+                        requester_name=dbr.requester_name or "",
+                        requester_email=dbr.requester_email or "",
+                        target_system=dbr.target_system,
+                        firefighter_id=dbr.firefighter_id,
+                        reason_code=reason_code,
+                        reason_code_config=REASON_CODE_CATALOG.get(reason_code),
+                        reason=dbr.reason or "",
+                        business_justification=dbr.business_justification or "",
+                        ticket_reference=dbr.ticket_reference,
+                        requested_duration=timedelta(minutes=dbr.requested_duration_minutes or 120),
+                        requested_at=dbr.created_at or datetime.now(),
+                        needed_by=dbr.needed_by,
+                        priority=priority_map.get(dbr.priority, RequestPriority.MEDIUM) if dbr.priority else RequestPriority.MEDIUM,
+                        category=dbr.category or "general",
+                        status=status_map.get(dbr.status, SessionStatus.REQUESTED) if dbr.status else SessionStatus.REQUESTED,
+                        approvers=dbr.approvers or [],
+                        approved_by=dbr.approved_by,
+                        approved_at=dbr.approved_at,
+                        rejection_reason=dbr.rejection_reason,
+                        risk_score=dbr.risk_score or 0.0,
+                        requires_dual_approval=dbr.requires_dual_approval or False,
+                    )
+                    self.requests[req.request_id] = req
+
+                # Load sessions
+                db_sessions = session.query(DBFirefighterSession).filter_by(
+                    tenant_id=self._tenant_id
+                ).all()
+                for dbs in db_sessions:
+                    sess_status_map = {
+                        FFSessionStatus.ACTIVE: SessionStatus.ACTIVE,
+                        FFSessionStatus.COMPLETED: SessionStatus.COMPLETED,
+                        FFSessionStatus.EXPIRED: SessionStatus.EXPIRED,
+                        FFSessionStatus.REVOKED: SessionStatus.REVOKED,
+                    }
+                    reason_code = ReasonCode.OTHER
+                    try:
+                        if dbs.reason:
+                            # reason column stores the text reason, not the code
+                            pass
+                    except (ValueError, KeyError):
+                        pass
+
+                    sess = FirefighterSession(
+                        session_id=dbs.session_id,
+                        request_id=dbs.request_id,
+                        requester_user_id=dbs.requester_user_id,
+                        firefighter_id=dbs.firefighter_id,
+                        target_system=dbs.target_system,
+                        reason=dbs.reason or "",
+                        start_time=dbs.start_time,
+                        end_time=dbs.scheduled_end_time,
+                        actual_end_time=dbs.actual_end_time,
+                        status=sess_status_map.get(dbs.status, SessionStatus.ACTIVE) if dbs.status else SessionStatus.ACTIVE,
+                        mfa_verified=dbs.mfa_verified or False,
+                        activity_count=dbs.activity_count or 0,
+                        sensitive_activity_count=dbs.sensitive_action_count or 0,
+                        requires_review=dbs.requires_review if dbs.requires_review is not None else True,
+                        reviewed_by=dbs.reviewed_by,
+                        reviewed_at=dbs.reviewed_at,
+                        review_comments=dbs.review_comments,
+                        approver=dbs.approver or "",
+                    )
+                    self.sessions[sess.session_id] = sess
+
+                    # Rebuild active_sessions_by_ff index
+                    if sess.status == SessionStatus.ACTIVE:
+                        self.active_sessions_by_ff[sess.firefighter_id] = sess.session_id
+
+            logger.info(f"Loaded {len(self.requests)} requests and {len(self.sessions)} sessions from DB")
+        except Exception as e:
+            logger.warning(f"Failed to load firefighter data from DB, using in-memory only: {e}")
+
+    def _persist_request_to_db(self, request: FirefighterRequest) -> None:
+        """Persist a request to the database."""
+        try:
+            if not db_manager._initialized:
+                return
+
+            status_map = {
+                SessionStatus.REQUESTED: FFRequestStatus.REQUESTED,
+                SessionStatus.PENDING_APPROVAL: FFRequestStatus.PENDING_APPROVAL,
+                SessionStatus.APPROVED: FFRequestStatus.APPROVED,
+                SessionStatus.REJECTED: FFRequestStatus.REJECTED,
+            }
+            priority_map = {
+                RequestPriority.LOW: FFPriority.LOW,
+                RequestPriority.MEDIUM: FFPriority.MEDIUM,
+                RequestPriority.HIGH: FFPriority.HIGH,
+                RequestPriority.CRITICAL: FFPriority.CRITICAL,
+            }
+
+            with db_manager.session_scope() as session:
+                existing = session.query(DBFirefighterRequest).filter_by(
+                    request_id=request.request_id,
+                    tenant_id=self._tenant_id,
+                ).first()
+
+                if existing:
+                    # Update
+                    existing.status = status_map.get(request.status, FFRequestStatus.REQUESTED)
+                    existing.approved_by = request.approved_by
+                    existing.approved_at = request.approved_at
+                    existing.rejection_reason = request.rejection_reason
+                    existing.risk_score = request.risk_score
+                    existing.requires_dual_approval = request.requires_dual_approval
+                    existing.approvers = request.approvers
+                    existing.approval_comments = None
+                    if existing.rejected_by is None and request.rejection_reason:
+                        existing.rejected_at = datetime.now()
+                else:
+                    # Insert
+                    db_req = DBFirefighterRequest(
+                        tenant_id=self._tenant_id,
+                        request_id=request.request_id,
+                        requester_user_id=request.requester_user_id,
+                        requester_name=request.requester_name,
+                        requester_email=request.requester_email,
+                        requester_department="",
+                        target_system=request.target_system,
+                        firefighter_id=request.firefighter_id,
+                        reason=request.reason,
+                        business_justification=request.business_justification,
+                        ticket_reference=request.ticket_reference,
+                        requested_duration_minutes=int(request.requested_duration.total_seconds() / 60),
+                        needed_by=request.needed_by,
+                        priority=priority_map.get(request.priority, FFPriority.MEDIUM),
+                        category=request.category,
+                        status=status_map.get(request.status, FFRequestStatus.REQUESTED),
+                        risk_score=request.risk_score,
+                        requires_dual_approval=request.requires_dual_approval,
+                        approvers=request.approvers,
+                        approved_by=request.approved_by,
+                        approved_at=request.approved_at,
+                    )
+                    session.add(db_req)
+        except Exception as e:
+            logger.warning(f"Failed to persist request {request.request_id} to DB: {e}")
+
+    def _persist_session_to_db(self, ff_session: FirefighterSession) -> None:
+        """Persist a session to the database."""
+        try:
+            if not db_manager._initialized:
+                return
+
+            status_map = {
+                SessionStatus.ACTIVE: FFSessionStatus.ACTIVE,
+                SessionStatus.COMPLETED: FFSessionStatus.COMPLETED,
+                SessionStatus.EXPIRED: FFSessionStatus.EXPIRED,
+                SessionStatus.REVOKED: FFSessionStatus.REVOKED,
+            }
+
+            with db_manager.session_scope() as session:
+                existing = session.query(DBFirefighterSession).filter_by(
+                    session_id=ff_session.session_id,
+                    tenant_id=self._tenant_id,
+                ).first()
+
+                if existing:
+                    # Update
+                    existing.status = status_map.get(ff_session.status, FFSessionStatus.ACTIVE)
+                    existing.actual_end_time = ff_session.actual_end_time
+                    existing.scheduled_end_time = ff_session.end_time
+                    existing.activity_count = ff_session.activity_count
+                    existing.sensitive_action_count = ff_session.sensitive_activity_count
+                    existing.mfa_verified = ff_session.mfa_verified
+                    existing.requires_review = ff_session.requires_review
+                    existing.reviewed_by = ff_session.reviewed_by
+                    existing.reviewed_at = ff_session.reviewed_at
+                    existing.review_comments = ff_session.review_comments
+                    if ff_session.status == SessionStatus.REVOKED:
+                        existing.terminated_by = ff_session.reviewed_by or "system"
+                        existing.termination_reason = ff_session.review_comments or "revoked"
+                else:
+                    # Insert
+                    db_sess = DBFirefighterSession(
+                        tenant_id=self._tenant_id,
+                        session_id=ff_session.session_id,
+                        request_id=ff_session.request_id,
+                        requester_user_id=ff_session.requester_user_id,
+                        firefighter_id=ff_session.firefighter_id,
+                        target_system=ff_session.target_system,
+                        start_time=ff_session.start_time,
+                        scheduled_end_time=ff_session.end_time,
+                        actual_end_time=ff_session.actual_end_time,
+                        status=status_map.get(ff_session.status, FFSessionStatus.ACTIVE),
+                        mfa_verified=ff_session.mfa_verified,
+                        reason=ff_session.reason,
+                        approver=ff_session.approver,
+                        activity_count=ff_session.activity_count,
+                        sensitive_action_count=ff_session.sensitive_activity_count,
+                        requires_review=ff_session.requires_review,
+                    )
+                    session.add(db_sess)
+        except Exception as e:
+            logger.warning(f"Failed to persist session {ff_session.session_id} to DB: {e}")
+
+    def _update_session_in_db(self, ff_session: FirefighterSession) -> None:
+        """Update an existing session in the database (alias for _persist_session_to_db)."""
+        self._persist_session_to_db(ff_session)
+
+    def _update_request_in_db(self, request: FirefighterRequest) -> None:
+        """Update an existing request in the database (alias for _persist_request_to_db)."""
+        self._persist_request_to_db(request)
 
     # ==========================================================================
     # Request Management
@@ -598,6 +866,8 @@ class FirefighterManager:
         Returns:
             FirefighterRequest object
         """
+        self._ensure_loaded()
+
         # Get reason code configuration
         if reason_code not in REASON_CODE_CATALOG:
             raise ValueError(f"Invalid reason code: {reason_code}")
@@ -607,6 +877,18 @@ class FirefighterManager:
         # Validate required fields based on reason code
         if reason_config.requires_ticket and not ticket_reference:
             raise ValueError(f"Reason code '{reason_config.label}' requires a ticket reference")
+
+        # Validate ticket reference format when provided
+        if ticket_reference:
+            _TICKET_PATTERN = re.compile(
+                r'^(INC\d+|CHG\d+|REQ\d+|TASK\d+|RITM\d+|PRB\d+|CR\d+)', re.IGNORECASE
+            )
+            if not _TICKET_PATTERN.match(ticket_reference):
+                raise ValueError(
+                    f"Invalid ticket reference format '{ticket_reference}'. "
+                    "Expected formats: INC<number>, CHG<number>, REQ<number>, TASK<number>, "
+                    "RITM<number>, PRB<number>, CR<number>"
+                )
 
         if reason_config.requires_justification and not business_justification:
             raise ValueError(f"Reason code '{reason_config.label}' requires business justification")
@@ -674,6 +956,31 @@ class FirefighterManager:
         # Store request
         self.requests[request.request_id] = request
 
+        # Persist to DB
+        self._persist_request_to_db(request)
+
+        # Record evidence
+        try:
+            from core.evidence.models import EvidenceType
+            self.evidence_engine.record(
+                evidence_type=EvidenceType.FIREFIGHTER_SESSION,
+                tenant_id=self._tenant_id,
+                actor_user_id=requester_user_id,
+                action="submit_firefighter_request",
+                target_object_type="firefighter_request",
+                target_object_id=request.request_id,
+                justification=request.business_justification,
+                session_id=request.request_id,
+                action_details={
+                    "reason_code": reason_code.value,
+                    "target_system": target_system,
+                    "firefighter_id": firefighter_id,
+                    "risk_score": request.risk_score,
+                },
+            )
+        except Exception as exc:
+            logger.warning(f"EvidenceEngine record skipped: {exc}")
+
         # Send notifications to approvers
         await self._notify_approvers(request)
 
@@ -732,6 +1039,8 @@ class FirefighterManager:
             FirefighterSession object
         """
 
+        self._ensure_loaded()
+
         request = self.requests.get(request_id)
         if not request:
             raise ValueError(f"Request {request_id} not found")
@@ -747,8 +1056,28 @@ class FirefighterManager:
         request.approved_at = datetime.now()
         request.status = SessionStatus.APPROVED
 
+        # Persist request status change to DB
+        self._update_request_in_db(request)
+
         # Create session
         session = await self._create_session(request)
+
+        # Record approval evidence
+        try:
+            from core.evidence.models import EvidenceType
+            self.evidence_engine.record(
+                evidence_type=EvidenceType.FIREFIGHTER_SESSION,
+                tenant_id=self._tenant_id,
+                actor_user_id=approver_id,
+                action="approve_firefighter_request",
+                target_user_id=request.requester_user_id,
+                target_object_type="firefighter_session",
+                target_object_id=session.session_id,
+                session_id=session.session_id,
+                action_details={"comments": comments or ""},
+            )
+        except Exception as exc:
+            logger.warning(f"EvidenceEngine record skipped: {exc}")
 
         # Notify requester
         await self._notify_requester(request, session, approved=True)
@@ -762,6 +1091,7 @@ class FirefighterManager:
                            approver_id: str,
                            reason: str) -> FirefighterRequest:
         """Reject a firefighter request"""
+        self._ensure_loaded()
 
         request = self.requests.get(request_id)
         if not request:
@@ -775,6 +1105,9 @@ class FirefighterManager:
 
         request.status = SessionStatus.REJECTED
         request.rejection_reason = reason
+
+        # Persist rejection to DB
+        self._update_request_in_db(request)
 
         # Notify requester
         await self._notify_requester(request, None, approved=False, reason=reason)
@@ -844,6 +1177,9 @@ class FirefighterManager:
         self.sessions[session.session_id] = session
         self.active_sessions_by_ff[request.firefighter_id] = session.session_id
 
+        # Persist to DB
+        self._persist_session_to_db(session)
+
         # Schedule auto-termination
         asyncio.create_task(self._schedule_auto_terminate(session))
 
@@ -866,6 +1202,7 @@ class FirefighterManager:
 
         Only the original requester can retrieve credentials.
         """
+        self._ensure_loaded()
         session = self.sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -892,6 +1229,7 @@ class FirefighterManager:
                          ended_by: str,
                          reason: str = "Normal completion") -> FirefighterSession:
         """End an active firefighter session"""
+        self._ensure_loaded()
 
         session = self.sessions.get(session_id)
         if not session:
@@ -912,12 +1250,35 @@ class FirefighterManager:
         if session.firefighter_id in self.active_sessions_by_ff:
             del self.active_sessions_by_ff[session.firefighter_id]
 
+        # Persist session status change to DB
+        self._update_session_in_db(session)
+
         # Log session end
         await self.log_activity(
             session_id,
             'SESSION_END',
             {'ended_by': ended_by, 'reason': reason}
         )
+
+        # Record session end evidence
+        try:
+            from core.evidence.models import EvidenceType
+            self.evidence_engine.record(
+                evidence_type=EvidenceType.FIREFIGHTER_SESSION,
+                tenant_id=self._tenant_id,
+                actor_user_id=ended_by,
+                action="end_firefighter_session",
+                target_user_id=session.requester_user_id,
+                target_object_type="firefighter_session",
+                target_object_id=session_id,
+                session_id=session_id,
+                action_details={
+                    "reason": reason,
+                    "activity_count": session.activity_count,
+                },
+            )
+        except Exception as exc:
+            logger.warning(f"EvidenceEngine record skipped: {exc}")
 
         # Trigger review workflow if required
         if session.requires_review:
@@ -932,6 +1293,7 @@ class FirefighterManager:
                            revoked_by: str,
                            reason: str) -> FirefighterSession:
         """Revoke/force-terminate an active session"""
+        self._ensure_loaded()
 
         session = self.sessions.get(session_id)
         if not session:
@@ -947,6 +1309,9 @@ class FirefighterManager:
         # Remove from active sessions
         if session.firefighter_id in self.active_sessions_by_ff:
             del self.active_sessions_by_ff[session.firefighter_id]
+
+        # Persist revocation to DB
+        self._update_session_in_db(session)
 
         # Log revocation
         await self.log_activity(
@@ -987,6 +1352,8 @@ class FirefighterManager:
         Returns:
             Updated FirefighterSession
         """
+        self._ensure_loaded()
+
         session = self.sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -1017,6 +1384,9 @@ class FirefighterManager:
         session.end_time = session.end_time + timedelta(minutes=extension_minutes)
         session.extension_count += 1
         session.extension_history.append(extension_record)
+
+        # Persist extension to DB
+        self._update_session_in_db(session)
 
         # Log the extension
         await self.log_activity(
@@ -1084,9 +1454,32 @@ class FirefighterManager:
                    f"assigned to {controller['name']}, SLA: {sla_deadline}")
 
     def _get_assigned_controller(self, firefighter_id: str) -> Dict[str, str]:
-        """Get the assigned controller for a firefighter ID"""
-        # In production, this would query a controller assignment table
-        # For now, use a default mapping
+        """
+        Get the assigned controller for a firefighter ID.
+
+        First queries FirefighterIDConfig in the DB; falls back to the
+        hardcoded mapping if no DB record is found.
+        """
+        # --- DB lookup (primary) ---
+        try:
+            from db.models.firefighter import FirefighterIDConfig
+            if db_manager._initialized:
+                with db_manager.session_scope() as session:
+                    config = session.query(FirefighterIDConfig).filter_by(
+                        firefighter_id=firefighter_id,
+                        tenant_id=self._tenant_id,
+                        is_active=True,
+                    ).first()
+                    if config and config.controller_user_id:
+                        return {
+                            'id': config.controller_user_id,
+                            'name': config.controller_user_id,
+                            'email': f"{config.controller_user_id}@company.com",
+                        }
+        except Exception as e:
+            logger.debug(f"DB controller lookup failed for {firefighter_id}: {e}")
+
+        # --- Hardcoded fallback ---
         controller_mapping = {
             'FF_EMERGENCY_01': {
                 'id': 'controller1',
@@ -1166,6 +1559,7 @@ class FirefighterManager:
 
     async def start_controller_review(self, session_id: str, controller_id: str) -> ControllerReview:
         """Mark controller review as in progress"""
+        self._ensure_loaded()
         session = self.sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -1205,6 +1599,8 @@ class FirefighterManager:
         Returns:
             Updated ControllerReview
         """
+        self._ensure_loaded()
+
         session = self.sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -1228,6 +1624,9 @@ class FirefighterManager:
         session.reviewed_by = controller_id
         session.reviewed_at = review.completed_at
         session.review_comments = comments
+
+        # Persist review to DB
+        self._update_session_in_db(session)
 
         # If flagged, escalate to security
         if not approved:
@@ -1260,6 +1659,8 @@ class FirefighterManager:
         Returns:
             Complete audit evidence package
         """
+        self._ensure_loaded()
+
         session = self.sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -1430,6 +1831,7 @@ class FirefighterManager:
         Returns:
             List of matching sessions with summary info
         """
+        self._ensure_loaded()
         results = []
 
         for session in self.sessions.values():
@@ -1466,6 +1868,7 @@ class FirefighterManager:
                           is_sensitive: bool = False,
                           requires_review: bool = False) -> ActivityLog:
         """Log an activity during a firefighter session"""
+        self._ensure_loaded()
 
         session = self.sessions.get(session_id)
         if not session:
@@ -1498,6 +1901,21 @@ class FirefighterManager:
             # Alert in real-time
             await self._alert_sensitive_activity(session, activity)
 
+        # AI anomaly detection
+        anomaly = self._check_activity_anomaly(session, activity)
+        if anomaly:
+            activity.requires_review = True
+            # Store anomaly on action_details so it is visible in the audit log
+            if isinstance(activity.action_details, dict):
+                activity.action_details["_anomaly"] = anomaly
+            logger.warning(
+                f"Anomaly detected in session {session_id}: "
+                f"severity={anomaly['severity']} reason={anomaly['reason']}"
+            )
+
+        # Persist updated activity counts to DB
+        self._update_session_in_db(session)
+
         return activity
 
     async def get_session_activities(self, session_id: str) -> List[Dict]:
@@ -1518,6 +1936,7 @@ class FirefighterManager:
                           approved: bool,
                           comments: str) -> FirefighterSession:
         """Submit supervisor review for a completed session"""
+        self._ensure_loaded()
 
         session = self.sessions.get(session_id)
         if not session:
@@ -1530,6 +1949,9 @@ class FirefighterManager:
         session.reviewed_at = datetime.now()
         session.review_comments = comments
 
+        # Persist review to DB
+        self._update_session_in_db(session)
+
         if not approved:
             # Escalate to security
             await self._escalate_review(session, reviewer_id, comments)
@@ -1541,6 +1963,7 @@ class FirefighterManager:
 
     async def get_pending_reviews(self, reviewer_id: str) -> List[Dict]:
         """Get sessions pending review for a reviewer"""
+        self._ensure_loaded()
         pending = []
 
         for session in self.sessions.values():
@@ -1554,6 +1977,69 @@ class FirefighterManager:
     # ==========================================================================
     # Helper Methods
     # ==========================================================================
+
+    # Sensitive TCODEs that always trigger anomaly detection
+    _ANOMALY_SENSITIVE_TCODES = {"SE16", "SU01", "SM30", "SE38", "SA38", "SM37"}
+    # Activity count per session beyond which we flag volume anomaly
+    _ANOMALY_VOLUME_THRESHOLD = 50
+
+    def _check_activity_anomaly(
+        self,
+        session: "FirefighterSession",
+        activity: "ActivityLog",
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check whether a logged activity looks anomalous.
+
+        Checks performed:
+        1. Transaction code is in the sensitive TCODE list.
+        2. Activity is outside the stated reason-code scope (planned_actions).
+        3. Total activity count for the session exceeds the volume threshold.
+
+        Returns an anomaly dict with keys {severity, reason, checks} or None.
+        """
+        reasons = []
+        severity = "low"
+
+        tcode = activity.action_details.get("tcode", "") if isinstance(activity.action_details, dict) else ""
+
+        # Check 1 — sensitive TCODE
+        if tcode and tcode.upper() in self._ANOMALY_SENSITIVE_TCODES:
+            reasons.append(f"Sensitive TCODE executed: {tcode}")
+            severity = "high"
+
+        # Check 2 — outside scope (planned_actions declared at request time)
+        if tcode and session.planned_actions:
+            tcode_upper = tcode.upper()
+            planned_upper = [str(a).upper() for a in session.planned_actions]
+            if tcode_upper not in planned_upper and not any(tcode_upper in p for p in planned_upper):
+                reasons.append(
+                    f"TCODE {tcode} not in planned actions for reason code '{session.reason_code.value}'"
+                )
+                if severity == "low":
+                    severity = "medium"
+
+        # Check 3 — volume threshold
+        if session.activity_count >= self._ANOMALY_VOLUME_THRESHOLD:
+            reasons.append(
+                f"High activity volume: {session.activity_count} actions "
+                f"(threshold {self._ANOMALY_VOLUME_THRESHOLD})"
+            )
+            if severity == "low":
+                severity = "medium"
+
+        if not reasons:
+            return None
+
+        return {
+            "severity": severity,
+            "reason": "; ".join(reasons),
+            "checks": {
+                "sensitive_tcode": tcode in self._ANOMALY_SENSITIVE_TCODES if tcode else False,
+                "out_of_scope": any("not in planned" in r for r in reasons),
+                "high_volume": session.activity_count >= self._ANOMALY_VOLUME_THRESHOLD,
+            },
+        }
 
     def _generate_request_id(self) -> str:
         """Generate unique request ID"""
@@ -1638,6 +2124,9 @@ class FirefighterManager:
                 if session.firefighter_id in self.active_sessions_by_ff:
                     del self.active_sessions_by_ff[session.firefighter_id]
 
+                # Persist expiration to DB
+                self._update_session_in_db(current_session)
+
                 logger.info(f"Session {session.session_id} auto-terminated (expired)")
 
     async def _notify_approvers(self, request: FirefighterRequest):
@@ -1714,14 +2203,17 @@ class FirefighterManager:
 
     def get_request(self, request_id: str) -> Optional[FirefighterRequest]:
         """Get request by ID"""
+        self._ensure_loaded()
         return self.requests.get(request_id)
 
     def get_session(self, session_id: str) -> Optional[FirefighterSession]:
         """Get session by ID"""
+        self._ensure_loaded()
         return self.sessions.get(session_id)
 
     def get_active_sessions(self) -> List[Dict]:
         """Get all active sessions"""
+        self._ensure_loaded()
         return [
             s.to_dict() for s in self.sessions.values()
             if s.status == SessionStatus.ACTIVE
@@ -1729,6 +2221,7 @@ class FirefighterManager:
 
     def get_pending_requests(self) -> List[Dict]:
         """Get all pending approval requests"""
+        self._ensure_loaded()
         return [
             r.to_dict() for r in self.requests.values()
             if r.status == SessionStatus.PENDING_APPROVAL
@@ -1736,6 +2229,7 @@ class FirefighterManager:
 
     def get_user_sessions(self, user_id: str) -> List[Dict]:
         """Get all sessions for a user"""
+        self._ensure_loaded()
         return [
             s.to_dict() for s in self.sessions.values()
             if s.requester_user_id == user_id
@@ -1743,6 +2237,7 @@ class FirefighterManager:
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get firefighter usage statistics"""
+        self._ensure_loaded()
         total_sessions = len(self.sessions)
         active = sum(1 for s in self.sessions.values() if s.status == SessionStatus.ACTIVE)
         completed = sum(1 for s in self.sessions.values() if s.status == SessionStatus.COMPLETED)

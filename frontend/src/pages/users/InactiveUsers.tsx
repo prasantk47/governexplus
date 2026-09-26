@@ -1,24 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { api } from '../../services/api';
 import {
   ClockIcon,
   UserGroupIcon,
   ExclamationTriangleIcon,
   ShieldExclamationIcon,
   ArrowPathIcon,
-  FunnelIcon,
   MagnifyingGlassIcon,
   ChevronRightIcon,
   NoSymbolIcon,
   CheckCircleIcon,
-  XMarkIcon,
   DocumentArrowDownIcon,
-  EnvelopeIcon,
-  CalendarDaysIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
-import { ExclamationTriangleIcon as ExclamationSolid } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
 
 interface InactiveUser {
@@ -57,7 +53,7 @@ interface InactiveSummary {
 export function InactiveUsers() {
   const [data, setData] = useState<InactiveSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [daysThreshold, setDaysThreshold] = useState(90);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -71,12 +67,10 @@ export function InactiveUsers() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/user-profiles/inactive-users?days=${daysThreshold}&include_never_logged_in=true&limit=200`);
-      if (response.ok) {
-        setData(await response.json());
-      } else {
-        throw new Error('Failed to fetch data');
-      }
+      const response = await api.get('/user-profiles/inactive-users', {
+        params: { days: daysThreshold, include_never_logged_in: true, limit: 200 }
+      });
+      setData(response.data);
     } catch (err) {
       // Demo data
       setData({

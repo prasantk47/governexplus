@@ -710,6 +710,13 @@ class RuleEngine:
 
         logger.info(f"Loaded {len(default_rules)} default rules")
 
+        # Load full SoD ruleset library (121+ rules) via bridge
+        try:
+            from core.ara.ruleset_bridge import load_full_ruleset
+            load_full_ruleset(self)
+        except Exception as e:
+            logger.warning("Could not load SoD ruleset library: %s", e)
+
     def export_rules(self, format: str = "json") -> str:
         """Export all rules to JSON."""
         rules_data = [rule.to_dict() for rule in self.rules.values()]

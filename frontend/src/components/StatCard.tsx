@@ -25,7 +25,7 @@ export function StatCard({
     <div className="stat-card glossy">
       <div className="flex items-center gap-4">
         <div className={`stat-icon ${iconBgColor}`}>
-          <Icon className="h-5 w-5 relative z-10" />
+          <Icon className="h-6 w-6 relative z-10" />
         </div>
         <div>
           <div className="stat-label">{title}</div>

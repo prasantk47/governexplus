@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { riskApi, api } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon,
@@ -9,6 +11,7 @@ import {
   ShieldExclamationIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface SodRule {
@@ -26,120 +29,6 @@ interface SodRule {
   owner: string;
 }
 
-const mockRules: SodRule[] = [
-  {
-    id: 'SOD-001',
-    name: 'Create Vendor / Execute Payment',
-    description: 'Prevents users from both creating vendors and executing payments to those vendors',
-    category: 'Procure to Pay',
-    riskLevel: 'critical',
-    function1: 'FK01 - Create Vendor',
-    function2: 'F110 - Payment Run',
-    system: 'SAP ECC',
-    status: 'active',
-    violations: 12,
-    lastModified: '2024-01-10',
-    owner: 'Finance Control',
-  },
-  {
-    id: 'SOD-002',
-    name: 'Create PO / Release PO',
-    description: 'Separates purchase order creation from release approval',
-    category: 'Procurement',
-    riskLevel: 'high',
-    function1: 'ME21N - Create PO',
-    function2: 'ME29N - Release PO',
-    system: 'SAP ECC',
-    status: 'active',
-    violations: 8,
-    lastModified: '2024-01-08',
-    owner: 'Procurement',
-  },
-  {
-    id: 'SOD-003',
-    name: 'Post GL / Approve GL',
-    description: 'Prevents same user from posting and approving general ledger entries',
-    category: 'Financial Accounting',
-    riskLevel: 'critical',
-    function1: 'FB01 - Post Document',
-    function2: 'FB02 - Change/Approve Document',
-    system: 'SAP ECC',
-    status: 'active',
-    violations: 5,
-    lastModified: '2024-01-15',
-    owner: 'Finance Control',
-  },
-  {
-    id: 'SOD-004',
-    name: 'Create User / Assign Roles',
-    description: 'Separates user creation from role assignment in IAM',
-    category: 'Identity Management',
-    riskLevel: 'critical',
-    function1: 'Create User Account',
-    function2: 'Assign IAM Roles',
-    system: 'Azure AD',
-    status: 'active',
-    violations: 2,
-    lastModified: '2024-01-12',
-    owner: 'IT Security',
-  },
-  {
-    id: 'SOD-005',
-    name: 'HR Data Change / Payroll Execution',
-    description: 'Prevents HR staff from both changing employee data and processing payroll',
-    category: 'HR Management',
-    riskLevel: 'high',
-    function1: 'Update Employee Master',
-    function2: 'Execute Payroll',
-    system: 'Workday',
-    status: 'active',
-    violations: 0,
-    lastModified: '2024-01-05',
-    owner: 'HR Control',
-  },
-  {
-    id: 'SOD-006',
-    name: 'Deploy Code / Approve Deployment',
-    description: 'Separates code deployment from deployment approval in CI/CD',
-    category: 'IT Operations',
-    riskLevel: 'high',
-    function1: 'Deploy to Production',
-    function2: 'Approve Deployment',
-    system: 'AWS',
-    status: 'active',
-    violations: 3,
-    lastModified: '2024-01-14',
-    owner: 'DevOps',
-  },
-  {
-    id: 'SOD-007',
-    name: 'Create Invoice / Process Payment',
-    description: 'Prevents same user from creating and paying invoices',
-    category: 'Accounts Payable',
-    riskLevel: 'critical',
-    function1: 'MIRO - Enter Invoice',
-    function2: 'F110 - Payment Run',
-    system: 'SAP ECC',
-    status: 'inactive',
-    violations: 0,
-    lastModified: '2024-01-02',
-    owner: 'Finance Control',
-  },
-  {
-    id: 'SOD-008',
-    name: 'Goods Receipt / Invoice Verification',
-    description: 'Three-way match control for goods receipt and invoice',
-    category: 'Procure to Pay',
-    riskLevel: 'high',
-    function1: 'MIGO - Goods Receipt',
-    function2: 'MIRO - Invoice Verification',
-    system: 'SAP ECC',
-    status: 'draft',
-    violations: 0,
-    lastModified: '2024-01-18',
-    owner: 'Procurement',
-  },
-];
 
 const riskConfig = {
   high: { color: 'bg-orange-100 text-orange-800', label: 'High Risk' },
@@ -152,16 +41,113 @@ const statusConfig = {
   draft: { color: 'bg-yellow-100 text-yellow-800', label: 'Draft' },
 };
 
+interface RuleFormData {
+  name: string;
+  description: string;
+  severity: string;
+  rule_definition: { function1: string; function2: string };
+  applies_to_systems: string[];
+  is_enabled: boolean;
+}
+
+const emptyFormData: RuleFormData = {
+  name: '',
+  description: '',
+  severity: 'high',
+  rule_definition: { function1: '', function2: '' },
+  applies_to_systems: ['*'],
+  is_enabled: true,
+};
+
 export function RiskRules() {
+  const queryClient = useQueryClient();
+  const { data: rulesData } = useQuery({
+    queryKey: ['risk-rules'],
+    queryFn: () => riskApi.listRules().then(r => r.data),
+  });
+  const rules: SodRule[] = Array.isArray(rulesData) ? rulesData : (rulesData as any)?.rules || [];
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [systemFilter, setSystemFilter] = useState<string>('all');
 
-  const categories = [...new Set(mockRules.map((r) => r.category))];
-  const systems = [...new Set(mockRules.map((r) => r.system))];
+  // Modal state
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingRule, setEditingRule] = useState<SodRule | null>(null);
+  const [formData, setFormData] = useState<RuleFormData>(emptyFormData);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const filteredRules = mockRules.filter((rule) => {
+  const openCreateModal = () => {
+    setEditingRule(null);
+    setFormData(emptyFormData);
+    setShowFormModal(true);
+  };
+
+  const openEditModal = (rule: SodRule) => {
+    setEditingRule(rule);
+    setFormData({
+      name: rule.name,
+      description: rule.description,
+      severity: rule.riskLevel,
+      rule_definition: { function1: rule.function1, function2: rule.function2 },
+      applies_to_systems: [rule.system],
+      is_enabled: rule.status === 'active',
+    });
+    setShowFormModal(true);
+  };
+
+  const handleFormSubmit = async () => {
+    if (!formData.name.trim()) { toast.error('Rule name is required'); return; }
+    setFormSubmitting(true);
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        severity: formData.severity,
+        rule_definition: formData.rule_definition,
+        applies_to_systems: formData.applies_to_systems,
+        is_enabled: formData.is_enabled,
+      };
+      if (editingRule) {
+        await api.put(`/sod-rules/custom/${editingRule.id}`, payload);
+        toast.success(`Rule "${formData.name}" updated`);
+      } else {
+        await api.post('/sod-rules/custom', payload);
+        toast.success(`Rule "${formData.name}" created`);
+      }
+      setShowFormModal(false);
+      queryClient.invalidateQueries({ queryKey: ['risk-rules'] });
+    } catch {
+      toast.error(editingRule ? 'Failed to update rule' : 'Failed to create rule');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (ruleId: string) => {
+    try {
+      await api.put(`/sod-rules/builtin/${ruleId}/toggle`, null, { params: { enabled: false, reason: 'Deactivated via UI' } });
+      toast.success('Rule deactivated');
+      setDeleteConfirmId(null);
+      queryClient.invalidateQueries({ queryKey: ['risk-rules'] });
+    } catch {
+      try {
+        await api.delete(`/sod-rules/custom/${ruleId}`);
+        toast.success('Rule deleted');
+        setDeleteConfirmId(null);
+        queryClient.invalidateQueries({ queryKey: ['risk-rules'] });
+      } catch {
+        toast.error('Failed to remove rule');
+      }
+    }
+  };
+
+  const categories = [...new Set(rules.map((r) => r.category))];
+  const systems = [...new Set(rules.map((r) => r.system))];
+
+  const filteredRules = rules.filter((rule) => {
     const matchesSearch =
       rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rule.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -171,9 +157,9 @@ export function RiskRules() {
     return matchesSearch && matchesCategory && matchesStatus && matchesSystem;
   });
 
-  const activeRules = mockRules.filter((r) => r.status === 'active').length;
-  const totalViolations = mockRules.reduce((acc, r) => acc + r.violations, 0);
-  const criticalRules = mockRules.filter((r) => r.riskLevel === 'critical').length;
+  const activeRules = rules.filter((r) => r.status === 'active').length;
+  const totalViolations = rules.reduce((acc, r) => acc + r.violations, 0);
+  const criticalRules = rules.filter((r) => r.riskLevel === 'critical').length;
 
   return (
     <div className="space-y-5">
@@ -186,7 +172,7 @@ export function RiskRules() {
           </p>
         </div>
         <button
-          onClick={() => toast.success('Rule creation wizard will open here')}
+          onClick={openCreateModal}
           className="btn-primary"
         >
           <PlusIcon className="h-4 w-4 mr-1.5" />
@@ -203,7 +189,7 @@ export function RiskRules() {
             </div>
             <div>
               <div className="stat-label">Total Rules</div>
-              <div className="stat-value">{mockRules.length}</div>
+              <div className="stat-value">{rules.length}</div>
             </div>
           </div>
         </div>
@@ -375,13 +361,13 @@ export function RiskRules() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button
-                      onClick={() => toast.success(`Editing rule ${rule.id}...`)}
+                      onClick={() => openEditModal(rule)}
                       className="text-primary-600 hover:text-primary-900 mr-3"
                     >
                       <PencilIcon className="h-4 w-4 inline" />
                     </button>
                     <button
-                      onClick={() => toast.success(`Rule ${rule.id} deleted`)}
+                      onClick={() => setDeleteConfirmId(rule.id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       <TrashIcon className="h-4 w-4 inline" />
@@ -400,6 +386,123 @@ export function RiskRules() {
           </div>
         )}
       </div>
+
+      {/* Create / Edit Rule Modal */}
+      {showFormModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingRule ? 'Edit Rule' : 'Create New Rule'}
+              </h2>
+              <button onClick={() => setShowFormModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="e.g., Purchase Order / Vendor Master"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Function 1</label>
+                  <input
+                    type="text"
+                    value={formData.rule_definition.function1}
+                    onChange={(e) => setFormData({ ...formData, rule_definition: { ...formData.rule_definition, function1: e.target.value } })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="e.g., AP01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Function 2</label>
+                  <input
+                    type="text"
+                    value={formData.rule_definition.function2}
+                    onChange={(e) => setFormData({ ...formData, rule_definition: { ...formData.rule_definition, function2: e.target.value } })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="e.g., AP02"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Severity</label>
+                  <select
+                    value={formData.severity}
+                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">System</label>
+                  <input
+                    type="text"
+                    value={formData.applies_to_systems[0] === '*' ? '' : formData.applies_to_systems[0]}
+                    onChange={(e) => setFormData({ ...formData, applies_to_systems: [e.target.value || '*'] })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="e.g., SAP ECC (blank = all)"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_enabled}
+                  onChange={(e) => setFormData({ ...formData, is_enabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-600"
+                />
+                <label className="text-sm text-gray-700 dark:text-gray-300">Active</label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200 dark:border-gray-700">
+              <button onClick={() => setShowFormModal(false)} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
+              <button
+                onClick={handleFormSubmit}
+                disabled={formSubmitting}
+                className="btn-primary"
+              >
+                {formSubmitting ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Deactivate Rule?</h3>
+            <p className="text-sm text-gray-500 mb-4">This will deactivate the rule. It will no longer trigger during risk analysis.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
+              <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">Deactivate</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

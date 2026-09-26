@@ -50,10 +50,14 @@ class ComplianceReportRequest(BaseModel):
 @router.get("/logs")
 async def get_audit_logs(
     action: Optional[str] = Query(None, description="Filter by action type"),
+    category: Optional[str] = Query(None, description="Filter by category (user, role, risk, firefighter, approver, system)"),
     actor: Optional[str] = Query(None, description="Filter by actor user ID"),
     target_id: Optional[str] = Query(None, description="Filter by target ID"),
+    target_type: Optional[str] = Query(None, description="Filter by target type (User, Role, Approver, etc.)"),
+    search: Optional[str] = Query(None, description="Search across actor, target name/ID"),
     start_date: Optional[datetime] = Query(None, description="Start date filter"),
     end_date: Optional[datetime] = Query(None, description="End date filter"),
+    compliance_only: bool = Query(False, description="Only compliance-relevant entries"),
     success_only: bool = Query(False, description="Only return successful actions"),
     limit: int = Query(100, le=1000, description="Maximum results"),
     offset: int = Query(0, description="Offset for pagination")
@@ -67,27 +71,37 @@ async def get_audit_logs(
         try:
             action_enum = AuditAction(action)
         except ValueError:
-            # Try to match by name
             for a in AuditAction:
                 if a.value == action or a.name.lower() == action.lower():
                     action_enum = a
                     break
 
-    logs = audit_logger.query(
+    filter_params = dict(
         action=action_enum,
+        category=category,
         actor_user_id=actor,
         target_id=target_id,
+        target_type=target_type,
+        search=search,
         start_date=start_date,
         end_date=end_date,
+        compliance_only=compliance_only,
         success_only=success_only,
+    )
+
+    total = audit_logger.count(**filter_params)
+
+    logs = audit_logger.query(
+        **filter_params,
         limit=limit,
         offset=offset
     )
 
     return {
-        'total': len(logs),
+        'total': total,
         'offset': offset,
         'limit': limit,
+        'has_more': (offset + limit) < total,
         'logs': [log.to_dict() for log in logs]
     }
 
@@ -109,6 +123,8 @@ async def list_audit_actions():
             category = 'Risk Management'
         elif name.startswith('ff_'):
             category = 'Firefighter'
+        elif name.startswith('approver_'):
+            category = 'Approver Management'
         else:
             category = 'System'
 
@@ -324,24 +340,40 @@ async def export_audit_logs_csv(
         limit=10000
     )
 
-    # Format for CSV
+    # Format for CSV with full detail columns
+    import json as _json
+
     rows = []
     for log in logs:
         rows.append({
             'timestamp': log.timestamp.isoformat(),
             'action': log.action.value,
+            'category': log.action_category or '',
             'actor_user_id': log.actor_user_id or '',
             'actor_username': log.actor_username or '',
+            'actor_type': log.actor_type or '',
             'target_type': log.target_type or '',
             'target_id': log.target_id or '',
+            'target_name': log.target_name or '',
             'success': 'Yes' if log.success else 'No',
-            'error': log.error_message or ''
+            'error': log.error_message or '',
+            'details': _json.dumps(log.details) if log.details else '',
+            'old_values': _json.dumps(log.old_values) if log.old_values else '',
+            'new_values': _json.dumps(log.new_values) if log.new_values else '',
+            'compliance_relevant': 'Yes' if log.compliance_relevant else 'No',
+            'compliance_tags': ', '.join(log.compliance_tags) if log.compliance_tags else '',
         })
 
     return {
         'format': 'csv',
         'row_count': len(rows),
-        'columns': ['timestamp', 'action', 'actor_user_id', 'actor_username',
-                   'target_type', 'target_id', 'success', 'error'],
+        'columns': [
+            'timestamp', 'action', 'category',
+            'actor_user_id', 'actor_username', 'actor_type',
+            'target_type', 'target_id', 'target_name',
+            'success', 'error',
+            'details', 'old_values', 'new_values',
+            'compliance_relevant', 'compliance_tags',
+        ],
         'data': rows
     }

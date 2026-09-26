@@ -21,6 +21,7 @@ GOVERNEX+ uses ONE unified orchestrator that adapts to ANY process.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
+import json
 import logging
 
 from .models import (
@@ -81,6 +82,75 @@ class OrchestrationContext:
     created_at: datetime = field(default_factory=datetime.now)
     last_activity: datetime = field(default_factory=datetime.now)
 
+    def to_serializable(self) -> Dict[str, Any]:
+        """Serialize context to a JSON-safe dict for DB persistence."""
+        data: Dict[str, Any] = {
+            "request_id": self.request_id,
+            "process_type": self.process_type.value if self.process_type else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "last_activity": self.last_activity.isoformat() if self.last_activity else None,
+            "pending_approvals": self.pending_approvals,
+        }
+        # Workflow context
+        if self.workflow_context:
+            data["workflow_context"] = {
+                "request_id": self.workflow_context.request_id,
+                "process_type": self.workflow_context.process_type.value,
+                "requester_id": getattr(self.workflow_context, "requester_id", ""),
+                "risk_score": getattr(self.workflow_context, "risk_score", 0),
+                "metadata": getattr(self.workflow_context, "metadata", {}),
+            }
+        # Workflow status snapshot
+        if self.workflow:
+            data["workflow_id"] = self.workflow.workflow_id
+            data["workflow_status"] = self.workflow.status.value
+            data["workflow_steps"] = [
+                {
+                    "step_id": s.step_id,
+                    "name": s.name,
+                    "status": s.status.value,
+                    "approver_id": s.approver_id,
+                    "approver_name": getattr(s, "approver_name", ""),
+                }
+                for s in self.workflow.steps
+            ]
+        # Access request summary
+        if self.access_request:
+            try:
+                data["access_request"] = self.access_request.to_dict()
+            except Exception:
+                data["access_request"] = {"request_id": getattr(self.access_request, "request_id", "")}
+        return data
+
+    @classmethod
+    def from_serializable(cls, data: Dict[str, Any]) -> "OrchestrationContext":
+        """
+        Restore a *partial* OrchestrationContext from serialized data.
+
+        Not all runtime objects (Workflow, AccessRequest) can be fully
+        reconstituted from JSON alone.  The restored context retains
+        enough state for status queries and audit, but callers should
+        treat it as read-mostly until a fresh submission replaces it.
+        """
+        ctx = cls()
+        ctx.request_id = data.get("request_id", "")
+        try:
+            ctx.process_type = ProcessType(data["process_type"]) if data.get("process_type") else ProcessType.ACCESS_REQUEST
+        except (ValueError, KeyError):
+            ctx.process_type = ProcessType.ACCESS_REQUEST
+        ctx.pending_approvals = data.get("pending_approvals", [])
+        if data.get("created_at"):
+            try:
+                ctx.created_at = datetime.fromisoformat(data["created_at"])
+            except (ValueError, TypeError):
+                pass
+        if data.get("last_activity"):
+            try:
+                ctx.last_activity = datetime.fromisoformat(data["last_activity"])
+            except (ValueError, TypeError):
+                pass
+        return ctx
+
 
 @dataclass
 class OrchestrationResult:
@@ -140,12 +210,16 @@ class WorkflowOrchestrator:
         resolver_registry: Optional[ResolverRegistry] = None,
         provisioning_policy: Optional[ProvisioningPolicy] = None,
         sla_config: Optional[SLAConfig] = None,
+        tenant_id: str = "tenant_default",
     ):
         """
         Initialize orchestrator with optional custom components.
 
         Default components are created if not provided.
         """
+        # Tenant
+        self._tenant_id = tenant_id
+
         # Core components
         self.policy_engine = policy_engine or PolicyEngine()
         self.assembler = WorkflowAssembler(self.policy_engine)
@@ -162,13 +236,106 @@ class WorkflowOrchestrator:
         self.reevaluation_engine = ReEvaluationEngine()
         self._setup_reevaluation_actions()
 
-        # Active contexts (in-memory for now, should be persisted)
+        # Active contexts (in-memory cache, persisted to DB)
         self._contexts: Dict[str, OrchestrationContext] = {}
 
         # Callbacks
         self._on_workflow_complete: Optional[Callable] = None
         self._on_item_provisioned: Optional[Callable] = None
         self._on_sla_breach: Optional[Callable] = None
+
+        # Load previously persisted contexts
+        self._load_contexts()
+
+    # ============================================================
+    # PERSISTENCE HELPERS
+    # ============================================================
+
+    def _save_context(self, context_id: str, context: OrchestrationContext) -> None:
+        """Serialize and persist a single orchestration context to the DB."""
+        try:
+            from db.database import db_manager
+            from db.models.operations import OrchestrationContextRecord
+
+            db_manager.init()
+            db_manager.create_tables()
+
+            serialized = context.to_serializable()
+            workflow_status = serialized.get("workflow_status")
+            process_type = serialized.get("process_type", "ACCESS_REQUEST")
+
+            with db_manager.session_scope() as session:
+                record = (
+                    session.query(OrchestrationContextRecord)
+                    .filter(
+                        OrchestrationContextRecord.tenant_id == self._tenant_id,
+                        OrchestrationContextRecord.context_id == context_id,
+                    )
+                    .first()
+                )
+                if record:
+                    record.context_data = serialized
+                    record.workflow_status = workflow_status
+                    record.process_type = process_type
+                else:
+                    session.add(OrchestrationContextRecord(
+                        tenant_id=self._tenant_id,
+                        context_id=context_id,
+                        process_type=process_type,
+                        workflow_status=workflow_status,
+                        context_data=serialized,
+                    ))
+            logger.debug(f"Persisted orchestration context {context_id}")
+        except Exception as e:
+            logger.warning(f"Failed to persist context {context_id}: {e}")
+
+    def _load_contexts(self) -> None:
+        """Load all persisted contexts for this tenant into the in-memory cache."""
+        try:
+            from db.database import db_manager
+            from db.models.operations import OrchestrationContextRecord
+
+            db_manager.init()
+            db_manager.create_tables()
+
+            with db_manager.session_scope() as session:
+                records = (
+                    session.query(OrchestrationContextRecord)
+                    .filter(OrchestrationContextRecord.tenant_id == self._tenant_id)
+                    .all()
+                )
+                for record in records:
+                    try:
+                        ctx = OrchestrationContext.from_serializable(record.context_data)
+                        self._contexts[record.context_id] = ctx
+                    except Exception as exc:
+                        logger.warning(
+                            f"Skipping corrupt context {record.context_id}: {exc}"
+                        )
+            if self._contexts:
+                logger.info(
+                    f"Loaded {len(self._contexts)} persisted orchestration "
+                    f"context(s) for tenant {self._tenant_id}"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to load persisted contexts: {e}")
+
+    def _remove_context(self, context_id: str) -> None:
+        """Remove a persisted context from the DB."""
+        try:
+            from db.database import db_manager
+            from db.models.operations import OrchestrationContextRecord
+
+            db_manager.init()
+
+            with db_manager.session_scope() as session:
+                session.query(OrchestrationContextRecord).filter(
+                    OrchestrationContextRecord.tenant_id == self._tenant_id,
+                    OrchestrationContextRecord.context_id == context_id,
+                ).delete()
+            logger.debug(f"Removed persisted context {context_id}")
+        except Exception as e:
+            logger.warning(f"Failed to remove persisted context {context_id}: {e}")
 
     def _setup_reevaluation_actions(self) -> None:
         """Configure re-evaluation action executors."""
@@ -303,8 +470,9 @@ class WorkflowOrchestrator:
             result.audit_id = context.workflow.workflow_id
             result.actions.append("AUDIT_CREATED")
 
-            # Store context
+            # Store context (in-memory + DB)
             self._contexts[context.request_id] = context
+            self._save_context(context.request_id, context)
 
             result.success = True
             result.message = f"Request {context.request_id} submitted successfully"
@@ -417,6 +585,9 @@ class WorkflowOrchestrator:
                 result.actions.append(f"WORKFLOW_{context.workflow.status.value}")
                 if self._on_workflow_complete:
                     self._on_workflow_complete(context.workflow)
+
+            # Persist updated context
+            self._save_context(request_id, context)
 
             result.success = True
             result.message = f"Decision {decision} recorded for step {step_id}"
@@ -535,6 +706,9 @@ class WorkflowOrchestrator:
                 prov_result = self.provisioning_engine.evaluate_request(context.access_request)
                 result.provisioning_result = prov_result
 
+            # Persist updated context
+            self._save_context(request_id, context)
+
             result.success = True
             result.message = f"Risk change processed: {old_score} -> {new_score}"
 
@@ -588,6 +762,7 @@ class WorkflowOrchestrator:
                         "workflow_id": context.workflow.workflow_id if context.workflow else None,
                     })
                     result.reevaluation_results.extend(reeval_results)
+                    self._save_context(request_id, context)
 
             # If no specific requests, process globally
             if not affected_requests:

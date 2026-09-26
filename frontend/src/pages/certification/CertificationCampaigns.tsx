@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { certificationApi } from '../../services/api';
 import {
   PlusIcon,
   PlayIcon,
@@ -26,73 +28,6 @@ interface Campaign {
   owner: string;
 }
 
-const mockCampaigns: Campaign[] = [
-  {
-    id: 'CERT-2024-001',
-    name: 'Q1 2024 User Access Review',
-    type: 'user_access',
-    status: 'active',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
-    progress: 78,
-    totalItems: 1250,
-    completedItems: 975,
-    reviewers: 45,
-    owner: 'Sarah Director',
-  },
-  {
-    id: 'CERT-2024-002',
-    name: 'SAP Sensitive Access Review',
-    type: 'sensitive_access',
-    status: 'active',
-    startDate: '2024-01-15',
-    endDate: '2024-02-15',
-    progress: 35,
-    totalItems: 180,
-    completedItems: 63,
-    reviewers: 12,
-    owner: 'IT Security Team',
-  },
-  {
-    id: 'CERT-2024-003',
-    name: 'Manager Quarterly Review',
-    type: 'manager_review',
-    status: 'scheduled',
-    startDate: '2024-02-01',
-    endDate: '2024-02-28',
-    progress: 0,
-    totalItems: 850,
-    completedItems: 0,
-    reviewers: 32,
-    owner: 'HR Director',
-  },
-  {
-    id: 'CERT-2024-004',
-    name: 'Admin Role Certification',
-    type: 'role_membership',
-    status: 'completed',
-    startDate: '2023-12-01',
-    endDate: '2023-12-31',
-    progress: 100,
-    totalItems: 95,
-    completedItems: 95,
-    reviewers: 8,
-    owner: 'IT Manager',
-  },
-  {
-    id: 'CERT-2024-005',
-    name: 'Finance SOX Review',
-    type: 'user_access',
-    status: 'paused',
-    startDate: '2024-01-10',
-    endDate: '2024-02-10',
-    progress: 45,
-    totalItems: 320,
-    completedItems: 144,
-    reviewers: 15,
-    owner: 'Finance Director',
-  },
-];
 
 const typeConfig = {
   user_access: { label: 'User Access Review', color: 'bg-blue-100 text-blue-800' },
@@ -111,19 +46,28 @@ const statusConfig = {
 export function CertificationCampaigns() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredCampaigns = mockCampaigns.filter(
+  const { data: campaignsData } = useQuery({
+    queryKey: ['certificationCampaigns'],
+    queryFn: () => certificationApi.listCampaigns().then(r => r.data),
+  });
+
+  const campaigns: Campaign[] = Array.isArray(campaignsData) ? campaignsData : (campaignsData as any)?.campaigns || [];
+
+  const filteredCampaigns = campaigns.filter(
     (c) => statusFilter === 'all' || c.status === statusFilter
   );
 
-  const activeCampaigns = mockCampaigns.filter((c) => c.status === 'active').length;
-  const totalPendingReviews = mockCampaigns
+  const activeCampaigns = campaigns.filter((c) => c.status === 'active').length;
+  const totalPendingReviews = campaigns
     .filter((c) => c.status === 'active')
     .reduce((acc, c) => acc + (c.totalItems - c.completedItems), 0);
-  const avgProgress = Math.round(
-    mockCampaigns
-      .filter((c) => c.status === 'active')
-      .reduce((acc, c) => acc + c.progress, 0) / activeCampaigns || 0
-  );
+  const avgProgress = activeCampaigns > 0
+    ? Math.round(
+        campaigns
+          .filter((c) => c.status === 'active')
+          .reduce((acc, c) => acc + c.progress, 0) / activeCampaigns
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -187,7 +131,7 @@ export function CertificationCampaigns() {
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-500">Total Reviewers</div>
               <div className="text-2xl font-bold text-gray-900">
-                {mockCampaigns.reduce((acc, c) => acc + c.reviewers, 0)}
+                {campaigns.reduce((acc, c) => acc + c.reviewers, 0)}
               </div>
             </div>
           </div>

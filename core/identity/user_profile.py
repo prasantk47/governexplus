@@ -371,429 +371,92 @@ class UserProfileService:
         self.profiles: Dict[str, UnifiedUserProfile] = {}
         self.employee_index: Dict[str, str] = {}  # employee_id -> user_id
         self.email_index: Dict[str, str] = {}     # email -> user_id
-        self._init_demo_data()
+        self._load_from_db()
 
-    def _init_demo_data(self):
-        """Initialize with demo user profiles"""
-        demo_profiles = [
-            UnifiedUserProfile(
-                user_id="JSMITH",
-                employee_id="EMP001",
-                ad_account="john.smith",
-                upn="john.smith@company.com",
-                first_name="John",
-                last_name="Smith",
-                full_name="John Smith",
-                display_name="John Smith",
-                email="john.smith@company.com",
-                phone="+1-555-0101",
-                job_title="Senior Financial Analyst",
-                job_code="FIN-003",
-                job_family="Finance",
-                job_level="Senior",
-                employment_type=EmploymentType.FULL_TIME,
-                organization=OrganizationInfo(
-                    company_code="1000",
-                    company_name="ACME Corporation",
-                    cost_center="CC1001",
-                    cost_center_name="Finance Operations",
-                    department="FIN",
-                    department_name="Finance",
-                    org_unit="FIN-001",
-                    org_unit_name="Accounts Payable",
-                    location="NYC",
-                    location_name="New York Office",
-                    country="US",
-                    region="North America",
-                    business_unit="Corporate",
-                    division="Finance & Accounting"
-                ),
-                manager=ManagerInfo(
-                    user_id="RJOHNSON",
-                    employee_id="EMP010",
-                    name="Robert Johnson",
-                    email="robert.johnson@company.com",
-                    title="Finance Director",
-                    department="Finance"
-                ),
-                hire_date=date(2019, 3, 15),
-                position_start_date=date(2022, 1, 1),
-                status=UserStatus.ACTIVE,
-                sap_user_type="Dialog",
-                sap_last_login=datetime(2024, 1, 15, 9, 30),
-                sap_license_type="Professional",
-                access_summary=AccessSummary(
-                    total_roles=5,
-                    total_profiles=0,
-                    total_transactions=45,
-                    systems=["SAP_ECC", "SAP_S4"],
-                    role_list=[
-                        {"role_name": "Z_FI_AP_CLERK", "description": "AP Clerk"},
-                        {"role_name": "Z_FI_VENDOR_MAINT", "description": "Vendor Maintenance"},
-                        {"role_name": "Z_MM_PO_CREATE", "description": "PO Creation"},
-                        {"role_name": "Z_FI_PAYMENT", "description": "Payment Processing"},
-                        {"role_name": "Z_REPORTING_FIN", "description": "Financial Reports"}
-                    ],
-                    sensitive_transactions=["F110", "FK01", "ME21N"],
-                    privileged_access=False,
-                    firefighter_eligible=True
-                ),
-                risk_profile=RiskProfile(
-                    overall_risk_level="high",
-                    risk_score=75.0,
-                    sod_violation_count=2,
-                    sensitive_access_count=5,
-                    high_risk_roles=["Z_FI_PAYMENT"],
-                    active_mitigations=1,
-                    last_certification_date=datetime(2023, 12, 1),
-                    certification_status="certified",
-                    firefighter_usage_count=3,
-                    policy_violations=0,
-                    anomaly_score=0.2
-                ),
-                requires_sod_review=True,
-                requires_certification=False,
-                data_sources=[UserSource.HR_SYSTEM, UserSource.SAP_SYSTEM, UserSource.GRC_PLATFORM],
-                last_sync=datetime.now(),
-                pending_requests=0,
-                total_requests=8
-            ),
-            UnifiedUserProfile(
-                user_id="MBROWN",
-                employee_id="EMP002",
-                ad_account="mary.brown",
-                upn="mary.brown@company.com",
-                first_name="Mary",
-                last_name="Brown",
-                full_name="Mary Brown",
-                display_name="Mary Brown",
-                email="mary.brown@company.com",
-                phone="+1-555-0102",
-                job_title="Procurement Specialist",
-                job_code="PROC-002",
-                job_family="Procurement",
-                job_level="Mid",
-                employment_type=EmploymentType.FULL_TIME,
-                organization=OrganizationInfo(
-                    company_code="1000",
-                    company_name="ACME Corporation",
-                    cost_center="CC2001",
-                    cost_center_name="Procurement",
-                    department="PROC",
-                    department_name="Procurement",
-                    org_unit="PROC-001",
-                    org_unit_name="Strategic Sourcing",
-                    location="CHI",
-                    location_name="Chicago Office",
-                    country="US",
-                    region="North America",
-                    business_unit="Operations",
-                    division="Supply Chain"
-                ),
-                manager=ManagerInfo(
-                    user_id="SWILLIAMS",
-                    employee_id="EMP011",
-                    name="Sarah Williams",
-                    email="sarah.williams@company.com",
-                    title="Procurement Manager",
-                    department="Procurement"
-                ),
-                hire_date=date(2020, 6, 1),
-                position_start_date=date(2020, 6, 1),
-                status=UserStatus.ACTIVE,
-                sap_user_type="Dialog",
-                sap_last_login=datetime(2024, 1, 15, 8, 45),
-                sap_license_type="Professional",
-                access_summary=AccessSummary(
-                    total_roles=3,
-                    total_profiles=0,
-                    total_transactions=30,
-                    systems=["SAP_ECC"],
-                    role_list=[
-                        {"role_name": "Z_MM_PURCHASER", "description": "Purchaser"},
-                        {"role_name": "Z_MM_PO_CREATE", "description": "PO Creation"},
-                        {"role_name": "Z_MM_GR_POST", "description": "Goods Receipt"}
-                    ],
-                    sensitive_transactions=["ME21N", "ME22N", "MIGO"],
-                    privileged_access=False,
-                    firefighter_eligible=False
-                ),
-                risk_profile=RiskProfile(
-                    overall_risk_level="medium",
-                    risk_score=45.0,
-                    sod_violation_count=1,
-                    sensitive_access_count=3,
-                    high_risk_roles=[],
-                    active_mitigations=0,
-                    last_certification_date=datetime(2023, 11, 15),
-                    certification_status="certified",
-                    firefighter_usage_count=0,
-                    policy_violations=0,
-                    anomaly_score=0.1
-                ),
-                requires_sod_review=True,
-                requires_certification=False,
-                data_sources=[UserSource.HR_SYSTEM, UserSource.SAP_SYSTEM, UserSource.GRC_PLATFORM],
-                last_sync=datetime.now(),
-                pending_requests=1,
-                total_requests=5
-            ),
-            UnifiedUserProfile(
-                user_id="TDAVIS",
-                employee_id="EMP003",
-                ad_account="tom.davis",
-                upn="tom.davis@company.com",
-                first_name="Tom",
-                last_name="Davis",
-                full_name="Tom Davis",
-                display_name="Tom Davis",
-                email="tom.davis@company.com",
-                phone="+1-555-0103",
-                job_title="SAP Basis Administrator",
-                job_code="IT-005",
-                job_family="IT",
-                job_level="Senior",
-                employment_type=EmploymentType.FULL_TIME,
-                organization=OrganizationInfo(
-                    company_code="1000",
-                    company_name="ACME Corporation",
-                    cost_center="CC3001",
-                    cost_center_name="IT Operations",
-                    department="IT",
-                    department_name="Information Technology",
-                    org_unit="IT-002",
-                    org_unit_name="SAP Administration",
-                    location="NYC",
-                    location_name="New York Office",
-                    country="US",
-                    region="North America",
-                    business_unit="Corporate",
-                    division="IT"
-                ),
-                manager=ManagerInfo(
-                    user_id="MTHOMPSON",
-                    employee_id="EMP012",
-                    name="Michael Thompson",
-                    email="michael.thompson@company.com",
-                    title="IT Director",
-                    department="IT"
-                ),
-                hire_date=date(2018, 9, 1),
-                position_start_date=date(2021, 4, 1),
-                status=UserStatus.ACTIVE,
-                sap_user_type="Dialog",
-                sap_last_login=datetime(2024, 1, 15, 7, 0),
-                sap_license_type="Professional",
-                access_summary=AccessSummary(
-                    total_roles=2,
-                    total_profiles=1,
-                    total_transactions=500,
-                    systems=["SAP_ECC", "SAP_S4", "SAP_BW"],
-                    role_list=[
-                        {"role_name": "SAP_ALL", "description": "Full Authorization"},
-                        {"role_name": "Z_BASIS_ADMIN", "description": "Basis Admin"}
-                    ],
-                    profile_list=[
-                        {"profile_name": "SAP_ALL", "description": "All Authorizations"}
-                    ],
-                    sensitive_transactions=["SU01", "SM21", "SE16", "SA38"],
-                    privileged_access=True,
-                    firefighter_eligible=False
-                ),
-                risk_profile=RiskProfile(
-                    overall_risk_level="critical",
-                    risk_score=95.0,
-                    sod_violation_count=0,
-                    sensitive_access_count=50,
-                    high_risk_roles=["SAP_ALL"],
-                    active_mitigations=2,
-                    last_certification_date=datetime(2024, 1, 1),
-                    certification_status="certified",
-                    firefighter_usage_count=0,
-                    policy_violations=0,
-                    anomaly_score=0.05
-                ),
-                requires_sod_review=False,
-                requires_certification=True,
-                compliance_flags=["SAP_ALL_PROFILE", "PRIVILEGED_ACCESS"],
-                data_sources=[UserSource.HR_SYSTEM, UserSource.SAP_SYSTEM, UserSource.GRC_PLATFORM],
-                last_sync=datetime.now(),
-                pending_requests=0,
-                total_requests=2
-            ),
-            UnifiedUserProfile(
-                user_id="AWILSON",
-                employee_id="EMP004",
-                ad_account="alice.wilson",
-                upn="alice.wilson@company.com",
-                first_name="Alice",
-                last_name="Wilson",
-                full_name="Alice Wilson",
-                display_name="Alice Wilson",
-                email="alice.wilson@company.com",
-                phone="+1-555-0104",
-                job_title="HR Business Partner",
-                job_code="HR-003",
-                job_family="Human Resources",
-                job_level="Senior",
-                employment_type=EmploymentType.FULL_TIME,
-                organization=OrganizationInfo(
-                    company_code="1000",
-                    company_name="ACME Corporation",
-                    cost_center="CC4001",
-                    cost_center_name="Human Resources",
-                    department="HR",
-                    department_name="Human Resources",
-                    org_unit="HR-001",
-                    org_unit_name="HR Operations",
-                    location="NYC",
-                    location_name="New York Office",
-                    country="US",
-                    region="North America",
-                    business_unit="Corporate",
-                    division="Human Resources"
-                ),
-                manager=ManagerInfo(
-                    user_id="LMARTINEZ",
-                    employee_id="EMP013",
-                    name="Lisa Martinez",
-                    email="lisa.martinez@company.com",
-                    title="VP Human Resources",
-                    department="Human Resources"
-                ),
-                hire_date=date(2017, 2, 1),
-                position_start_date=date(2020, 7, 1),
-                status=UserStatus.ACTIVE,
-                sap_user_type="Dialog",
-                sap_last_login=datetime(2024, 1, 14, 16, 30),
-                sap_license_type="Professional",
-                access_summary=AccessSummary(
-                    total_roles=4,
-                    total_profiles=0,
-                    total_transactions=60,
-                    systems=["SAP_ECC", "SAP_HCM"],
-                    role_list=[
-                        {"role_name": "Z_HR_PA_MAINT", "description": "Personnel Admin"},
-                        {"role_name": "Z_HR_PAYROLL", "description": "Payroll Processing"},
-                        {"role_name": "Z_HR_OM_MAINT", "description": "Org Management"},
-                        {"role_name": "Z_HR_REPORTING", "description": "HR Reports"}
-                    ],
-                    sensitive_transactions=["PA30", "PA40", "PC00_M99_CALC"],
-                    privileged_access=False,
-                    firefighter_eligible=True
-                ),
-                risk_profile=RiskProfile(
-                    overall_risk_level="critical",
-                    risk_score=85.0,
-                    sod_violation_count=1,
-                    sensitive_access_count=15,
-                    high_risk_roles=["Z_HR_PAYROLL"],
-                    active_mitigations=1,
-                    last_certification_date=datetime(2023, 12, 15),
-                    certification_status="certified",
-                    firefighter_usage_count=1,
-                    policy_violations=0,
-                    anomaly_score=0.15
-                ),
-                requires_sod_review=True,
-                requires_certification=True,
-                compliance_flags=["PII_ACCESS", "PAYROLL_ACCESS"],
-                data_sources=[UserSource.HR_SYSTEM, UserSource.SAP_SYSTEM, UserSource.GRC_PLATFORM],
-                last_sync=datetime.now(),
-                pending_requests=0,
-                total_requests=12
-            ),
-            UnifiedUserProfile(
-                user_id="CONTRACTOR01",
-                employee_id="CTR001",
-                ad_account="ext.contractor1",
-                upn="contractor1@vendor.com",
-                first_name="External",
-                last_name="Contractor",
-                full_name="External Contractor",
-                display_name="Ext. Contractor (Vendor Corp)",
-                email="contractor1@vendor.com",
-                phone="+1-555-9999",
-                job_title="SAP Consultant",
-                job_code="EXT-001",
-                job_family="External",
-                job_level="Consultant",
-                employment_type=EmploymentType.CONTRACTOR,
-                organization=OrganizationInfo(
-                    company_code="1000",
-                    company_name="ACME Corporation",
-                    cost_center="CC3001",
-                    cost_center_name="IT Operations",
-                    department="IT",
-                    department_name="Information Technology",
-                    org_unit="IT-EXT",
-                    org_unit_name="External Resources",
-                    location="REMOTE",
-                    location_name="Remote",
-                    country="US",
-                    region="North America",
-                    business_unit="Corporate",
-                    division="IT"
-                ),
-                manager=ManagerInfo(
-                    user_id="MTHOMPSON",
-                    employee_id="EMP012",
-                    name="Michael Thompson",
-                    email="michael.thompson@company.com",
-                    title="IT Director",
-                    department="IT"
-                ),
-                hire_date=date(2024, 1, 1),
-                termination_date=date(2024, 6, 30),
-                position_start_date=date(2024, 1, 1),
-                status=UserStatus.ACTIVE,
-                sap_user_type="Dialog",
-                sap_valid_from=date(2024, 1, 1),
-                sap_valid_to=date(2024, 6, 30),
-                sap_last_login=datetime(2024, 1, 15, 10, 0),
-                sap_license_type="Limited Professional",
-                access_summary=AccessSummary(
-                    total_roles=2,
-                    total_profiles=0,
-                    total_transactions=20,
-                    systems=["SAP_ECC"],
-                    role_list=[
-                        {"role_name": "Z_DEV_DISPLAY", "description": "Development Display"},
-                        {"role_name": "Z_CONFIG_CHANGE", "description": "Config Changes"}
-                    ],
-                    sensitive_transactions=["SE16", "SM30"],
-                    privileged_access=False,
-                    firefighter_eligible=False
-                ),
-                risk_profile=RiskProfile(
-                    overall_risk_level="high",
-                    risk_score=70.0,
-                    sod_violation_count=0,
-                    sensitive_access_count=2,
-                    high_risk_roles=[],
-                    active_mitigations=0,
-                    last_certification_date=datetime(2024, 1, 5),
-                    certification_status="certified",
-                    firefighter_usage_count=0,
-                    policy_violations=0,
-                    anomaly_score=0.3
-                ),
-                requires_sod_review=False,
-                requires_certification=True,
-                compliance_flags=["EXTERNAL_USER", "TIME_LIMITED"],
-                data_sources=[UserSource.HR_SYSTEM, UserSource.SAP_SYSTEM, UserSource.GRC_PLATFORM],
-                last_sync=datetime.now(),
-                pending_requests=0,
-                total_requests=1
+    def _load_from_db(self) -> None:
+        """
+        Populate the profile cache from the DB User table.
+
+        Loads all User records for the current tenant and converts them into
+        minimal UnifiedUserProfile objects.  Real-time enrichment (HR, SAP,
+        LDAP) is performed later via the sync_from_* methods.
+
+        If the DB is unavailable or has no users, the cache starts empty —
+        callers must handle the case where get_profile() returns None.
+        """
+        import logging
+        _log = logging.getLogger(__name__)
+
+        try:
+            from db.models.user import User as DBUser
+            from db.database import db_manager
+
+            if not db_manager._initialized:
+                db_manager.init()
+
+            with db_manager.session_scope() as session:
+                db_users = session.query(DBUser).all()
+
+                if not db_users:
+                    _log.info(
+                        "UserProfileService: no users found in DB; "
+                        "starting with empty profile cache"
+                    )
+                    return
+
+                for u in db_users:
+                    try:
+                        # Map DB status string to UserStatus enum (best-effort)
+                        try:
+                            status = UserStatus(u.status.lower()) if u.status else UserStatus.ACTIVE
+                        except ValueError:
+                            status = UserStatus.ACTIVE
+
+                        profile = UnifiedUserProfile(
+                            user_id=u.user_id,
+                            email=u.email or "",
+                            full_name=u.full_name or "",
+                            display_name=u.full_name or "",
+                            status=status,
+                            organization=OrganizationInfo(
+                                department=u.department or "",
+                                cost_center=u.cost_center or "",
+                                company_code=u.company_code or "",
+                                location=u.location or "",
+                            ),
+                            sap_user_type=u.user_type or "",
+                            sap_last_login=u.last_login,
+                            data_sources=[UserSource.GRC_PLATFORM],
+                            last_sync=datetime.now(),
+                        )
+
+                        # Populate manager stub when manager_user_id is recorded
+                        if u.manager_user_id:
+                            profile.manager = ManagerInfo(
+                                user_id=u.manager_user_id,
+                            )
+
+                        self.profiles[profile.user_id] = profile
+                        if profile.email:
+                            self.email_index[profile.email.lower()] = profile.user_id
+
+                    except Exception as row_exc:
+                        _log.warning(
+                            "UserProfileService: skipping user id=%s: %s",
+                            getattr(u, "id", "?"), row_exc,
+                        )
+
+                _log.info(
+                    "UserProfileService: loaded %d user profiles from DB",
+                    len(self.profiles),
+                )
+
+        except Exception as exc:
+            _log.warning(
+                "UserProfileService: DB load failed (%s); "
+                "starting with empty profile cache",
+                exc,
             )
-        ]
-
-        for profile in demo_profiles:
-            self.profiles[profile.user_id] = profile
-            if profile.employee_id:
-                self.employee_index[profile.employee_id] = profile.user_id
-            if profile.email:
-                self.email_index[profile.email.lower()] = profile.user_id
 
     def get_profile(self, user_id: str) -> Optional[UnifiedUserProfile]:
         """Get user profile by user ID"""

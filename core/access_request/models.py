@@ -377,6 +377,9 @@ class AccessRequest:
     """
     request_id: str = field(default_factory=lambda: f"AR-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}")
 
+    # Tenant isolation
+    tenant_id: str = ""
+
     # Request type
     request_type: RequestType = RequestType.NEW_ACCESS
 

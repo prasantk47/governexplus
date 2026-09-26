@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
 from datetime import datetime
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class QueryType(Enum):
@@ -75,8 +78,12 @@ class NLPPolicyEngine:
         self.intent_patterns: Dict[QueryType, List[re.Pattern]] = {}
         self.entity_extractors: Dict[str, Callable] = {}
 
-        # Demo data for query responses
-        self.demo_data = self._initialize_demo_data()
+        # Live data for query responses — populated lazily from DB
+        self.demo_data: Dict[str, Any] = {
+            "users": {},
+            "pending_approvals": [],
+            "departments": {},
+        }
 
         # Conversation memory for follow-ups
         self.conversation_history: Dict[str, List[Dict]] = {}
@@ -137,44 +144,92 @@ class NLPPolicyEngine:
             ],
         }
 
-    def _initialize_demo_data(self) -> Dict[str, Any]:
-        """Initialize demo data for query responses"""
-        return {
-            "users": {
-                "JSMITH": {
-                    "name": "John Smith",
-                    "department": "Finance",
-                    "risk_score": 65,
-                    "violations": 3,
-                    "roles": ["FI_AP_CLERK", "FI_AR_CLERK", "FI_GL_DISPLAY"]
-                },
-                "MBROWN": {
-                    "name": "Mary Brown",
-                    "department": "Procurement",
-                    "risk_score": 42,
-                    "violations": 1,
-                    "roles": ["MM_BUYER", "MM_REQUISITIONER"]
-                },
-                "TDAVIS": {
-                    "name": "Tom Davis",
-                    "department": "IT",
-                    "risk_score": 78,
-                    "violations": 5,
-                    "roles": ["BASIS_ADMIN", "SECURITY_ADMIN"]
-                }
-            },
-            "pending_approvals": [
-                {"id": "REQ001", "requester": "Alice Wilson", "type": "Role Request", "role": "FI_AP_MANAGER"},
-                {"id": "REQ002", "requester": "Bob Johnson", "type": "Emergency Access", "system": "PRD"},
-                {"id": "REQ003", "requester": "Carol White", "type": "Role Request", "role": "MM_BUYER"}
-            ],
-            "departments": {
-                "Finance": {"avg_risk": 52, "users": 45, "high_risk": 8},
-                "Procurement": {"avg_risk": 38, "users": 32, "high_risk": 4},
-                "IT": {"avg_risk": 65, "users": 28, "high_risk": 12},
-                "Sales": {"avg_risk": 28, "users": 120, "high_risk": 5}
-            }
+    def _initialize_demo_data(self, requesting_user_id: str = "") -> Dict[str, Any]:
+        """
+        Load real GRC data from the database.
+        Returns empty collections when the DB has no data — never fake profiles.
+        """
+        from db.database import db_manager
+        from db.models.user import User, UserRole, Role
+        from db.models.audit import AccessRequestLog
+        from collections import defaultdict
+
+        result: Dict[str, Any] = {
+            "users": {},
+            "pending_approvals": [],
+            "departments": {},
         }
+
+        try:
+            if not db_manager._initialized:
+                db_manager.init()
+
+            with db_manager.session_scope() as db:
+                # Build users dict — keyed by user_id (SAP ID)
+                all_users = db.query(User).filter(User.status == "active").limit(500).all()
+
+                # Aggregate department stats
+                dept_risk: Dict[str, list] = defaultdict(list)
+                dept_high_risk: Dict[str, int] = defaultdict(int)
+
+                for u in all_users:
+                    # Collect user roles via UserRole join
+                    role_ids = (
+                        db.query(Role.role_id)
+                        .join(UserRole, UserRole.role_id == Role.id)
+                        .filter(UserRole.user_id == u.id, UserRole.is_active == True)
+                        .all()
+                    )
+                    roles_list = [r[0] for r in role_ids]
+
+                    result["users"][u.user_id] = {
+                        "name": u.full_name or u.username,
+                        "department": u.department or "",
+                        "risk_score": int(u.risk_score or 0),
+                        "violations": u.violation_count or 0,
+                        "roles": roles_list,
+                    }
+
+                    dept = u.department or "Unknown"
+                    dept_risk[dept].append(u.risk_score or 0)
+                    if (u.risk_score or 0) >= 70:
+                        dept_high_risk[dept] += 1
+
+                # Build department summary
+                for dept, scores in dept_risk.items():
+                    avg = round(sum(scores) / len(scores)) if scores else 0
+                    result["departments"][dept] = {
+                        "avg_risk": avg,
+                        "users": len(scores),
+                        "high_risk": dept_high_risk.get(dept, 0),
+                    }
+
+                # Pending approvals
+                pending_rows = (
+                    db.query(AccessRequestLog)
+                    .filter(AccessRequestLog.status == "pending")
+                    .order_by(AccessRequestLog.submitted_at.desc())
+                    .limit(20)
+                    .all()
+                )
+                for row in pending_rows:
+                    entry: Dict[str, Any] = {
+                        "id": row.request_id,
+                        "requester": row.requester_name or row.requester_user_id,
+                        "type": row.request_type,
+                    }
+                    if row.requested_roles:
+                        entry["role"] = (
+                            row.requested_roles[0]
+                            if isinstance(row.requested_roles, list)
+                            else str(row.requested_roles)
+                        )
+                    result["pending_approvals"].append(entry)
+
+        except Exception as exc:
+            logger.warning("nlp_engine._initialize_demo_data: DB query failed — %s", exc)
+
+        return result
 
     # ==================== Query Processing ====================
 
@@ -277,17 +332,19 @@ class NLPPolicyEngine:
         return entities
 
     def _generate_parsed_query(self, query_type: QueryType, entities: Dict) -> str:
-        """Generate structured interpretation of query"""
+        """Generate structured interpretation of query (display only, never executed as SQL)"""
         if query_type == QueryType.RISK_QUERY:
             if entities.get("self_reference"):
                 return "SELECT risk_profile WHERE user = CURRENT_USER"
             elif entities.get("department"):
-                return f"SELECT risk_profile WHERE department = '{entities['department']}'"
+                dept = str(entities['department']).replace("'", "''")
+                return f"LOOKUP risk_profile FOR department='{dept}'"
             return "SELECT risk_profile"
 
         elif query_type == QueryType.USER_QUERY:
             if entities.get("roles"):
-                return f"SELECT users WHERE role IN {entities['roles']}"
+                roles = [str(r).replace("'", "''") for r in entities['roles']]
+                return f"LOOKUP users FOR roles IN ({', '.join(roles)})"
             return "SELECT users"
 
         elif query_type == QueryType.APPROVAL_QUERY:
@@ -335,19 +392,30 @@ class NLPPolicyEngine:
         entities = intent.entities
 
         if entities.get("self_reference"):
-            # User asking about their own risk
-            user_data = self.demo_data["users"].get("JSMITH")  # Demo: assume current user
+            # User asking about their own risk — look up from the DB-backed cache
+            user_data = self.demo_data["users"].get(query.user_id)
+            if not user_data:
+                return QueryResult(
+                    success=True,
+                    intent=intent,
+                    data={},
+                    summary="No risk data found for your account. "
+                            "Please ensure your user profile is loaded.",
+                    visualization_hint="gauge",
+                    follow_up_suggestions=[
+                        "Show organization risk summary",
+                        "Contact your administrator",
+                    ]
+                )
             return QueryResult(
                 success=True,
                 intent=intent,
                 data={
                     "risk_score": user_data["risk_score"],
                     "violations": user_data["violations"],
-                    "trend": "increasing"
                 },
                 summary=f"Your current risk score is {user_data['risk_score']} "
-                       f"with {user_data['violations']} active SoD violations. "
-                       f"This is above the department average of 52.",
+                       f"with {user_data['violations']} active SoD violation(s).",
                 visualization_hint="gauge",
                 follow_up_suggestions=[
                     "Show me the details of my violations",
@@ -534,32 +602,55 @@ class NLPPolicyEngine:
     def _handle_trend_query(self, intent: PolicyIntent, query: NaturalLanguageQuery) -> QueryResult:
         """Handle trend queries"""
         time_range = intent.entities.get("time_range", {"value": 30, "unit": "day"})
+        period_label = f"Last {time_range['value']} {time_range['unit']}s"
 
-        # Demo trend data
-        trend_data = {
-            "period": f"Last {time_range['value']} {time_range['unit']}s",
-            "data_points": [
-                {"date": "Week 1", "risk": 52},
-                {"date": "Week 2", "risk": 55},
-                {"date": "Week 3", "risk": 53},
-                {"date": "Week 4", "risk": 58}
-            ],
-            "trend": "slightly_increasing",
-            "change": "+6 points"
-        }
+        # Query actual trend data from DB
+        trend_data: dict = {"period": period_label, "data_points": []}
+        try:
+            from db.database import db_manager
+            from db.models.risk import RiskViolation
+            from sqlalchemy import func
+            import datetime as dt
+
+            if not db_manager._initialized:
+                db_manager.init()
+
+            with db_manager.session_scope() as db:
+                unit = time_range.get("unit", "day")
+                value = time_range.get("value", 30)
+                if unit in ("week", "weeks"):
+                    delta = dt.timedelta(weeks=value)
+                elif unit in ("month", "months"):
+                    delta = dt.timedelta(days=value * 30)
+                else:
+                    delta = dt.timedelta(days=value)
+
+                since = dt.datetime.utcnow() - delta
+                count = (
+                    db.query(func.count(RiskViolation.id))
+                    .filter(RiskViolation.created_at >= since)
+                    .scalar()
+                ) or 0
+                trend_data["total_violations_in_period"] = count
+        except Exception as exc:
+            logger.warning("nlp_engine._handle_trend_query: DB query failed — %s", exc)
+
+        summary = (
+            f"Risk trend over {period_label}: "
+            f"{trend_data.get('total_violations_in_period', 0)} violation(s) recorded. "
+            "Navigate to the Risk Analysis section for detailed trend charts."
+        )
 
         return QueryResult(
             success=True,
             intent=intent,
             data=trend_data,
-            summary=f"Risk trend over {trend_data['period']}:\n"
-                   f"Overall risk has increased by 6 points, primarily driven by "
-                   f"new role assignments in IT department.",
+            summary=summary,
             visualization_hint="line_chart",
             follow_up_suggestions=[
-                "What caused the increase?",
-                "Show IT department trend",
-                "Who contributed most to the increase?"
+                "Show high-risk users",
+                "Show SoD violations",
+                "Generate risk report"
             ]
         )
 
@@ -624,7 +715,7 @@ class NLPPolicyEngine:
                    f"Report Contents:\n"
                    f"• Executive Summary\n"
                    f"• Risk Analysis by Department\n"
-                   f"• SoD Violations (125 total)\n"
+                   f"• SoD Violations\n"
                    f"• Remediation Status\n"
                    f"• Audit Trail",
             visualization_hint="download",

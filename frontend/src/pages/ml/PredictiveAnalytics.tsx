@@ -72,15 +72,6 @@ export function PredictiveAnalytics() {
     }
   };
 
-  const getRiskTextColor = (level: string) => {
-    switch (level) {
-      case 'critical': return 'text-red-600';
-      case 'high': return 'text-orange-600';
-      case 'medium': return 'text-yellow-600';
-      default: return 'text-green-600';
-    }
-  };
-
   // Calculate max values for chart scaling
   const maxRiskScore = Math.max(...trends.map((t: any) => t.avg_risk_score), 60);
   const maxAnomalies = Math.max(...trends.map((t: any) => t.anomalies_detected), 30);

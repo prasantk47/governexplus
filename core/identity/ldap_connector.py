@@ -39,6 +39,9 @@ import hashlib
 import base64
 import uuid
 import re
+import os
+
+_IS_PRODUCTION = os.getenv("APP_ENV", "").lower() == "production"
 
 
 # ============================================================
@@ -524,18 +527,15 @@ class LDAPConnector:
         Returns True if connection successful.
         """
         try:
-            # In production, this would use ldap3 library:
+            # Attempt real connection via ldap3 when available.
             # from ldap3 import Server, Connection, ALL, SUBTREE, NTLM, SASL, KERBEROS
-
-            # Create server
+            #
             # self._server = Server(
             #     self.config.host,
             #     port=self.config.port,
             #     use_ssl=(self.config.security == LDAPConnectionSecurity.LDAPS),
             #     get_info=ALL,
             # )
-
-            # Create connection based on auth type
             # if self.config.auth_type == LDAPAuthType.SIMPLE:
             #     self.connection = Connection(
             #         self._server,
@@ -550,11 +550,30 @@ class LDAPConnector:
             #         sasl_mechanism=KERBEROS,
             #         auto_bind=True,
             #     )
+            # self.is_connected = True
+            # return True
 
-            # For now, simulate successful connection
+            # ldap3 is not yet wired.  In production this is a hard error.
+            if _IS_PRODUCTION:
+                raise ConnectionError(
+                    "LDAPConnector: the ldap3 library is not wired in this build. "
+                    "Install ldap3 and wire the real connection code before deploying "
+                    "to production. Set APP_ENV != 'production' to run in simulation mode."
+                )
+
+            # Dev/test: simulate a successful connection and warn.
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "LDAPConnector: running in SIMULATION mode (APP_ENV != production). "
+                "No real LDAP connection is established for host=%s.",
+                self.config.host,
+            )
             self.is_connected = True
             return True
 
+        except ConnectionError:
+            self.is_connected = False
+            raise
         except Exception as e:
             self.is_connected = False
             raise ConnectionError(f"Failed to connect to LDAP: {str(e)}")
@@ -636,9 +655,16 @@ class LDAPConnector:
         #     search_scope=SUBTREE,
         #     attributes=list(AD_ATTRIBUTES.values()),
         # )
+        # if self.connection.entries:
+        #     return self._parse_user(self.connection.entries[0])
 
-        # Simulated response for demonstration
-        return self._create_sample_user(username)
+        import logging
+        logging.getLogger(__name__).warning(
+            "LDAPConnector: LDAP is not connected to a real directory; "
+            "get_user_by_username('%s') returning None",
+            username,
+        )
+        return None
 
     def get_user_by_email(self, email: str) -> Optional[LDAPUser]:
         """Get user by email address."""
@@ -697,18 +723,14 @@ class LDAPConnector:
         # for entry in self.connection.entries:
         #     users.append(self._parse_user(entry))
 
-        # Simulated response
-        users = [
-            self._create_sample_user("john.doe"),
-            self._create_sample_user("jane.smith"),
-            self._create_sample_user("admin.user"),
-        ]
-
-        # Update cache
-        for user in users:
-            self._user_cache[user.dn] = user
-
-        return users
+        # No real LDAP connection is available; return empty list.
+        # When the ldap3 library is wired in production, the paged search
+        # above will populate `users` from the actual directory.
+        import logging
+        logging.getLogger(__name__).warning(
+            "LDAPConnector.get_all_users: no real LDAP connection; returning empty list"
+        )
+        return []
 
     def get_users_by_group(self, group_dn: str, resolve_nested: bool = True) -> List[LDAPUser]:
         """Get all users in a group (optionally including nested groups)."""
@@ -794,25 +816,12 @@ class LDAPConnector:
         """Get all groups from LDAP."""
         search_base = base_dn or self.config.groups_base_dn or self.config.base_dn
 
-        # Simulated response
-        return [
-            LDAPGroup(
-                dn="CN=IT-Admins,OU=Groups,DC=company,DC=com",
-                object_guid=str(uuid.uuid4()),
-                name="IT-Admins",
-                description="IT Administrator Group",
-                group_type="Security",
-                group_scope="Global",
-            ),
-            LDAPGroup(
-                dn="CN=Finance-Users,OU=Groups,DC=company,DC=com",
-                object_guid=str(uuid.uuid4()),
-                name="Finance-Users",
-                description="Finance Department Users",
-                group_type="Security",
-                group_scope="Global",
-            ),
-        ]
+        # No real LDAP connection is available; return empty list.
+        import logging
+        logging.getLogger(__name__).warning(
+            "LDAPConnector.get_all_groups: no real LDAP connection; returning empty list"
+        )
+        return []
 
     def get_group_members(
         self,
@@ -1018,24 +1027,6 @@ class LDAPConnector:
             "password_never_expires": bool(uac & ADUserAccountControl.PASSWORD_NEVER_EXPIRES.value),
             "normal_account": bool(uac & ADUserAccountControl.NORMAL_ACCOUNT.value),
         }
-
-    def _create_sample_user(self, username: str) -> LDAPUser:
-        """Create sample user for demonstration."""
-        return LDAPUser(
-            dn=f"CN={username},OU=Users,DC=company,DC=com",
-            object_guid=str(uuid.uuid4()),
-            username=username,
-            upn=f"{username}@company.com",
-            email=f"{username}@company.com",
-            first_name=username.split(".")[0].title() if "." in username else username,
-            last_name=username.split(".")[-1].title() if "." in username else "",
-            full_name=username.replace(".", " ").title(),
-            title="Employee",
-            department="IT",
-            company="Company Inc",
-            is_enabled=True,
-            sync_source=self.config.name,
-        )
 
     def clear_cache(self) -> None:
         """Clear user and group caches."""

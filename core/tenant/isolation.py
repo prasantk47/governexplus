@@ -257,39 +257,39 @@ class TenantIsolation:
 
     # ==================== Row-Level Security ====================
 
-    def get_rls_policy(self, tenant_id: str, table_name: str) -> str:
+    def get_rls_policy(self, tenant_id: str, table_name: str) -> tuple:
         """
-        Generate Row-Level Security policy for a table
+        Generate Row-Level Security policy for a table.
 
+        Returns (sql_template, params) for parameterized execution.
         Ensures queries only return data for the current tenant.
         """
-        return f"""
+        # Validate table_name against allowed characters (alphanumeric + underscore)
+        import re
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table_name):
+            raise ValueError(f"Invalid table name: {table_name}")
+        if not re.match(r'^[a-zA-Z0-9_-]+$', tenant_id):
+            raise ValueError(f"Invalid tenant_id: {tenant_id}")
+
+        sql = f"""
         CREATE POLICY tenant_isolation_{table_name}
         ON {table_name}
-        USING (tenant_id = '{tenant_id}')
-        WITH CHECK (tenant_id = '{tenant_id}');
+        USING (tenant_id = :tenant_id)
+        WITH CHECK (tenant_id = :tenant_id);
         """
+        return sql, {"tenant_id": tenant_id}
 
-    def apply_tenant_filter(self, query: str, tenant_id: str) -> str:
+    def get_tenant_filter_params(self, tenant_id: str) -> dict:
         """
-        Apply tenant filter to a query
+        Return parameterized tenant filter for SQLAlchemy queries.
 
-        Ensures all queries are scoped to the current tenant.
-        This is a backup to RLS for defense in depth.
+        Usage with SQLAlchemy:
+            query = session.query(Model).filter(Model.tenant_id == params['tenant_id'])
         """
-        # Simple implementation - production would use SQL parser
-        if "WHERE" in query.upper():
-            return query.replace(
-                "WHERE",
-                f"WHERE tenant_id = '{tenant_id}' AND "
-            )
-        else:
-            if "ORDER BY" in query.upper():
-                return query.replace(
-                    "ORDER BY",
-                    f"WHERE tenant_id = '{tenant_id}' ORDER BY"
-                )
-            return f"{query} WHERE tenant_id = '{tenant_id}'"
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', tenant_id):
+            raise ValueError(f"Invalid tenant_id: {tenant_id}")
+        return {"tenant_id": tenant_id}
 
     # ==================== Cross-Tenant Protection ====================
 

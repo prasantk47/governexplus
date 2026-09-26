@@ -2,13 +2,17 @@
 Approvals API Router
 
 Simplified approval endpoints for the frontend approval inbox.
-Maps to the more detailed access_requests approval flow.
+Uses real DB-backed AccessRequestManager instead of mock data.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from sqlalchemy.orm import Session
+
+from db.database import get_db
+from core.access_request.manager import AccessRequestManager
+from core.access_request.models import ApprovalAction
 
 router = APIRouter(tags=["Approvals"])
 
@@ -21,129 +25,206 @@ class QuickApprovalModel(BaseModel):
     actor_id: Optional[str] = "current_user"
 
 
-# Mock pending approvals data
-MOCK_APPROVALS = {
-    "REQ-2024-001": {
-        "id": "REQ-2024-001",
-        "type": "access_request",
-        "requester": "John Smith",
-        "requesterDept": "Finance",
-        "summary": "SAP_FI_AP_CLERK, SAP_FI_GL_ACCOUNTANT",
-        "riskLevel": "high",
-        "submittedDate": "2024-01-15",
-        "dueDate": "2024-01-18",
-        "priority": "urgent",
-        "sodConflicts": True,
-        "status": "pending"
-    },
-    "REQ-2024-002": {
-        "id": "REQ-2024-002",
-        "type": "access_request",
-        "requester": "Emily Davis",
-        "requesterDept": "Sales",
-        "summary": "SALESFORCE_ADMIN",
-        "riskLevel": "high",
-        "submittedDate": "2024-01-16",
-        "dueDate": "2024-01-19",
-        "priority": "high",
-        "sodConflicts": False,
-        "status": "pending"
-    },
-    "REQ-2024-003": {
-        "id": "REQ-2024-003",
-        "type": "access_request",
-        "requester": "Lisa Chen",
-        "requesterDept": "HR",
-        "summary": "WORKDAY_HR_ADMIN",
-        "riskLevel": "medium",
-        "submittedDate": "2024-01-14",
-        "dueDate": "2024-01-21",
-        "priority": "normal",
-        "sodConflicts": False,
-        "status": "pending"
-    },
-}
+def _get_manager(db: Session = Depends(get_db)):
+    return AccessRequestManager(db=db)
 
 
 @router.get("/")
-async def list_pending_approvals():
+async def list_pending_approvals(
+    approver_id: Optional[str] = None,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
     """Get all pending approvals"""
-    pending = [a for a in MOCK_APPROVALS.values() if a.get("status") == "pending"]
+    if approver_id:
+        pending = mgr.get_pending_approvals(approver_id)
+    else:
+        # Return all requests with pending_approval status
+        pending_requests = mgr.get_all_requests(status="pending_approval")
+        pending = []
+        for req in pending_requests:
+            pending.append({
+                "id": req.request_id,
+                "type": "access_request",
+                "requester": req.requester_user_id,
+                "summary": ", ".join(
+                    [item.role_id or item.entitlement_id or "" for item in req.requested_items]
+                ) if req.requested_items else "",
+                "riskLevel": req.risk_level or "medium",
+                "submittedDate": req.submitted_at.isoformat() if req.submitted_at else None,
+                "priority": req.priority or "normal",
+                "status": req.status.value if hasattr(req.status, "value") else str(req.status),
+            })
     return {
         "total": len(pending),
-        "approvals": pending
+        "approvals": pending,
     }
 
 
 @router.get("/{approval_id}")
-async def get_approval(approval_id: str):
+async def get_approval(
+    approval_id: str,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
     """Get a specific approval item"""
-    if approval_id not in MOCK_APPROVALS:
+    request = mgr.get_request(approval_id)
+    if not request:
         raise HTTPException(status_code=404, detail=f"Approval {approval_id} not found")
 
-    return MOCK_APPROVALS[approval_id]
+    return {
+        "id": request.request_id,
+        "type": "access_request",
+        "requester": request.requester_user_id,
+        "summary": ", ".join(
+            [item.role_id or item.entitlement_id or "" for item in request.requested_items]
+        ) if request.requested_items else "",
+        "riskLevel": request.risk_level or "medium",
+        "submittedDate": request.submitted_at.isoformat() if request.submitted_at else None,
+        "priority": request.priority or "normal",
+        "status": request.status.value if hasattr(request.status, "value") else str(request.status),
+        "approval_steps": [
+            {
+                "step_id": step.step_id,
+                "step_name": step.step_name,
+                "status": step.status.value if hasattr(step.status, "value") else str(step.status),
+                "approver_ids": step.approver_ids,
+            }
+            for step in request.approval_steps
+        ] if request.approval_steps else [],
+    }
 
 
 @router.post("/{approval_id}/approve")
-async def approve_request(approval_id: str, body: QuickApprovalModel = None):
+async def approve_request(
+    approval_id: str,
+    body: QuickApprovalModel = None,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
     """
     Approve a pending request.
 
-    This is a simplified endpoint for quick approvals from the approval inbox.
+    Finds the first pending approval step and approves it.
     """
-    if approval_id not in MOCK_APPROVALS:
+    request = mgr.get_request(approval_id)
+    if not request:
         raise HTTPException(status_code=404, detail=f"Request {approval_id} not found")
 
-    approval = MOCK_APPROVALS[approval_id]
+    # Find the first pending step
+    step_id = None
+    for step in request.approval_steps:
+        step_status = step.status.value if hasattr(step.status, "value") else str(step.status)
+        if step_status == "pending":
+            step_id = step.step_id
+            break
 
-    # Update status (allow re-approving for demo)
-    approval["status"] = "approved"
-    approval["approvedAt"] = datetime.now().isoformat()
-    approval["approvedBy"] = body.actor_id if body else "current_user"
+    if not step_id:
+        raise HTTPException(status_code=400, detail="No pending approval steps found")
+
+    actor_id = body.actor_id if body and body.actor_id else "current_user"
+    comments = body.comments if body and body.comments else ""
+
+    try:
+        await mgr.process_approval(
+            request_id=approval_id,
+            step_id=step_id,
+            action=ApprovalAction.APPROVE,
+            actor_id=actor_id,
+            comments=comments,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     return {
         "success": True,
         "request_id": approval_id,
         "status": "approved",
-        "message": f"Request {approval_id} has been approved"
+        "message": f"Request {approval_id} has been approved",
     }
 
 
 @router.post("/{approval_id}/reject")
-async def reject_request(approval_id: str, body: QuickApprovalModel = None):
+async def reject_request(
+    approval_id: str,
+    body: QuickApprovalModel = None,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
     """
     Reject a pending request.
 
-    This is a simplified endpoint for quick rejections from the approval inbox.
+    Finds the first pending approval step and rejects it.
     """
-    if approval_id not in MOCK_APPROVALS:
+    request = mgr.get_request(approval_id)
+    if not request:
         raise HTTPException(status_code=404, detail=f"Request {approval_id} not found")
 
-    approval = MOCK_APPROVALS[approval_id]
+    # Find the first pending step
+    step_id = None
+    for step in request.approval_steps:
+        step_status = step.status.value if hasattr(step.status, "value") else str(step.status)
+        if step_status == "pending":
+            step_id = step.step_id
+            break
 
-    # Update status (allow re-rejecting for demo)
-    approval["status"] = "rejected"
-    approval["rejectedAt"] = datetime.now().isoformat()
-    approval["rejectedBy"] = body.actor_id if body else "current_user"
-    approval["rejectionReason"] = body.comments if body and body.comments else "Request rejected"
+    if not step_id:
+        raise HTTPException(status_code=400, detail="No pending approval steps found")
+
+    actor_id = body.actor_id if body and body.actor_id else "current_user"
+    comments = body.comments if body and body.comments else "Request rejected"
+
+    try:
+        await mgr.process_approval(
+            request_id=approval_id,
+            step_id=step_id,
+            action=ApprovalAction.REJECT,
+            actor_id=actor_id,
+            comments=comments,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     return {
         "success": True,
         "request_id": approval_id,
         "status": "rejected",
-        "message": f"Request {approval_id} has been rejected"
+        "message": f"Request {approval_id} has been rejected",
     }
 
 
 @router.post("/{approval_id}/forward")
-async def forward_request(approval_id: str, forward_to: str):
+async def forward_request(
+    approval_id: str,
+    forward_to: str,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
     """Forward a request to another approver"""
-    if approval_id not in MOCK_APPROVALS:
+    request = mgr.get_request(approval_id)
+    if not request:
         raise HTTPException(status_code=404, detail=f"Request {approval_id} not found")
+
+    # Find the first pending step
+    step_id = None
+    for step in request.approval_steps:
+        step_status = step.status.value if hasattr(step.status, "value") else str(step.status)
+        if step_status == "pending":
+            step_id = step.step_id
+            break
+
+    if not step_id:
+        raise HTTPException(status_code=400, detail="No pending approval steps found")
+
+    try:
+        await mgr.process_approval(
+            request_id=approval_id,
+            step_id=step_id,
+            action=ApprovalAction.DELEGATE,
+            actor_id="current_user",
+            delegate_to=forward_to,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     return {
         "success": True,
         "request_id": approval_id,
         "forwarded_to": forward_to,
-        "message": f"Request {approval_id} has been forwarded to {forward_to}"
+        "message": f"Request {approval_id} has been forwarded to {forward_to}",
     }

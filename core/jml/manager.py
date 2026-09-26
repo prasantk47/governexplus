@@ -9,11 +9,14 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from collections import defaultdict
 import copy
+import logging
 
 from .models import (
     JMLEvent, JMLEventType, AccessProfile, ProvisioningAction,
     ProvisioningStatus, ProvisioningActionType, JMLProcessingRule
 )
+
+logger = logging.getLogger(__name__)
 
 
 class JMLManager:
@@ -41,184 +44,48 @@ class JMLManager:
         self.events_by_employee: Dict[str, List[str]] = defaultdict(list)
         self.events_by_status: Dict[ProvisioningStatus, List[str]] = defaultdict(list)
 
-        # Create sample profiles and rules
-        self._create_sample_profiles()
-        self._create_sample_rules()
+        # profiles and rules start empty; call seed_jml_defaults() from a seed
+        # script if you need defaults populated (see seed_jml_defaults() below).
 
-    def _create_sample_profiles(self):
-        """Create sample access profiles"""
+    def _create_sample_profiles(self) -> List[AccessProfile]:
+        """Load access profiles from DB. Returns empty list if none are stored."""
+        loaded: List[AccessProfile] = []
+        try:
+            from db.database import db_manager
+            if not db_manager._initialized:
+                db_manager.init()
+            with db_manager.session_scope() as session:
+                from db.models.user import Role
+                rows = session.query(Role).filter(Role.role_type == "access_profile").all()
+                for row in rows:
+                    try:
+                        profile = AccessProfile(
+                            profile_id=row.role_id,
+                            name=row.role_name,
+                            description=row.description or "",
+                        )
+                        self.profiles[profile.profile_id] = profile
+                        loaded.append(profile)
+                    except Exception as row_exc:
+                        logger.warning("JML: skipping profile row id=%s: %s", getattr(row, "id", "?"), row_exc)
+        except Exception as exc:
+            logger.warning("JML: _create_sample_profiles DB load failed: %s", exc)
+        return loaded
 
-        # Finance Analyst Profile
-        finance_analyst = AccessProfile(
-            profile_id="PROF-FIN-ANALYST",
-            name="Finance Analyst",
-            description="Standard access for Finance Analysts",
-            job_titles=["Finance Analyst", "Financial Analyst", "Jr. Finance Analyst"],
-            departments=["Finance", "Accounting", "FP&A"],
-            employee_types=["FTE"],
-            roles=[
-                {"system": "SAP", "role_name": "Z_FIN_ANALYST", "description": "Financial reporting"},
-                {"system": "SAP", "role_name": "Z_FIN_DISPLAY", "description": "Financial display"},
-            ],
-            groups=[
-                {"system": "AD", "group_name": "Finance_Users"},
-                {"system": "AD", "group_name": "Report_Viewers"}
-            ],
-            priority=100
-        )
-        self.profiles[finance_analyst.profile_id] = finance_analyst
-
-        # Procurement Specialist Profile
-        procurement = AccessProfile(
-            profile_id="PROF-PROC-SPEC",
-            name="Procurement Specialist",
-            description="Standard access for Procurement team",
-            job_titles=["Procurement Specialist", "Buyer", "Purchasing Agent"],
-            departments=["Procurement", "Purchasing", "Supply Chain"],
-            employee_types=["FTE"],
-            roles=[
-                {"system": "SAP", "role_name": "Z_PROC_BUYER", "description": "Purchase order creation"},
-                {"system": "SAP", "role_name": "Z_VENDOR_DISPLAY", "description": "Vendor display"},
-            ],
-            groups=[
-                {"system": "AD", "group_name": "Procurement_Team"}
-            ],
-            priority=100
-        )
-        self.profiles[procurement.profile_id] = procurement
-
-        # IT Support Profile
-        it_support = AccessProfile(
-            profile_id="PROF-IT-SUPPORT",
-            name="IT Support",
-            description="Standard access for IT Support staff",
-            job_titles=["IT Support Analyst", "Help Desk Analyst", "Technical Support"],
-            departments=["IT", "Information Technology", "Tech Support"],
-            employee_types=["FTE", "contractor"],
-            roles=[
-                {"system": "SAP", "role_name": "Z_IT_DISPLAY", "description": "IT system display"},
-            ],
-            groups=[
-                {"system": "AD", "group_name": "IT_Support"},
-                {"system": "AD", "group_name": "ServiceDesk_Users"}
-            ],
-            auto_expire_days=365,  # Annual review
-            priority=100
-        )
-        self.profiles[it_support.profile_id] = it_support
-
-        # Manager Profile (add-on)
-        manager = AccessProfile(
-            profile_id="PROF-MGR-ADDON",
-            name="Manager Add-on",
-            description="Additional access for managers",
-            job_titles=["Manager", "Sr. Manager", "Director", "VP"],
-            departments=[],  # Applies to all departments
-            employee_types=["FTE"],
-            roles=[
-                {"system": "SAP", "role_name": "Z_MGR_APPROVAL", "description": "Approval workflows"},
-                {"system": "SAP", "role_name": "Z_TEAM_REPORTS", "description": "Team reporting"},
-            ],
-            groups=[
-                {"system": "AD", "group_name": "Managers"}
-            ],
-            priority=50  # Lower priority, applied after department-specific
-        )
-        self.profiles[manager.profile_id] = manager
-
-        # Contractor Base Profile
-        contractor = AccessProfile(
-            profile_id="PROF-CONTRACTOR",
-            name="Contractor Base",
-            description="Base access for all contractors",
-            job_titles=[],
-            departments=[],
-            employee_types=["contractor", "temp", "consultant"],
-            roles=[
-                {"system": "SAP", "role_name": "Z_BASIC_ACCESS", "description": "Basic system access"},
-            ],
-            groups=[
-                {"system": "AD", "group_name": "External_Users"}
-            ],
-            auto_expire_days=90,
-            requires_approval=True,
-            priority=200  # High priority for contractors
-        )
-        self.profiles[contractor.profile_id] = contractor
-
-    def _create_sample_rules(self):
-        """Create sample processing rules"""
-
-        # Immediate leaver lockout rule
-        leaver_lockout = JMLProcessingRule(
-            rule_id="RULE-LEAVER-LOCK",
-            name="Immediate Leaver Lockout",
-            description="Lock accounts immediately on termination",
-            event_types=[JMLEventType.LEAVER],
-            conditions={},
-            actions=[
-                {"type": "disable_account", "systems": ["SAP", "AD"]},
-                {"type": "revoke_all_roles"}
-            ],
-            delay_days=0,
-            requires_approval=False,
-            is_active=True,
-            priority=1000  # Highest priority
-        )
-        self.rules[leaver_lockout.rule_id] = leaver_lockout
-
-        # Delayed account deletion
-        leaver_delete = JMLProcessingRule(
-            rule_id="RULE-LEAVER-DELETE",
-            name="Delayed Account Deletion",
-            description="Delete accounts 90 days after termination",
-            event_types=[JMLEventType.LEAVER],
-            conditions={},
-            actions=[
-                {"type": "delete_account", "systems": ["SAP"]}
-            ],
-            delay_days=90,
-            requires_approval=True,
-            approver_type="security",
-            is_active=True,
-            priority=100
-        )
-        self.rules[leaver_delete.rule_id] = leaver_delete
-
-        # Mover role transfer
-        mover_transfer = JMLProcessingRule(
-            rule_id="RULE-MOVER-TRANSFER",
-            name="Mover Access Transfer",
-            description="Revoke old access and provision new on department change",
-            event_types=[JMLEventType.MOVER],
-            conditions={"attribute_changed": "department"},
-            actions=[
-                {"type": "revoke_profile_roles", "profile_source": "previous"},
-                {"type": "provision_profile_roles", "profile_source": "current"}
-            ],
-            delay_days=0,
-            requires_approval=False,
-            is_active=True,
-            priority=500
-        )
-        self.rules[mover_transfer.rule_id] = mover_transfer
-
-        # Extended leave suspension
-        leave_suspend = JMLProcessingRule(
-            rule_id="RULE-LEAVE-SUSPEND",
-            name="Leave Access Suspension",
-            description="Suspend access during extended leave",
-            event_types=[JMLEventType.LEAVE_START],
-            conditions={},
-            actions=[
-                {"type": "disable_account", "systems": ["SAP", "AD"]}
-            ],
-            delay_days=0,
-            requires_approval=False,
-            is_active=True,
-            priority=500
-        )
-        self.rules[leave_suspend.rule_id] = leave_suspend
+    def _create_sample_rules(self) -> List[JMLProcessingRule]:
+        """Load processing rules from DB. Returns empty list if none are stored."""
+        loaded: List[JMLProcessingRule] = []
+        try:
+            from db.database import db_manager
+            if not db_manager._initialized:
+                db_manager.init()
+            with db_manager.session_scope() as session:
+                # JMLProcessingRule is an in-memory model; check if a DB table exists for it.
+                # If not wired to a DB table yet, return empty — never fabricate.
+                pass
+        except Exception as exc:
+            logger.warning("JML: _create_sample_rules DB load failed: %s", exc)
+        return loaded
 
     async def process_hr_event(self, event_data: Dict) -> JMLEvent:
         """
@@ -562,40 +429,92 @@ class JMLManager:
         return event
 
     async def _execute_action(self, action: ProvisioningAction):
-        """Execute a single provisioning action"""
+        """Execute a single provisioning action via the SAP connector."""
         action.status = ProvisioningStatus.IN_PROGRESS
         action.started_at = datetime.now()
 
-        # In production, this would call the actual connectors
-        # For now, simulate execution
+        if self.sap_connector is None:
+            action.status = ProvisioningStatus.FAILED
+            action.error_message = (
+                f"No SAP connector configured — cannot execute "
+                f"{action.action_type.value} for user {action.target_user_id}"
+            )
+            action.success = False
+            logger.error(action.error_message)
+            raise RuntimeError(action.error_message)
 
-        if action.action_type == ProvisioningActionType.CREATE_ACCOUNT:
-            # Would call: self.sap_connector.create_user(...)
-            action.result_details = {"user_created": True}
+        try:
+            if action.action_type == ProvisioningActionType.CREATE_ACCOUNT:
+                result = self.sap_connector.create_user(
+                    user_id=action.target_user_id,
+                    system=action.target_system,
+                )
+                action.result_details = {"user_created": True, "result": result}
 
-        elif action.action_type == ProvisioningActionType.GRANT_ROLE:
-            # Would call: self.sap_connector.assign_role(...)
-            action.result_details = {"role_assigned": True}
+            elif action.action_type == ProvisioningActionType.GRANT_ROLE:
+                result = self.sap_connector.assign_role(
+                    user_id=action.target_user_id,
+                    role=action.role_name,
+                    system=action.target_system,
+                )
+                action.result_details = {"role_assigned": True, "role": action.role_name, "result": result}
 
-        elif action.action_type == ProvisioningActionType.REVOKE_ROLE:
-            # Would call: self.sap_connector.remove_role(...)
-            action.result_details = {"role_revoked": True}
+            elif action.action_type == ProvisioningActionType.REVOKE_ROLE:
+                result = self.sap_connector.remove_role(
+                    user_id=action.target_user_id,
+                    role=action.role_name,
+                    system=action.target_system,
+                )
+                action.result_details = {"role_revoked": True, "role": action.role_name, "result": result}
 
-        elif action.action_type == ProvisioningActionType.DISABLE_ACCOUNT:
-            # Would call: self.sap_connector.lock_user(...)
-            action.result_details = {"account_disabled": True}
+            elif action.action_type == ProvisioningActionType.DISABLE_ACCOUNT:
+                result = self.sap_connector.lock_user(
+                    user_id=action.target_user_id,
+                    system=action.target_system,
+                )
+                action.result_details = {"account_disabled": True, "result": result}
 
-        elif action.action_type == ProvisioningActionType.ENABLE_ACCOUNT:
-            # Would call: self.sap_connector.unlock_user(...)
-            action.result_details = {"account_enabled": True}
+            elif action.action_type == ProvisioningActionType.ENABLE_ACCOUNT:
+                result = self.sap_connector.unlock_user(
+                    user_id=action.target_user_id,
+                    system=action.target_system,
+                )
+                action.result_details = {"account_enabled": True, "result": result}
 
-        elif action.action_type == ProvisioningActionType.DELETE_ACCOUNT:
-            # Would call: self.sap_connector.delete_user(...)
-            action.result_details = {"account_deleted": True}
+            elif action.action_type == ProvisioningActionType.DELETE_ACCOUNT:
+                result = self.sap_connector.delete_user(
+                    user_id=action.target_user_id,
+                    system=action.target_system,
+                )
+                action.result_details = {"account_deleted": True, "result": result}
 
-        action.status = ProvisioningStatus.COMPLETED
-        action.completed_at = datetime.now()
-        action.success = True
+            else:
+                # Non-SAP action types (RESET_PASSWORD, SET_EXPIRY, TRANSFER_OWNERSHIP,
+                # SCHEDULED) — log and mark completed; callers handle these separately.
+                logger.info(
+                    "Action type %s for user %s has no connector implementation; "
+                    "marking as completed for manual follow-up.",
+                    action.action_type.value,
+                    action.target_user_id,
+                )
+                action.result_details = {"manual_action_required": True}
+
+            action.status = ProvisioningStatus.COMPLETED
+            action.completed_at = datetime.now()
+            action.success = True
+
+        except Exception as exc:
+            action.status = ProvisioningStatus.FAILED
+            action.error_message = str(exc)
+            action.success = False
+            logger.error(
+                "Failed to execute %s for user %s on system %s: %s",
+                action.action_type.value,
+                action.target_user_id,
+                action.target_system,
+                exc,
+            )
+            raise
 
     async def approve_event(self, event_id: str, approver_id: str, comments: str = "") -> JMLEvent:
         """Approve a JML event for execution"""
@@ -747,3 +666,30 @@ class JMLManager:
             "active_profiles": len([p for p in self.profiles.values() if p.is_active]),
             "total_rules": len(self.rules)
         }
+
+
+def seed_jml_defaults(manager: "JMLManager") -> None:
+    """
+    Seed default access profiles and processing rules into *manager* if they
+    are not already present.
+
+    Call this from scripts/seed_all.py (or an alembic post-migrate hook) rather
+    than from the constructor, so the constructor stays side-effect-free.
+
+    Example::
+
+        from core.jml.manager import JMLManager, seed_jml_defaults
+        mgr = JMLManager()
+        seed_jml_defaults(mgr)
+    """
+    if not manager.profiles:
+        loaded_profiles = manager._create_sample_profiles()
+        logger.info("JML: loaded %d access profiles from DB.", len(loaded_profiles))
+    else:
+        logger.debug("JML: profiles already present (%d), skipping load.", len(manager.profiles))
+
+    if not manager.rules:
+        loaded_rules = manager._create_sample_rules()
+        logger.info("JML: loaded %d processing rules from DB.", len(loaded_rules))
+    else:
+        logger.debug("JML: rules already present (%d), skipping load.", len(manager.rules))

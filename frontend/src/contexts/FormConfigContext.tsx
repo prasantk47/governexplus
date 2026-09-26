@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   RequestTypeFormConfig,
   FormFieldConfig,
@@ -60,8 +60,8 @@ export function FormConfigProvider({ children }: { children: ReactNode }) {
           });
           setConfigs(merged);
         }
-      } catch (error) {
-        console.error('Failed to load form configs:', error);
+      } catch {
+        // silently fall back to defaults
       } finally {
         setLoading(false);
       }
@@ -123,7 +123,6 @@ export function FormConfigProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
       setHasUnsavedChanges(false);
     } catch (error) {
-      console.error('Failed to save form configs:', error);
       throw error;
     }
   };

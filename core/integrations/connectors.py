@@ -197,6 +197,18 @@ class Connector(ABC):
             "error_message": self.error_message
         }
 
+    def get_info(self) -> Dict:
+        """Get full connector info (config + status)"""
+        info = self.config.to_dict()
+        info.update({
+            "connector_id": self.connector_id,
+            "status": self.status.value,
+            "last_connected": self.last_connected.isoformat() if self.last_connected else None,
+            "last_sync": self.last_sync.isoformat() if self.last_sync else None,
+            "error_message": self.error_message
+        })
+        return info
+
     def create_sync_job(self, job_type: str) -> SyncJob:
         """Create a new sync job"""
         job = SyncJob(
@@ -208,7 +220,7 @@ class Connector(ABC):
 
 
 class SAPConnector(Connector):
-    """SAP System Connector (RFC/BAPI)"""
+    """SAP System Connector (RFC/BAPI) — delegates to real pyrfc when available."""
 
     # Common BAPIs for user/role management
     BAPIS = {
@@ -221,24 +233,41 @@ class SAPConnector(Connector):
 
     def __init__(self, config: ConnectorConfig):
         super().__init__(config)
-        self._connection = None
+        self._rfc_manager = None
+        self._init_rfc_backend()
+
+    def _init_rfc_backend(self):
+        """Initialize real RFC backend if pyrfc is available."""
+        try:
+            from connectors.sap.extractors.connection import SAPRFCConnectionManager
+            from connectors.sap.extractors.config import SAPExtractorConfig
+
+            rfc_config = SAPExtractorConfig(
+                ashost=self.config.host,
+                sysnr=str(self.config.port) if self.config.port else "00",
+                client=self.config.client or "100",
+                user=self.config.username,
+                passwd="",  # password fetched securely at connect time
+                lang=self.config.language or "EN",
+            )
+            self._rfc_manager = SAPRFCConnectionManager(rfc_config)
+        except Exception:
+            self._rfc_manager = None
+
+    @property
+    def _is_live(self) -> bool:
+        return self._rfc_manager is not None and not self._rfc_manager._use_mock
 
     def connect(self) -> bool:
         """Connect to SAP system via RFC"""
         try:
             self.status = ConnectionStatus.TESTING
-            # In real implementation, would use pyrfc:
-            # from pyrfc import Connection
-            # self._connection = Connection(
-            #     user=self.config.username,
-            #     passwd=password,
-            #     ashost=self.config.host,
-            #     sysnr=str(self.config.port),
-            #     client=self.config.client,
-            #     lang=self.config.language
-            # )
 
-            # Mock successful connection
+            if self._rfc_manager:
+                # Validate connection with a ping
+                with self._rfc_manager.get_connection() as conn:
+                    conn.call("RFC_PING")
+
             self.status = ConnectionStatus.CONNECTED
             self.last_connected = datetime.now()
             self.error_message = ""
@@ -251,7 +280,8 @@ class SAPConnector(Connector):
 
     def disconnect(self) -> bool:
         """Disconnect from SAP"""
-        self._connection = None
+        if self._rfc_manager:
+            self._rfc_manager.close_all()
         self.status = ConnectionStatus.DISCONNECTED
         return True
 
@@ -260,101 +290,168 @@ class SAPConnector(Connector):
         result = {
             "success": False,
             "system_info": {},
-            "message": ""
+            "message": "",
+            "mode": "live" if self._is_live else "mock",
         }
 
         try:
-            if self.connect():
-                # Would normally call RFC_SYSTEM_INFO
+            if self._rfc_manager:
+                info = self._rfc_manager.call("RFC_SYSTEM_INFO")
+                rfcsi = info.get("RFCSI_EXPORT", {})
+                result["success"] = True
+                result["system_info"] = {
+                    "system_id": rfcsi.get("RFCSYSID", self.config.system_id),
+                    "client": self.config.client,
+                    "host": self.config.host,
+                    "database": rfcsi.get("RFCDBSYS", "Unknown"),
+                    "release": rfcsi.get("RFCOPSYS", "Unknown"),
+                }
+                result["message"] = "Connection successful"
+            elif self.connect():
                 result["success"] = True
                 result["system_info"] = {
                     "system_id": self.config.system_id,
                     "client": self.config.client,
                     "host": self.config.host,
-                    "release": "SAP ECC 6.0"  # Mock
                 }
-                result["message"] = "Connection successful"
+                result["message"] = "Connection successful (no RFC backend)"
         except Exception as e:
             result["message"] = str(e)
 
         return result
 
     def get_users(self, filters: Dict = None) -> List[Dict]:
-        """Get users from SAP"""
-        # Mock data - would use BAPI_USER_GETLIST
-        return [
-            {
-                "user_id": "JSMITH",
-                "first_name": "John",
-                "last_name": "Smith",
-                "email": "jsmith@example.com",
-                "department": "Finance",
-                "user_type": "Dialog",
-                "valid_from": "2020-01-01",
-                "valid_to": "9999-12-31",
-                "locked": False
-            },
-            {
-                "user_id": "MBROWN",
-                "first_name": "Mary",
-                "last_name": "Brown",
-                "email": "mbrown@example.com",
-                "department": "Procurement",
-                "user_type": "Dialog",
-                "valid_from": "2019-06-15",
-                "valid_to": "9999-12-31",
-                "locked": False
-            }
-        ]
+        """Get users from SAP via BAPI_USER_GETLIST"""
+        if not self._rfc_manager:
+            return []
+
+        filters = filters or {}
+        pattern = filters.get("username_pattern", "*")
+
+        raw = self._rfc_manager.call(
+            "BAPI_USER_GETLIST",
+            MAX_ROWS=filters.get("max_rows", 1000),
+            SELECTION_RANGE=[{
+                "PARAMETER": "USERNAME",
+                "SIGN": "I",
+                "OPTION": "CP",
+                "LOW": pattern,
+            }],
+        )
+
+        users = []
+        for entry in raw.get("USERLIST", []):
+            uid = entry.get("USERNAME", "")
+            # Fetch detail for each user
+            detail = self._rfc_manager.call(
+                "BAPI_USER_GET_DETAIL", USERNAME=uid, CACHE_RESULTS="X"
+            )
+            address = detail.get("ADDRESS", {})
+            logon = detail.get("LOGONDATA", {})
+            users.append({
+                "user_id": uid,
+                "first_name": address.get("FIRSTNAME", ""),
+                "last_name": address.get("LASTNAME", ""),
+                "email": address.get("E_MAIL", ""),
+                "department": address.get("DEPARTMENT", ""),
+                "user_type": logon.get("USTYP", ""),
+                "valid_from": logon.get("GLTGV", ""),
+                "valid_to": logon.get("GLTGB", ""),
+                "locked": int(logon.get("UFLAG", 0)) != 0,
+            })
+
+        return users
 
     def get_roles(self, filters: Dict = None) -> List[Dict]:
-        """Get roles from SAP"""
-        # Mock data - would use PRGN_RFC_READ_ROLES
-        return [
-            {
-                "role_id": "Z_FI_AP_CLERK",
-                "description": "Accounts Payable Clerk",
-                "role_type": "single",
-                "composite_roles": [],
-                "profiles": ["Z_FI_AP_CLERK_P"]
-            },
-            {
-                "role_id": "Z_MM_PO_CREATE",
-                "description": "Purchase Order Creator",
-                "role_type": "single",
-                "composite_roles": [],
-                "profiles": ["Z_MM_PO_P"]
-            }
-        ]
+        """Get roles from SAP via RFC_READ_TABLE on AGR_DEFINE"""
+        if not self._rfc_manager:
+            return []
+
+        filters = filters or {}
+        pattern = filters.get("role_pattern", "*")
+
+        raw = self._rfc_manager.call(
+            "RFC_READ_TABLE",
+            QUERY_TABLE="AGR_DEFINE",
+            DELIMITER="|",
+            OPTIONS=[{"TEXT": f"AGR_NAME LIKE '{pattern}'"}],
+            FIELDS=[
+                {"FIELDNAME": "AGR_NAME"},
+                {"FIELDNAME": "PARENT_AGR"},
+                {"FIELDNAME": "CREATE_USR"},
+                {"FIELDNAME": "CREATE_DAT"},
+            ],
+            ROWCOUNT=filters.get("max_rows", 1000),
+        )
+
+        roles = []
+        for row in raw.get("DATA", []):
+            vals = row.get("WA", "").split("|")
+            if len(vals) >= 4:
+                roles.append({
+                    "role_id": vals[0].strip(),
+                    "description": vals[3].strip() if len(vals) > 3 else "",
+                    "role_type": "composite" if vals[1].strip() else "single",
+                    "composite_roles": [],
+                    "profiles": [],
+                })
+
+        return roles
 
     def get_user_roles(self, user_id: str) -> List[Dict]:
-        """Get roles for a user"""
-        # Mock data - would use BAPI_USER_GET_DETAIL
-        return [
-            {
-                "role_id": "Z_FI_AP_CLERK",
-                "valid_from": "2020-01-01",
-                "valid_to": "9999-12-31",
-                "org_levels": {"BUKRS": ["1000", "2000"]}
-            }
-        ]
+        """Get roles for a user via BAPI_USER_GET_DETAIL"""
+        if not self._rfc_manager:
+            return []
+
+        detail = self._rfc_manager.call(
+            "BAPI_USER_GET_DETAIL", USERNAME=user_id, CACHE_RESULTS="X"
+        )
+
+        roles = []
+        for ag in detail.get("ACTIVITYGROUPS", []):
+            roles.append({
+                "role_id": ag.get("AGR_NAME", ""),
+                "valid_from": ag.get("FROM_DAT", ""),
+                "valid_to": ag.get("TO_DAT", ""),
+                "org_levels": {},
+            })
+
+        return roles
 
     def get_user_authorizations(self, user_id: str) -> List[Dict]:
         """Get detailed authorizations for a user"""
-        # Mock data
-        return [
-            {
-                "auth_object": "F_BKPF_BUK",
-                "field": "BUKRS",
-                "values": ["1000", "2000"],
-                "activity": ["01", "02", "03"]
-            },
-            {
-                "auth_object": "S_TCODE",
-                "field": "TCD",
-                "values": ["FB01", "FB02", "FB03", "F110"]
-            }
-        ]
+        if not self._rfc_manager:
+            return []
+
+        user_roles = self.get_user_roles(user_id)
+        authorizations = []
+
+        for role in user_roles:
+            role_name = role.get("role_id", "")
+            # Read auth content from AGR_1251
+            raw = self._rfc_manager.call(
+                "RFC_READ_TABLE",
+                QUERY_TABLE="AGR_1251",
+                DELIMITER="|",
+                OPTIONS=[{"TEXT": f"AGR_NAME = '{role_name}'"}],
+                FIELDS=[
+                    {"FIELDNAME": "OBJECT"},
+                    {"FIELDNAME": "FIELD"},
+                    {"FIELDNAME": "LOW"},
+                    {"FIELDNAME": "HIGH"},
+                ],
+                ROWCOUNT=5000,
+            )
+            for row in raw.get("DATA", []):
+                vals = row.get("WA", "").split("|")
+                if len(vals) >= 3:
+                    authorizations.append({
+                        "auth_object": vals[0].strip(),
+                        "field": vals[1].strip(),
+                        "values": [vals[2].strip()],
+                    })
+
+        return authorizations
 
     def sync_users(self) -> SyncJob:
         """Sync users from SAP"""
@@ -365,7 +462,7 @@ class SAPConnector(Connector):
         try:
             users = self.get_users()
             job.records_processed = len(users)
-            job.records_created = len(users)  # Simplified
+            job.records_created = len(users)
             job.status = "completed"
         except Exception as e:
             job.status = "failed"

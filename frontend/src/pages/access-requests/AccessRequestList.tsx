@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { accessRequestApi } from '../../services/api';
 import {
   PlusIcon,
   ClockIcon,
@@ -30,13 +32,6 @@ interface AccessRequest {
   businessJustification: string;
 }
 
-const mockRequests: AccessRequest[] = [
-  { id: 'REQ-2024-001', role: 'SAP_MM_BUYER', system: 'SAP ECC', status: 'pending', requestDate: '2024-01-20', approver: 'John Manager', riskLevel: 'medium', businessJustification: 'Need to process purchase orders for Q1 projects' },
-  { id: 'REQ-2024-002', role: 'SAP_FI_AP_CLERK', system: 'SAP ECC', status: 'approved', requestDate: '2024-01-18', approver: 'Sarah Director', riskLevel: 'low', businessJustification: 'Accounts payable processing role' },
-  { id: 'REQ-2024-003', role: 'ADMIN_FULL_ACCESS', system: 'Azure AD', status: 'in_review', requestDate: '2024-01-19', approver: 'IT Security Team', riskLevel: 'critical', businessJustification: 'Emergency admin access for system maintenance' },
-  { id: 'REQ-2024-004', role: 'HR_BENEFITS_ADMIN', system: 'Workday', status: 'rejected', requestDate: '2024-01-15', approver: 'HR Manager', riskLevel: 'high', businessJustification: 'Requesting for benefits administration tasks' },
-  { id: 'REQ-2024-005', role: 'READ_ONLY_REPORTS', system: 'Salesforce', status: 'approved', requestDate: '2024-01-17', approver: 'Sales Director', riskLevel: 'low', businessJustification: 'View sales reports for quarterly planning' },
-];
 
 const statusVariant: Record<string, 'warning' | 'success' | 'danger' | 'info'> = {
   pending: 'warning',
@@ -54,10 +49,30 @@ const statusLabel: Record<string, string> = {
 
 export function AccessRequestList() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredRequests = mockRequests.filter((req) => {
+  // Debounce search input — wait 300 ms before firing a new request
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { data: requests = [] } = useQuery({
+    queryKey: ['accessRequests', statusFilter, debouncedSearch],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await accessRequestApi.list(params);
+      return res.data?.requests || res.data || [];
+    },
+  });
+
+  // Client-side fallback filter in case the backend ignores the params
+  const filteredRequests = (requests as AccessRequest[]).filter((req) => {
     const matchesSearch =
+      !searchTerm ||
       req.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.system.toLowerCase().includes(searchTerm.toLowerCase());
@@ -133,10 +148,10 @@ export function AccessRequestList() {
 
       {/* Request Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <StatCard title="Total Requests" value={mockRequests.length} icon={DocumentTextIcon} iconBgColor="stat-icon-blue" iconColor="" />
-        <StatCard title="Pending" value={mockRequests.filter((r) => r.status === 'pending').length} icon={ClockIcon} iconBgColor="stat-icon-yellow" iconColor="" />
-        <StatCard title="Approved" value={mockRequests.filter((r) => r.status === 'approved').length} icon={CheckCircleIcon} iconBgColor="stat-icon-green" iconColor="" />
-        <StatCard title="Rejected" value={mockRequests.filter((r) => r.status === 'rejected').length} icon={XCircleIcon} iconBgColor="stat-icon-red" iconColor="" />
+        <StatCard title="Total Requests" value={(requests as AccessRequest[]).length} icon={DocumentTextIcon} iconBgColor="stat-icon-blue" iconColor="" />
+        <StatCard title="Pending" value={(requests as AccessRequest[]).filter((r) => r.status === 'pending').length} icon={ClockIcon} iconBgColor="stat-icon-yellow" iconColor="" />
+        <StatCard title="Approved" value={(requests as AccessRequest[]).filter((r) => r.status === 'approved').length} icon={CheckCircleIcon} iconBgColor="stat-icon-green" iconColor="" />
+        <StatCard title="Rejected" value={(requests as AccessRequest[]).filter((r) => r.status === 'rejected').length} icon={XCircleIcon} iconBgColor="stat-icon-red" iconColor="" />
       </div>
 
       {/* Filters */}

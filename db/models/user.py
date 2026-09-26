@@ -86,6 +86,10 @@ class User(Base, TimestampMixin):
     password_hash = Column(String(255), nullable=True)
     is_platform_user = Column(Boolean, default=False)
 
+    # Multi-Factor Authentication (TOTP)
+    mfa_enabled = Column(Boolean, default=False)
+    mfa_secret = Column(String(64), nullable=True)
+
     # Risk metrics
     risk_score = Column(Float, default=0.0)
     violation_count = Column(Integer, default=0)
@@ -164,6 +168,11 @@ class Role(Base, TimestampMixin):
     # Statistics
     user_count = Column(Integer, default=0)
     transaction_count = Column(Integer, default=0)
+
+    # SAP GRC role engineering gap fields
+    prerequisites = Column(JSON, nullable=True)             # list of prerequisite descriptions
+    reaffirmation_days = Column(Integer, nullable=True)     # days until reaffirmation required
+    methodology_stage = Column(String(50), nullable=True)   # define/authorize/derive/analyze/test/approve/generate/provision
 
     # Sync metadata
     last_synced_at = Column(DateTime, nullable=True)

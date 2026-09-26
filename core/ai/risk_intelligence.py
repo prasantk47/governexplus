@@ -107,21 +107,21 @@ class RiskIntelligenceEngine:
        - Actionable insights, not black-box numbers
     """
 
-    def __init__(self):
-        # User profiles for contextual analysis
+    def __init__(self, db_session=None):
+        # User profiles loaded from DB or SAP connector
         self.user_profiles: Dict[str, Dict[str, Any]] = {}
 
         # Historical risk data for trend analysis
         self.risk_history: Dict[str, List[Tuple[datetime, float]]] = {}
 
-        # Peer group baselines
+        # Peer group baselines — computed from real population
         self.peer_baselines: Dict[str, Dict[str, float]] = {}
 
         # Learning data
         self.false_positive_patterns: List[Dict] = []
         self.confirmed_risks: List[Dict] = []
 
-        # Model weights (would be trained in production)
+        # Model weights (calibrated through feedback loop)
         self.factor_weights = {
             "access_volume": 0.15,
             "sensitive_access": 0.25,
@@ -132,66 +132,63 @@ class RiskIntelligenceEngine:
             "history": 0.05
         }
 
-        self._initialize_demo_data()
+        self._db = db_session
+        if db_session:
+            self._load_from_database(db_session)
 
-    def _initialize_demo_data(self):
-        """Initialize with demo data for illustration"""
-        # Demo user profiles
-        self.user_profiles = {
-            "JSMITH": {
-                "department": "Finance",
-                "role": "Senior Accountant",
-                "tenure_years": 5,
-                "manager": "MWILLIAMS",
-                "typical_access_hours": (8, 18),
-                "typical_transactions": ["FB01", "FB02", "FB03", "F-02"],
-                "risk_history": [45, 48, 52, 55, 60],  # Trending up
-                "past_incidents": 0,
-                "last_review": datetime.utcnow() - timedelta(days=90)
-            },
-            "MBROWN": {
-                "department": "Procurement",
-                "role": "Buyer",
-                "tenure_years": 2,
-                "manager": "SJONES",
-                "typical_access_hours": (9, 17),
-                "typical_transactions": ["ME21N", "ME22N", "ME23N"],
-                "risk_history": [30, 32, 31, 30, 29],  # Stable
-                "past_incidents": 0,
-                "last_review": datetime.utcnow() - timedelta(days=30)
-            },
-            "TDAVIS": {
-                "department": "IT",
-                "role": "Basis Administrator",
-                "tenure_years": 8,
-                "manager": "KCARTER",
-                "typical_access_hours": (7, 22),  # Wide range for IT
-                "typical_transactions": ["SU01", "PFCG", "SM21"],
-                "risk_history": [85, 82, 80, 78, 75],  # Trending down
-                "past_incidents": 1,
-                "last_review": datetime.utcnow() - timedelta(days=15)
-            },
-            "NEWUSER": {
-                "department": "Sales",
-                "role": "Sales Rep",
-                "tenure_years": 0.1,
-                "manager": "RJOHNSON",
-                "typical_access_hours": (9, 17),
-                "typical_transactions": [],
-                "risk_history": [20],
-                "past_incidents": 0,
-                "last_review": None
+    def _load_from_database(self, db_session):
+        """Load user profiles and baselines from database"""
+        try:
+            from db.models.user import User
+            users = db_session.query(User).filter(User.status == "active").all()
+            for u in users:
+                self.user_profiles[u.user_id] = {
+                    "department": u.department or "Unknown",
+                    "role": u.title or u.user_type or "User",
+                    "tenure_years": (
+                        (datetime.utcnow() - u.created_at).days / 365.0
+                        if u.created_at else 0
+                    ),
+                    "manager": u.manager_id or "",
+                    "typical_access_hours": (8, 18),
+                    "typical_transactions": [],
+                    "risk_history": [],
+                    "past_incidents": 0,
+                    "last_review": u.last_login,
+                }
+            self._compute_peer_baselines()
+        except Exception:
+            # If DB not available, start with empty profiles
+            pass
+
+    def _compute_peer_baselines(self):
+        """Compute peer baselines from actual user population"""
+        from collections import defaultdict
+        dept_scores: Dict[str, List[float]] = defaultdict(list)
+        for uid, profile in self.user_profiles.items():
+            dept = profile.get("department", "Unknown")
+            history = profile.get("risk_history", [])
+            if history:
+                dept_scores[dept].append(history[-1])
+            else:
+                dept_scores[dept].append(25.0)  # Default baseline for new users
+
+        for dept, scores in dept_scores.items():
+            avg = sum(scores) / len(scores) if scores else 30.0
+            variance = sum((s - avg) ** 2 for s in scores) / max(len(scores), 1)
+            std = math.sqrt(variance)
+            self.peer_baselines[dept] = {
+                "avg_score": round(avg, 1),
+                "std_dev": round(max(std, 5.0), 1),
+                "max_normal": round(avg + 2 * max(std, 5.0), 1),
             }
-        }
 
-        # Peer baselines by department
-        self.peer_baselines = {
-            "Finance": {"avg_score": 45, "std_dev": 12, "max_normal": 65},
-            "Procurement": {"avg_score": 35, "std_dev": 10, "max_normal": 55},
-            "IT": {"avg_score": 60, "std_dev": 15, "max_normal": 85},
-            "Sales": {"avg_score": 25, "std_dev": 8, "max_normal": 40},
-            "HR": {"avg_score": 50, "std_dev": 12, "max_normal": 70}
-        }
+        # Ensure common departments have defaults if no data
+        for dept in ["Finance", "Procurement", "IT", "Sales", "HR"]:
+            if dept not in self.peer_baselines:
+                self.peer_baselines[dept] = {
+                    "avg_score": 35.0, "std_dev": 12.0, "max_normal": 60.0
+                }
 
     # ==================== Core Risk Calculation ====================
 

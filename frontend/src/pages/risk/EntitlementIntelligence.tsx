@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { riskApi } from '../../services/api';
 import {
   ChartBarIcon,
   ExclamationTriangleIcon,
@@ -7,7 +9,6 @@ import {
   ShieldExclamationIcon,
   ArrowTrendingDownIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   CheckCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -27,117 +28,6 @@ interface EntitlementIssue {
   potentialSavings?: string;
 }
 
-const mockIssues: EntitlementIssue[] = [
-  {
-    id: 'ENT-001',
-    type: 'unused',
-    user: 'John Smith',
-    userId: 'jsmith',
-    department: 'Finance',
-    entitlement: 'AP Payment Run',
-    system: 'SAP S/4HANA',
-    riskLevel: 'high',
-    lastUsed: null,
-    daysSinceUse: 180,
-    recommendation: 'Remove access - never used since assignment',
-    potentialSavings: '$1,200/year',
-  },
-  {
-    id: 'ENT-002',
-    type: 'excessive',
-    user: 'Mary Jones',
-    userId: 'mjones',
-    department: 'IT',
-    entitlement: 'SAP_ALL',
-    system: 'SAP S/4HANA',
-    riskLevel: 'critical',
-    lastUsed: '2024-01-15',
-    daysSinceUse: 3,
-    recommendation: 'Replace with role-specific access',
-  },
-  {
-    id: 'ENT-003',
-    type: 'dormant',
-    user: 'Robert Wilson',
-    userId: 'rwilson',
-    department: 'Sales',
-    entitlement: 'CRM Admin',
-    system: 'Salesforce',
-    riskLevel: 'medium',
-    lastUsed: '2023-09-10',
-    daysSinceUse: 130,
-    recommendation: 'Review with manager - extended non-use',
-    potentialSavings: '$500/year',
-  },
-  {
-    id: 'ENT-004',
-    type: 'orphaned',
-    user: 'Sarah Brown (Terminated)',
-    userId: 'sbrown',
-    department: 'HR',
-    entitlement: 'HR Master Data',
-    system: 'Workday',
-    riskLevel: 'critical',
-    lastUsed: '2023-11-30',
-    daysSinceUse: 49,
-    recommendation: 'Immediate removal - terminated employee',
-  },
-  {
-    id: 'ENT-005',
-    type: 'unused',
-    user: 'David Lee',
-    userId: 'dlee',
-    department: 'Operations',
-    entitlement: 'Warehouse Admin',
-    system: 'SAP EWM',
-    riskLevel: 'medium',
-    lastUsed: null,
-    daysSinceUse: 90,
-    recommendation: 'Remove access - assigned but never used',
-    potentialSavings: '$800/year',
-  },
-  {
-    id: 'ENT-006',
-    type: 'excessive',
-    user: 'Tom Chen',
-    userId: 'tchen',
-    department: 'IT',
-    entitlement: 'Domain Admin',
-    system: 'Active Directory',
-    riskLevel: 'critical',
-    lastUsed: '2024-01-17',
-    daysSinceUse: 1,
-    recommendation: 'Reduce to specific admin functions needed',
-  },
-  {
-    id: 'ENT-007',
-    type: 'dormant',
-    user: 'Ana Garcia',
-    userId: 'agarcia',
-    department: 'Finance',
-    entitlement: 'Journal Entry Posting',
-    system: 'SAP S/4HANA',
-    riskLevel: 'high',
-    lastUsed: '2023-10-15',
-    daysSinceUse: 95,
-    recommendation: 'Review - no GL postings in 3+ months',
-    potentialSavings: '$600/year',
-  },
-  {
-    id: 'ENT-008',
-    type: 'unused',
-    user: 'Multiple Users (15)',
-    userId: 'group',
-    department: 'Various',
-    entitlement: 'Legacy ERP Access',
-    system: 'Oracle EBS',
-    riskLevel: 'low',
-    lastUsed: null,
-    daysSinceUse: 365,
-    recommendation: 'System decommissioned - remove all access',
-    potentialSavings: '$15,000/year',
-  },
-];
 
 const typeConfig = {
   unused: { label: 'Unused Access', color: 'bg-blue-100 text-blue-800', icon: ClockIcon },
@@ -147,7 +37,11 @@ const typeConfig = {
 };
 
 export function EntitlementIntelligence() {
-  const [issues, setIssues] = useState<EntitlementIssue[]>(mockIssues);
+  const { data: issuesData } = useQuery({
+    queryKey: ['entitlement-violations'],
+    queryFn: () => riskApi.listViolations().then(r => r.data),
+  });
+  const issues: EntitlementIssue[] = Array.isArray(issuesData) ? issuesData : (issuesData as any)?.violations || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [riskFilter, setRiskFilter] = useState('');

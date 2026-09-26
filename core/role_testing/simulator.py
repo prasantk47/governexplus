@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 import uuid
-import random
 
 
 class SimulationStatus(Enum):
@@ -243,13 +242,13 @@ class PTSSimulator:
     Features:
     - Virtual role assignment testing
     - What-if scenario analysis
-    - SoD conflict detection
+    - SoD conflict detection via the ARA RuleEngine (no random fabrication)
     - Sensitive access validation
     - Compliance impact assessment
     - Automated test execution
     """
 
-    def __init__(self):
+    def __init__(self, ara_engine=None):
         self.simulations: Dict[str, SimulationResult] = {}
         self.scenarios: Dict[str, SimulationScenario] = {}
         self.statistics = {
@@ -260,20 +259,16 @@ class PTSSimulator:
             "changes_tested": 0
         }
 
-        # Demo data
-        self._demo_transactions = [
-            "FB01", "FB02", "FB03", "ME21N", "ME22N", "ME23N",
-            "VA01", "VA02", "VA03", "MM01", "MM02", "MM03",
-            "XK01", "XK02", "XK03", "FK01", "FK02", "FK03",
-            "SU01", "SU10", "PFCG", "SE38", "SE16", "SM37"
-        ]
+        # Optional ARA RuleEngine for real SoD conflict detection.
+        # When None the engine is unavailable and conflict detection returns
+        # empty results with engine_available=False rather than fabricated data.
+        self._ara_engine = ara_engine
 
-        self._demo_sod_rules = [
-            {"function1": "Vendor Master", "function2": "Payment Processing"},
-            {"function1": "PO Creation", "function2": "PO Approval"},
-            {"function1": "User Admin", "function2": "Audit Log Access"},
-            {"function1": "Customer Master", "function2": "Credit Management"}
-        ]
+        # Sensitive transaction codes used for access checks (not randomly sampled)
+        self._sensitive_tcodes: Set[str] = {
+            "SU01", "SU10", "PFCG", "SE38", "SE16", "SM37",
+            "SM30", "SE11", "SE80", "SA38",
+        }
 
     def create_scenario(
         self,
@@ -428,70 +423,138 @@ class PTSSimulator:
         return result
 
     def _analyze_change(self, change: AccessChange, scenario: SimulationScenario) -> ImpactAnalysis:
-        """Analyze the impact of a single change"""
-        sod_conflicts = []
-        sensitive_grants = []
-        privilege_escalations = []
-        new_permissions = []
-        removed_permissions = []
-        warnings = []
-        blockers = []
-        recommendations = []
+        """Analyze the impact of a single change.
 
-        affected_users = 1 if change.target_user else len(change.target_users)
-        affected_transactions = random.sample(self._demo_transactions, min(5, len(self._demo_transactions)))
+        SoD conflict detection is performed via the ARA RuleEngine when it is
+        available.  When the engine is not wired in, the result carries
+        engine_available=False in each conflict entry and no fabricated
+        conflicts are returned.  All other checks (privilege escalation,
+        sensitive access) are deterministic based on the change attributes.
+        """
+        sod_conflicts: List[Dict[str, Any]] = []
+        sensitive_grants: List[Dict[str, Any]] = []
+        privilege_escalations: List[Dict[str, Any]] = []
+        warnings: List[str] = []
+        blockers: List[str] = []
+        recommendations: List[str] = []
 
-        # Simulate SoD check
-        if scenario.include_sod_check and change.change_type in [ChangeType.ADD_ROLE, ChangeType.ADD_PERMISSION]:
-            # Randomly generate some SoD conflicts for demo
-            if random.random() > 0.6:
-                conflict = random.choice(self._demo_sod_rules)
-                sod_conflicts.append({
-                    "rule_id": f"SOD-{random.randint(100, 999)}",
-                    "function1": conflict["function1"],
-                    "function2": conflict["function2"],
-                    "risk_level": random.choice(["HIGH", "CRITICAL"]),
-                    "mitigation_required": True
-                })
-                warnings.append(f"SoD conflict: {conflict['function1']} vs {conflict['function2']}")
+        affected_users = 1 if change.target_user else max(len(change.target_users), 1)
 
-        # Simulate sensitive access check
+        # Collect the explicit permission transaction codes from the change so
+        # we can check them without guessing.
+        change_tcodes: List[str] = []
+        for perm in change.permissions:
+            tcode = perm.get("tcode") or perm.get("transaction_code") or perm.get("value")
+            if tcode and isinstance(tcode, str):
+                change_tcodes.append(tcode.upper())
+
+        # ------------------------------------------------------------------
+        # SoD conflict detection via ARA engine
+        # ------------------------------------------------------------------
+        if scenario.include_sod_check and change.change_type in [
+            ChangeType.ADD_ROLE, ChangeType.ADD_PERMISSION
+        ]:
+            if self._ara_engine is not None:
+                # Build an access context from the proposed change and evaluate
+                # it against the loaded rule set.
+                access_context: Dict[str, Any] = {
+                    "tcodes": change_tcodes,
+                    "role_id": change.role_id,
+                    "role_name": change.role_name,
+                    "permissions": change.permissions,
+                }
+                try:
+                    triggered = self._ara_engine.evaluate_access(
+                        access_context, rule_types=["sod"]
+                    )
+                    for rule, _ in triggered:
+                        sod_conflicts.append({
+                            "rule_id": rule.rule_id,
+                            "rule_name": rule.name,
+                            "risk_level": rule.severity.value.upper(),
+                            "mitigation_required": True,
+                            "engine_available": True,
+                        })
+                        warnings.append(f"SoD conflict detected: {rule.name}")
+                except Exception as exc:
+                    # Engine call failed — report the error, return no conflicts
+                    warnings.append(f"SoD check failed: {exc}")
+            else:
+                # ARA engine not wired — do not fabricate conflicts
+                warnings.append(
+                    "SoD check skipped: ARA engine not available for this simulation"
+                )
+
+        # ------------------------------------------------------------------
+        # Sensitive access check — deterministic, based on actual tcodes
+        # ------------------------------------------------------------------
         if scenario.include_sensitive_check:
-            sensitive_tcodes = ["SU01", "SU10", "PFCG", "SE38", "SE16", "SM37"]
-            for tcode in affected_transactions:
-                if tcode in sensitive_tcodes and random.random() > 0.5:
+            for tcode in change_tcodes:
+                if tcode in self._sensitive_tcodes:
                     sensitive_grants.append({
                         "transaction": tcode,
                         "sensitivity_level": "HIGH",
-                        "requires_approval": True
+                        "requires_approval": True,
                     })
+            if sensitive_grants:
+                warnings.append(
+                    f"Sensitive transaction(s) in change: "
+                    f"{[g['transaction'] for g in sensitive_grants]}"
+                )
 
-        # Simulate privilege escalation detection
+        # ------------------------------------------------------------------
+        # Privilege escalation detection — deterministic from role metadata
+        # ------------------------------------------------------------------
         if change.change_type == ChangeType.ADD_ROLE:
-            if "ADMIN" in change.role_name.upper() or "ALL" in change.role_id.upper():
+            privileged_keywords = ["ADMIN", "BASIS", "ALL", "SUPER", "SAP_ALL", "SAP_NEW"]
+            role_upper = change.role_name.upper()
+            role_id_upper = change.role_id.upper()
+            if any(kw in role_upper or kw in role_id_upper for kw in privileged_keywords):
                 privilege_escalations.append({
                     "type": "Admin Role Assignment",
+                    "role_id": change.role_id,
+                    "role_name": change.role_name,
                     "risk": "HIGH",
-                    "justification_required": True
+                    "justification_required": True,
                 })
                 blockers.append(f"Privilege escalation detected: {change.role_name}")
 
-        # Generate permissions
-        new_permissions = [f"P-{random.randint(1000, 9999)}" for _ in range(random.randint(3, 10))]
+        # ------------------------------------------------------------------
+        # Permission lists — derived from the change definition, not guessed
+        # ------------------------------------------------------------------
+        new_permissions: List[str] = []
+        removed_permissions: List[str] = []
 
-        if change.change_type == ChangeType.REMOVE_ROLE:
-            removed_permissions = [f"P-{random.randint(1000, 9999)}" for _ in range(random.randint(3, 8))]
+        if change.change_type in [ChangeType.ADD_ROLE, ChangeType.ADD_PERMISSION]:
+            new_permissions = [
+                str(p.get("permission_id") or p.get("tcode") or p.get("value") or p)
+                for p in change.permissions
+            ]
 
-        # Determine impact level
-        impact_level = ImpactLevel.LOW
+        if change.change_type in [ChangeType.REMOVE_ROLE, ChangeType.REMOVE_PERMISSION]:
+            removed_permissions = [
+                str(p.get("permission_id") or p.get("tcode") or p.get("value") or p)
+                for p in change.permissions
+            ]
+
+        # ------------------------------------------------------------------
+        # Impact level — determined from findings, not random
+        # ------------------------------------------------------------------
+        impact_level = ImpactLevel.NONE
+        if affected_users > 0:
+            impact_level = ImpactLevel.LOW
+        if sensitive_grants:
+            impact_level = ImpactLevel.MEDIUM
         if sod_conflicts:
             impact_level = ImpactLevel.HIGH
         if privilege_escalations:
             impact_level = ImpactLevel.CRITICAL
-        if affected_users > 10:
-            impact_level = ImpactLevel.MEDIUM if impact_level == ImpactLevel.LOW else impact_level
+        if affected_users > 10 and impact_level == ImpactLevel.LOW:
+            impact_level = ImpactLevel.MEDIUM
 
-        # Generate recommendations
+        # ------------------------------------------------------------------
+        # Recommendations
+        # ------------------------------------------------------------------
         if sod_conflicts:
             recommendations.append("Request mitigation control before proceeding")
         if sensitive_grants:
@@ -503,38 +566,43 @@ class PTSSimulator:
             change_id=change.change_id,
             impact_level=impact_level,
             affected_users=affected_users,
-            affected_transactions=affected_transactions,
+            affected_transactions=change_tcodes,
             sod_conflicts=sod_conflicts,
             sensitive_access_grants=sensitive_grants,
             privilege_escalations=privilege_escalations,
             new_permissions=new_permissions,
             removed_permissions=removed_permissions,
-            unchanged_permissions=random.randint(10, 50),
+            unchanged_permissions=0,  # cannot compute without current access snapshot
             compliance_frameworks_affected=["SOX", "GDPR"] if sod_conflicts else [],
             audit_findings_risk=len(sod_conflicts) + len(sensitive_grants),
             recommendations=recommendations,
             warnings=warnings,
-            blockers=blockers
+            blockers=blockers,
         )
 
     def _execute_test(self, test: TestScenario, scenario: SimulationScenario) -> TestScenario:
-        """Execute a single test scenario"""
+        """Execute a single test scenario.
+
+        Real execution requires a live sandbox connector which is not yet wired.
+        Rather than producing random pass/fail results that would mislead users,
+        the test is marked as not_executed with an explanation.  Callers can
+        inspect the ARA-derived impact analyses for real conflict information.
+        """
         start = datetime.now()
 
-        # Simulate test execution
-        # In production, this would actually test against a sandbox
-        permissions_used = [f"AUTH-{random.randint(100, 999)}" for _ in range(random.randint(1, 5))]
-
-        # Simulate result (mostly pass for demo)
-        if random.random() > 0.15:
-            test.actual_result = test.expected_result
-            test.error_message = ""
-        else:
-            test.actual_result = "failure" if test.expected_result == "success" else "success"
-            test.error_message = f"Authorization check failed for {test.transaction_code}"
-
-        test.permissions_used = permissions_used
-        test.execution_time_ms = random.randint(50, 500)
+        # No sandbox connector available — mark as not_executed instead of
+        # fabricating a random pass/fail outcome.
+        test.actual_result = "not_executed"
+        test.error_message = (
+            "Sandbox connector not available. "
+            "Test execution requires a live SAP sandbox environment. "
+            "Use the impact analysis (SoD conflicts, sensitive access) for risk guidance."
+        )
+        test.permissions_used = []
+        # Record a near-zero wall-clock time (just the Python overhead)
+        test.execution_time_ms = int(
+            (datetime.now() - start).total_seconds() * 1000
+        )
 
         return test
 
@@ -577,5 +645,20 @@ class PTSSimulator:
         }
 
 
-# Global simulator instance
-pts_simulator = PTSSimulator()
+# Global simulator instance — wire in the ARA engine so SoD conflict
+# detection uses real rules rather than fabricated random data.
+def _make_pts_simulator() -> PTSSimulator:
+    try:
+        from core.ara.rules import RuleEngine
+        from core.ara.ruleset_bridge import load_ruleset_into_engine
+        engine = RuleEngine()
+        load_ruleset_into_engine(engine)
+        return PTSSimulator(ara_engine=engine)
+    except Exception:
+        # If the ARA engine cannot be loaded (e.g. import error during startup),
+        # fall back to a simulator with no engine; it will return
+        # engine_available=False instead of random data.
+        return PTSSimulator(ara_engine=None)
+
+
+pts_simulator = _make_pts_simulator()

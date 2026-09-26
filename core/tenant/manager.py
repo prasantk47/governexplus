@@ -7,6 +7,11 @@ from enum import Enum
 from datetime import datetime, timedelta
 import uuid
 import hashlib
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+_IS_PRODUCTION = os.getenv("APP_ENV", "").lower() == "production"
 
 
 class TenantStatus(Enum):
@@ -81,8 +86,10 @@ class TenantConfig:
 
     # Features
     enabled_modules: List[str] = field(default_factory=lambda: [
-        "risk_analysis", "access_requests", "firefighter",
-        "certification", "audit"
+        "access_control",       # Risk Intelligence, Access Lifecycle, Privileged Access, Role Design Studio, Certification
+        "process_control",      # Control Intelligence — controls, testing, CCM, deficiencies, sign-off
+        "risk_management",      # Enterprise Risk Engine — register, assessments, KRI, scenarios, incidents
+        "audit_management",     # Audit Command Center — universe, planning, engagements, findings, actions
     ])
 
     # Notifications
@@ -186,8 +193,15 @@ class TenantManager:
         # Tier configurations
         self.tier_limits = self._initialize_tier_limits()
 
-        # Initialize demo tenant
-        self._create_demo_tenant()
+        # Initialize default tenant (always).
+        # Demo tenant is only created in non-production environments.
+        self._create_default_tenant()
+        if not _IS_PRODUCTION:
+            self._create_demo_tenant()
+        else:
+            logger.info(
+                "TenantManager: skipping demo tenant creation (APP_ENV=production)."
+            )
 
     def _initialize_tier_limits(self) -> Dict[TenantTier, TenantLimits]:
         """Define limits for each tier"""
@@ -277,6 +291,30 @@ class TenantManager:
                 audit_export=True
             )
         }
+
+    def _create_default_tenant(self):
+        """Create default tenant for on-premise / single-tenant mode"""
+        default = Tenant(
+            id="tenant_default",
+            name="Default Organization",
+            slug="default",
+            status=TenantStatus.ACTIVE,
+            tier=TenantTier.ENTERPRISE,
+            owner_email="admin@governexplus.com",
+            config=TenantConfig(
+                company_name="Default Organization",
+                timezone="UTC",
+                enabled_modules=[
+                    "risk_analysis", "access_requests", "firefighter",
+                    "certification", "audit", "role_engineering",
+                    "compliance", "ai", "arm", "workflows",
+                ]
+            ),
+            limits=self.tier_limits[TenantTier.ENTERPRISE],
+            activated_at=datetime.utcnow()
+        )
+        self.tenants[default.id] = default
+        self.tenants_by_slug[default.slug] = default.id
 
     def _create_demo_tenant(self):
         """Create demo tenant for testing"""

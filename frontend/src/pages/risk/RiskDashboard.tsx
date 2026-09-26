@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   ExclamationTriangleIcon,
   ShieldExclamationIcon,
   CheckCircleIcon,
-  ArrowTrendingDownIcon,
-  ArrowTrendingUpIcon,
   ChartBarIcon,
   ShieldCheckIcon,
   UserGroupIcon,
@@ -17,8 +16,8 @@ import {
   Table,
   Badge,
   RiskBadge,
-  StatusBadge,
 } from '../../components/ui';
+import { dashboardApi, riskApi } from '../../services/api';
 
 interface RiskMetric {
   label: string;
@@ -26,68 +25,6 @@ interface RiskMetric {
   change: number;
   changeType: 'increase' | 'decrease';
 }
-
-const riskMetrics: RiskMetric[] = [
-  { label: 'Overall Risk Score', value: 42, change: 5, changeType: 'decrease' },
-  { label: 'Active Violations', value: 45, change: 12, changeType: 'decrease' },
-  { label: 'Critical SoD Conflicts', value: 8, change: 2, changeType: 'decrease' },
-  { label: 'Users at High Risk', value: 23, change: 3, changeType: 'increase' },
-];
-
-const recentViolations = [
-  {
-    id: 'VIO-001',
-    user: 'John Smith',
-    type: 'SoD Conflict',
-    rule: 'Create Vendor / Approve Payment',
-    riskLevel: 'critical',
-    date: '2024-01-20',
-    status: 'open',
-  },
-  {
-    id: 'VIO-002',
-    user: 'Mary Brown',
-    type: 'Excessive Access',
-    rule: 'Admin access without business need',
-    riskLevel: 'high',
-    date: '2024-01-19',
-    status: 'in_review',
-  },
-  {
-    id: 'VIO-003',
-    user: 'Tom Davis',
-    type: 'SoD Conflict',
-    rule: 'Create PO / Approve PO',
-    riskLevel: 'high',
-    date: '2024-01-18',
-    status: 'mitigated',
-  },
-  {
-    id: 'VIO-004',
-    user: 'Alice Wilson',
-    type: 'Sensitive Access',
-    rule: 'Payroll data access',
-    riskLevel: 'medium',
-    date: '2024-01-17',
-    status: 'open',
-  },
-  {
-    id: 'VIO-005',
-    user: 'Bob Johnson',
-    type: 'SoD Conflict',
-    rule: 'Create GL Entry / Post GL Entry',
-    riskLevel: 'critical',
-    date: '2024-01-16',
-    status: 'open',
-  },
-];
-
-const riskByCategory = [
-  { category: 'SoD Conflicts', count: 28, percentage: 45 },
-  { category: 'Excessive Privileges', count: 18, percentage: 29 },
-  { category: 'Sensitive Access', count: 12, percentage: 19 },
-  { category: 'Dormant Accounts', count: 7, percentage: 11 },
-];
 
 const statusVariant: Record<string, 'danger' | 'info' | 'success'> = {
   open: 'danger',
@@ -101,38 +38,63 @@ const statusLabel: Record<string, string> = {
   mitigated: 'Mitigated',
 };
 
+interface ViolationRow {
+  id: string;
+  user: string;
+  type: string;
+  rule?: string;
+  riskLevel: string;
+  date: string;
+  status: string;
+}
+
 export function RiskDashboard() {
+  const { data: riskMetricsData } = useQuery({
+    queryKey: ['dashboardRiskMetrics'],
+    queryFn: () => dashboardApi.getRiskMetrics().then(r => r.data),
+  });
+
+  const { data: violationsData } = useQuery({
+    queryKey: ['recentViolations'],
+    queryFn: () => riskApi.listViolations({ limit: 5 }).then(r => r.data),
+  });
+
+  const riskMetrics: RiskMetric[] = Array.isArray(riskMetricsData) ? riskMetricsData : [];
+  const recentViolations: ViolationRow[] = Array.isArray(violationsData) ? violationsData : (violationsData as any)?.violations || [];
+  const riskByCategory: { category: string; count: number; percentage: number }[] =
+    (riskMetricsData as any)?.byCategory || [];
+
   const columns = [
     {
       key: 'violation',
       header: 'Violation ID',
-      render: (v: typeof recentViolations[0]) => (
+      render: (v: ViolationRow) => (
         <span className="text-sm font-medium text-primary-600">{v.id}</span>
       ),
     },
     {
       key: 'user',
       header: 'User',
-      render: (v: typeof recentViolations[0]) => (
+      render: (v: ViolationRow) => (
         <span className="text-sm text-gray-900">{v.user}</span>
       ),
     },
     {
       key: 'type',
       header: 'Type',
-      render: (v: typeof recentViolations[0]) => (
+      render: (v: ViolationRow) => (
         <span className="text-sm text-gray-500">{v.type}</span>
       ),
     },
     {
       key: 'risk',
       header: 'Risk Level',
-      render: (v: typeof recentViolations[0]) => <RiskBadge level={v.riskLevel} />,
+      render: (v: ViolationRow) => <RiskBadge level={v.riskLevel} />,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (v: typeof recentViolations[0]) => (
+      render: (v: ViolationRow) => (
         <Badge variant={statusVariant[v.status] || 'neutral'} size="sm">
           {statusLabel[v.status] || v.status}
         </Badge>
@@ -141,7 +103,7 @@ export function RiskDashboard() {
     {
       key: 'date',
       header: 'Date',
-      render: (v: typeof recentViolations[0]) => (
+      render: (v: ViolationRow) => (
         <span className="text-sm text-gray-500">{v.date}</span>
       ),
     },
@@ -168,35 +130,35 @@ export function RiskDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Risk Score"
-          value={riskMetrics[0].value}
+          value={riskMetrics[0]?.value ?? 0}
           icon={ShieldCheckIcon}
           iconBgColor="stat-icon-blue"
           iconColor=""
-          trend={-riskMetrics[0].change}
+          trend={-(riskMetrics[0]?.change ?? 0)}
         />
         <StatCard
           title="Active Violations"
-          value={riskMetrics[1].value}
+          value={riskMetrics[1]?.value ?? 0}
           icon={ExclamationTriangleIcon}
           iconBgColor="stat-icon-red"
           iconColor=""
-          trend={-riskMetrics[1].change}
+          trend={-(riskMetrics[1]?.change ?? 0)}
         />
         <StatCard
           title="Critical SoD"
-          value={riskMetrics[2].value}
+          value={riskMetrics[2]?.value ?? 0}
           icon={ShieldExclamationIcon}
           iconBgColor="stat-icon-orange"
           iconColor=""
-          trend={-riskMetrics[2].change}
+          trend={-(riskMetrics[2]?.change ?? 0)}
         />
         <StatCard
           title="High Risk Users"
-          value={riskMetrics[3].value}
+          value={riskMetrics[3]?.value ?? 0}
           icon={UserGroupIcon}
           iconBgColor="stat-icon-yellow"
           iconColor=""
-          trend={riskMetrics[3].change}
+          trend={riskMetrics[3]?.change ?? 0}
         />
       </div>
 

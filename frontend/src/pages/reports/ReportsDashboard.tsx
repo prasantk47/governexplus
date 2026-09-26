@@ -1,439 +1,742 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
 import {
-  MagnifyingGlassIcon,
   DocumentChartBarIcon,
   ClockIcon,
-  ArrowDownTrayIcon,
-  PlayIcon,
-  CalendarIcon,
-  ChartBarIcon,
-  ShieldExclamationIcon,
+  ExclamationTriangleIcon,
   UserGroupIcon,
-  ClipboardDocumentCheckIcon,
+  ShieldCheckIcon,
+  FireIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ArrowTrendingUpIcon,
+  ClipboardDocumentListIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import { reportsApi } from '../../services/api';
+import {
+  PageHeader,
+  Card,
+  Select,
+  Badge,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from '../../components/ui';
+import { StatCard } from '../../components/StatCard';
 
-interface Report {
-  id: string;
-  name: string;
-  description: string;
-  category: 'compliance' | 'risk' | 'access' | 'audit';
-  format: 'pdf' | 'excel' | 'csv';
-  lastRun: string;
-  schedule: string | null;
-  createdBy: string;
-}
+// ============================================================================
+// Constants
+// ============================================================================
 
-interface ScheduledReport {
-  id: string;
-  reportName: string;
-  schedule: string;
-  nextRun: string;
-  recipients: string[];
-  status: 'active' | 'paused';
-}
-
-const mockReports: Report[] = [
-  {
-    id: 'RPT-001',
-    name: 'SoD Violations Summary',
-    description: 'Overview of all segregation of duties violations by risk level and status',
-    category: 'risk',
-    format: 'pdf',
-    lastRun: '2024-01-19',
-    schedule: 'Weekly',
-    createdBy: 'System',
-  },
-  {
-    id: 'RPT-002',
-    name: 'User Access Review',
-    description: 'Complete list of user access rights across all systems',
-    category: 'access',
-    format: 'excel',
-    lastRun: '2024-01-18',
-    schedule: 'Monthly',
-    createdBy: 'System',
-  },
-  {
-    id: 'RPT-003',
-    name: 'Certification Campaign Status',
-    description: 'Progress and completion rates for active certification campaigns',
-    category: 'compliance',
-    format: 'pdf',
-    lastRun: '2024-01-20',
-    schedule: null,
-    createdBy: 'Compliance Team',
-  },
-  {
-    id: 'RPT-004',
-    name: 'Firefighter Session Audit',
-    description: 'Detailed log of all firefighter/emergency access sessions',
-    category: 'audit',
-    format: 'excel',
-    lastRun: '2024-01-17',
-    schedule: 'Daily',
-    createdBy: 'System',
-  },
-  {
-    id: 'RPT-005',
-    name: 'High-Risk Users Report',
-    description: 'Users with elevated risk scores and their access details',
-    category: 'risk',
-    format: 'pdf',
-    lastRun: '2024-01-15',
-    schedule: 'Weekly',
-    createdBy: 'Risk Management',
-  },
-  {
-    id: 'RPT-006',
-    name: 'Access Request History',
-    description: 'Complete history of access requests with approval workflow details',
-    category: 'access',
-    format: 'csv',
-    lastRun: '2024-01-16',
-    schedule: null,
-    createdBy: 'System',
-  },
-  {
-    id: 'RPT-007',
-    name: 'Role Assignment Matrix',
-    description: 'Matrix showing role assignments across users and systems',
-    category: 'access',
-    format: 'excel',
-    lastRun: '2024-01-14',
-    schedule: 'Monthly',
-    createdBy: 'System',
-  },
-  {
-    id: 'RPT-008',
-    name: 'Compliance Summary Report',
-    description: 'Executive summary of compliance status across all controls',
-    category: 'compliance',
-    format: 'pdf',
-    lastRun: '2024-01-12',
-    schedule: 'Quarterly',
-    createdBy: 'Compliance Team',
-  },
+const DATE_RANGE_OPTIONS = [
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: '180', label: 'Last 6 months' },
+  { value: '365', label: 'Last year' },
 ];
 
-const mockScheduledReports: ScheduledReport[] = [
-  {
-    id: 'SCH-001',
-    reportName: 'SoD Violations Summary',
-    schedule: 'Every Monday at 8:00 AM',
-    nextRun: '2024-01-22 08:00',
-    recipients: ['compliance@company.com', 'risk@company.com'],
-    status: 'active',
-  },
-  {
-    id: 'SCH-002',
-    reportName: 'Firefighter Session Audit',
-    schedule: 'Daily at 6:00 AM',
-    nextRun: '2024-01-21 06:00',
-    recipients: ['security@company.com'],
-    status: 'active',
-  },
-  {
-    id: 'SCH-003',
-    reportName: 'User Access Review',
-    schedule: 'First of every month at 9:00 AM',
-    nextRun: '2024-02-01 09:00',
-    recipients: ['it-admin@company.com', 'audit@company.com'],
-    status: 'active',
-  },
+const TAB_KEYS = ['access', 'firefighter', 'risk', 'users'] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+
+const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+  { key: 'access', label: 'Access Requests', icon: DocumentChartBarIcon },
+  { key: 'firefighter', label: 'Privileged Access', icon: FireIcon },
+  { key: 'risk', label: 'Risk & Compliance', icon: ShieldCheckIcon },
+  { key: 'users', label: 'Users & Audit', icon: UserGroupIcon },
 ];
 
-const categoryConfig = {
-  compliance: { color: 'bg-blue-100 text-blue-800', icon: ClipboardDocumentCheckIcon, label: 'Compliance' },
-  risk: { color: 'bg-red-100 text-red-800', icon: ShieldExclamationIcon, label: 'Risk' },
-  access: { color: 'bg-green-100 text-green-800', icon: UserGroupIcon, label: 'Access' },
-  audit: { color: 'bg-purple-100 text-purple-800', icon: DocumentChartBarIcon, label: 'Audit' },
+type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+
+const COLOR_TO_VARIANT: Record<string, BadgeVariant> = {
+  blue: 'info', indigo: 'info', cyan: 'info', purple: 'info',
+  green: 'success', emerald: 'success',
+  yellow: 'warning', amber: 'warning', orange: 'warning',
+  red: 'danger',
+  gray: 'neutral', grey: 'neutral',
 };
 
-export function ReportsDashboard() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'reports' | 'scheduled'>('reports');
+function toBadgeVariant(color: string | undefined): BadgeVariant {
+  if (!color) return 'neutral';
+  return COLOR_TO_VARIANT[color] ?? 'neutral';
+}
 
-  const filteredReports = mockReports.filter((report) => {
-    const matchesSearch =
-      report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || report.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+const STATUS_COLORS: Record<string, string> = {
+  draft: 'gray',
+  submitted: 'blue',
+  pending_risk_review: 'yellow',
+  pending_approval: 'orange',
+  approved: 'green',
+  rejected: 'red',
+  provisioning: 'blue',
+  provisioned: 'green',
+  failed: 'red',
+  cancelled: 'gray',
+  expired: 'gray',
+  active: 'green',
+  completed: 'blue',
+  revoked: 'red',
+  open: 'red',
+  mitigated: 'yellow',
+  remediated: 'green',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  pending_risk_review: 'Risk Review',
+  pending_approval: 'Pending Approval',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  provisioning: 'Provisioning',
+  provisioned: 'Provisioned',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+  expired: 'Expired',
+  active: 'Active',
+  completed: 'Completed',
+  revoked: 'Revoked',
+  open: 'Open',
+  mitigated: 'Mitigated',
+  remediated: 'Remediated',
+};
+
+const RISK_COLORS: Record<string, string> = {
+  low: 'green',
+  medium: 'yellow',
+  high: 'orange',
+  critical: 'red',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  user: 'User Management',
+  role: 'Role Management',
+  risk: 'Risk & Violations',
+  firefighter: 'Privileged Access',
+  approver: 'Approver Management',
+  system: 'System / Rules',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  user: 'blue',
+  role: 'purple',
+  risk: 'red',
+  firefighter: 'orange',
+  approver: 'cyan',
+  system: 'gray',
+};
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
+}
 
-  const handleRunReport = async (reportId: string) => {
-    const toastId = toast.loading('Generating report...');
-    try {
-      await api.post(`/reports/${reportId}/run`);
-      toast.success('Report generation started. You will be notified when it is ready.', { id: toastId });
-    } catch (error) {
-      toast.error('Failed to run report. Please try again.', { id: toastId });
-    }
-  };
+// ============================================================================
+// Breakdown Bar Component — horizontal bar with label + count
+// ============================================================================
 
-  const handleDownload = async (reportId: string) => {
-    const toastId = toast.loading('Preparing download...');
-    try {
-      const response = await api.get(`/reports/${reportId}/download`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `report-${reportId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Download started', { id: toastId });
-    } catch (error) {
-      toast.error('Failed to download report. Please try again.', { id: toastId });
-    }
-  };
+function BreakdownBar({
+  items,
+  total,
+}: {
+  items: { key: string; count: number; color: string; label: string }[];
+  total: number;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div key={item.key} className="flex items-center gap-3">
+          <Badge variant={toBadgeVariant(item.color)}>{item.label}</Badge>
+          <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-white/20"
+              style={{ width: `${Math.min(100, (item.count / (total || 1)) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs text-white/50 font-mono w-12 text-right">{item.count}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Tab Content Components
+// ============================================================================
+
+function AccessRequestsTab({ data }: { data: any }) {
+  const ar = data.access_requests;
+  const sla = ar.sla || {};
+  const byStatus = ar.by_status || {};
+  const recent = ar.recent || [];
+
+  const statusItems = Object.entries(byStatus).map(([key, count]) => ({
+    key,
+    count: count as number,
+    color: STATUS_COLORS[key] || 'gray',
+    label: STATUS_LABELS[key] || key,
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Generate, schedule, and download compliance and audit reports
-          </p>
-        </div>
-        <button
-          onClick={() => toast.success('Opening custom report builder...')}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
-        >
-          <DocumentChartBarIcon className="h-5 w-5 mr-2" />
-          Create Custom Report
-        </button>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Requests"
+          value={ar.total_requests ?? 0}
+          icon={DocumentChartBarIcon}
+          iconBgColor="stat-icon-blue"
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          title="Pending Approval"
+          value={ar.pending_approval ?? 0}
+          icon={ClockIcon}
+          iconBgColor="stat-icon-orange"
+          iconColor="text-orange-400"
+        />
+        <StatCard
+          title="Overdue"
+          value={ar.overdue ?? 0}
+          icon={ExclamationTriangleIcon}
+          iconBgColor="stat-icon-red"
+          iconColor="text-red-400"
+        />
+        <StatCard
+          title="Avg Approval Time"
+          value={`${sla.average_approval_hours ?? 0}h`}
+          icon={ArrowTrendingUpIcon}
+          iconBgColor="stat-icon-purple"
+          iconColor="text-purple-400"
+        />
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white shadow rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <DocumentChartBarIcon className="h-6 w-6 text-blue-600" />
+      {/* SLA Compliance Bar */}
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-white/80">SLA Compliance</span>
+          <span className="text-sm font-bold text-white">{sla.sla_compliance_rate ?? 100}%</span>
+        </div>
+        <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              (sla.sla_compliance_rate ?? 100) >= 90
+                ? 'bg-green-500/60'
+                : (sla.sla_compliance_rate ?? 100) >= 70
+                  ? 'bg-yellow-500/60'
+                  : 'bg-red-500/60'
+            }`}
+            style={{ width: `${sla.sla_compliance_rate ?? 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-[10px] text-white/30">
+          <span>{sla.overdue_count ?? 0} overdue</span>
+          <span>{sla.requests_completed_today ?? 0} completed today</span>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* By Status */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Requests by Status</div>
+          <BreakdownBar items={statusItems} total={ar.total_requests || 1} />
+        </Card>
+
+        {/* Risk Score */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Risk Overview</div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">
+                {Math.round(ar.average_risk_score ?? 0)}
+              </div>
+              <div className="text-[10px] text-white/40 mt-1">Avg Risk Score</div>
             </div>
-            <div className="ml-4">
-              <div className="text-sm font-medium text-gray-500">Available Reports</div>
-              <div className="text-2xl font-bold text-gray-900">{mockReports.length}</div>
+            <div className="flex-1 h-3 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  (ar.average_risk_score ?? 0) >= 70
+                    ? 'bg-red-500/60'
+                    : (ar.average_risk_score ?? 0) >= 40
+                      ? 'bg-yellow-500/60'
+                      : 'bg-green-500/60'
+                }`}
+                style={{ width: `${Math.min(100, ar.average_risk_score ?? 0)}%` }}
+              />
             </div>
           </div>
+        </Card>
+      </div>
+
+      {/* Recent Requests Table */}
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-white/10">
+          <span className="text-sm font-medium text-white/80">Recent Access Requests</span>
         </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CalendarIcon className="h-6 w-6 text-green-600" />
+        {recent.length === 0 ? (
+          <EmptyState title="No requests" description="No access requests in this period" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Request ID</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Requester</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Target</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Risk</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Status</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((r: any) => (
+                  <tr key={r.request_id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="px-4 py-2.5 text-xs font-mono text-white/80">{r.request_id}</td>
+                    <td className="px-4 py-2.5 text-xs text-white/70">{r.requester_user_id}</td>
+                    <td className="px-4 py-2.5 text-xs text-white/70">{r.target_user_id}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge variant={toBadgeVariant(RISK_COLORS[r.risk_level])}>
+                        {r.risk_level || 'N/A'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge variant={toBadgeVariant(STATUS_COLORS[r.status])}>
+                        {STATUS_LABELS[r.status] || r.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-white/50">{formatDate(r.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function FirefighterTab({ data }: { data: any }) {
+  const ff = data.firefighter;
+  const recent = ff.recent_sessions || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Sessions"
+          value={ff.total_sessions ?? 0}
+          icon={FireIcon}
+          iconBgColor="stat-icon-blue"
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          title="Active Now"
+          value={ff.active_sessions ?? 0}
+          icon={BoltIcon}
+          iconBgColor="stat-icon-red"
+          iconColor="text-red-400"
+        />
+        <StatCard
+          title="Completed"
+          value={ff.completed_sessions ?? 0}
+          icon={CheckCircleIcon}
+          iconBgColor="stat-icon-green"
+          iconColor="text-green-400"
+        />
+        <StatCard
+          title="Pending Reviews"
+          value={ff.pending_reviews ?? 0}
+          icon={ClipboardDocumentListIcon}
+          iconBgColor="stat-icon-orange"
+          iconColor="text-orange-400"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Session Status Breakdown */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Sessions by Status</div>
+          <BreakdownBar
+            items={[
+              { key: 'active', count: ff.active_sessions ?? 0, color: 'green', label: 'Active' },
+              { key: 'completed', count: ff.completed_sessions ?? 0, color: 'blue', label: 'Completed' },
+              { key: 'revoked', count: ff.revoked_sessions ?? 0, color: 'red', label: 'Revoked' },
+            ]}
+            total={ff.total_sessions || 1}
+          />
+        </Card>
+
+        {/* Requests Summary */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Request Summary</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="glass-card rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-white">{ff.total_requests ?? 0}</div>
+              <div className="text-[10px] text-white/40 mt-1">Total Requests</div>
             </div>
-            <div className="ml-4">
-              <div className="text-sm font-medium text-gray-500">Scheduled</div>
-              <div className="text-2xl font-bold text-green-600">{mockScheduledReports.length}</div>
+            <div className="glass-card rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-orange-400">{ff.pending_requests ?? 0}</div>
+              <div className="text-[10px] text-white/40 mt-1">Pending Approval</div>
             </div>
           </div>
+        </Card>
+      </div>
+
+      {/* Recent Sessions Table */}
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-white/10">
+          <span className="text-sm font-medium text-white/80">Recent Privileged Access Sessions</span>
         </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <ClockIcon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <div className="text-sm font-medium text-gray-500">Run Today</div>
-              <div className="text-2xl font-bold text-purple-600">3</div>
-            </div>
+        {recent.length === 0 ? (
+          <EmptyState title="No sessions" description="No privileged access sessions in this period" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Session ID</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">User</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">FF ID</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Status</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Activities</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Sensitive</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Review</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-white/50 uppercase">Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((s: any) => (
+                  <tr key={s.session_id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="px-4 py-2.5 text-xs font-mono text-white/80">{s.session_id}</td>
+                    <td className="px-4 py-2.5 text-xs text-white/70">{s.requester_user_id}</td>
+                    <td className="px-4 py-2.5 text-xs text-white/70">{s.firefighter_id}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge variant={toBadgeVariant(STATUS_COLORS[s.status])}>
+                        {STATUS_LABELS[s.status] || s.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-white/60 font-mono">{s.activity_count ?? 0}</td>
+                    <td className="px-4 py-2.5">
+                      {(s.sensitive_action_count ?? 0) > 0 ? (
+                        <span className="text-xs text-red-400 font-medium">{s.sensitive_action_count}</span>
+                      ) : (
+                        <span className="text-xs text-white/30">0</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {s.requires_review ? (
+                        s.review_status ? (
+                          <Badge variant={s.review_status === 'approved' ? 'success' : 'warning'}>
+                            {s.review_status}
+                          </Badge>
+                        ) : (
+                          <Badge variant="warning">Pending</Badge>
+                        )
+                      ) : (
+                        <span className="text-xs text-white/30">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-white/50">{formatDate(s.start_time)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <ChartBarIcon className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <div className="text-sm font-medium text-gray-500">This Week</div>
-              <div className="text-2xl font-bold text-orange-600">12</div>
-            </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function RiskTab({ data }: { data: any }) {
+  const risk = data.risk;
+  const byCategory = risk.rules_by_category || {};
+  const byType = risk.rules_by_type || {};
+
+  const categoryItems = Object.entries(byCategory).map(([key, count]) => ({
+    key,
+    count: count as number,
+    color: CATEGORY_COLORS[key] || 'gray',
+    label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+  }));
+
+  const typeItems = Object.entries(byType).map(([key, count]) => ({
+    key,
+    count: count as number,
+    color: key === 'sod' ? 'red' : key === 'sensitive_access' ? 'orange' : key === 'critical_transaction' ? 'purple' : 'blue',
+    label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Rules"
+          value={risk.total_rules ?? 0}
+          icon={ShieldCheckIcon}
+          iconBgColor="stat-icon-blue"
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          title="Evaluations Run"
+          value={risk.evaluations_performed ?? 0}
+          icon={ArrowTrendingUpIcon}
+          iconBgColor="stat-icon-purple"
+          iconColor="text-purple-400"
+        />
+        <StatCard
+          title="Violations Found"
+          value={risk.violations_found ?? 0}
+          icon={ExclamationTriangleIcon}
+          iconBgColor="stat-icon-red"
+          iconColor="text-red-400"
+        />
+        <StatCard
+          title="Rule Categories"
+          value={Object.keys(byCategory).length}
+          icon={ClipboardDocumentListIcon}
+          iconBgColor="stat-icon-green"
+          iconColor="text-green-400"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Rules by Category */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Rules by Category</div>
+          {categoryItems.length > 0 ? (
+            <BreakdownBar items={categoryItems} total={risk.total_rules || 1} />
+          ) : (
+            <div className="text-xs text-white/30 italic">No rules loaded</div>
+          )}
+        </Card>
+
+        {/* Rules by Type */}
+        <Card padding="md">
+          <div className="text-sm font-medium text-white/80 mb-3">Rules by Type</div>
+          {typeItems.length > 0 ? (
+            <BreakdownBar items={typeItems} total={risk.total_rules || 1} />
+          ) : (
+            <div className="text-xs text-white/30 italic">No rules loaded</div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function UsersAuditTab({ data }: { data: any }) {
+  const audit = data.audit;
+  const byCategory = audit.by_category || {};
+
+  const categoryItems = Object.entries(byCategory).map(([key, count]) => ({
+    key,
+    count: count as number,
+    color: CATEGORY_COLORS[key] || 'gray',
+    label: CATEGORY_LABELS[key] || key,
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Audit Events"
+          value={audit.total_entries ?? 0}
+          icon={ClipboardDocumentListIcon}
+          iconBgColor="stat-icon-blue"
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          title="Failed Actions"
+          value={audit.failed_actions ?? 0}
+          icon={XCircleIcon}
+          iconBgColor="stat-icon-red"
+          iconColor="text-red-400"
+        />
+        <StatCard
+          title="Compliance Events"
+          value={audit.compliance_entries ?? 0}
+          icon={ShieldCheckIcon}
+          iconBgColor="stat-icon-green"
+          iconColor="text-green-400"
+        />
+        <StatCard
+          title="Categories"
+          value={Object.keys(byCategory).length}
+          icon={UserGroupIcon}
+          iconBgColor="stat-icon-purple"
+          iconColor="text-purple-400"
+        />
+      </div>
+
+      {/* Audit Events by Category */}
+      <Card padding="md">
+        <div className="text-sm font-medium text-white/80 mb-3">Events by Module</div>
+        {categoryItems.length > 0 ? (
+          <BreakdownBar items={categoryItems} total={audit.total_entries || 1} />
+        ) : (
+          <div className="text-xs text-white/30 italic">No audit events in this period</div>
+        )}
+      </Card>
+
+      {/* Failure Rate */}
+      {audit.total_entries > 0 && (
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-white/80">Success Rate</span>
+            <span className="text-sm font-bold text-white">
+              {Math.round(((audit.total_entries - audit.failed_actions) / audit.total_entries) * 100)}%
+            </span>
           </div>
-        </div>
+          <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-green-500/60"
+              style={{
+                width: `${((audit.total_entries - audit.failed_actions) / audit.total_entries) * 100}%`,
+              }}
+            />
+          </div>
+          <div className="flex justify-between mt-1 text-[10px] text-white/30">
+            <span>{audit.total_entries - audit.failed_actions} successful</span>
+            <span>{audit.failed_actions} failed</span>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function ReportsDashboard() {
+  const [days, setDays] = useState('30');
+  const [activeTab, setActiveTab] = useState<TabKey>('access');
+
+  const {
+    data: summary,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['reports-dashboard-summary', days],
+    queryFn: async () => {
+      const response = await reportsApi.getDashboardSummary(parseInt(days));
+      return response.data;
+    },
+  });
+
+  const ar = summary?.access_requests || {};
+  const ff = summary?.firefighter || {};
+  const risk = summary?.risk || {};
+  const audit = summary?.audit || {};
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Reports"
+        subtitle="Operational reports across Access Requests, Privileged Access, Risk, and Audit"
+        actions={
+          <div className="w-40">
+            <Select
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              options={DATE_RANGE_OPTIONS}
+            />
+          </div>
+        }
+      />
+
+      {/* Executive Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatCard
+          title="Access Requests"
+          value={ar.total_requests ?? 0}
+          icon={DocumentChartBarIcon}
+          iconBgColor="stat-icon-blue"
+          iconColor="text-blue-400"
+        />
+        <StatCard
+          title="Pending Approvals"
+          value={ar.pending_approval ?? 0}
+          icon={ClockIcon}
+          iconBgColor="stat-icon-orange"
+          iconColor="text-orange-400"
+        />
+        <StatCard
+          title="Active FF Sessions"
+          value={ff.active_sessions ?? 0}
+          icon={FireIcon}
+          iconBgColor="stat-icon-red"
+          iconColor="text-red-400"
+        />
+        <StatCard
+          title="Violations Found"
+          value={risk.violations_found ?? 0}
+          icon={ExclamationTriangleIcon}
+          iconBgColor="stat-icon-purple"
+          iconColor="text-purple-400"
+        />
+        <StatCard
+          title="SLA Compliance"
+          value={`${ar.sla?.sla_compliance_rate ?? 100}%`}
+          icon={CheckCircleIcon}
+          iconBgColor="stat-icon-green"
+          iconColor="text-green-400"
+        />
+        <StatCard
+          title="Audit Events"
+          value={audit.total_entries ?? 0}
+          icon={ClipboardDocumentListIcon}
+          iconBgColor="stat-icon-gray"
+          iconColor="text-gray-400"
+        />
       </div>
 
       {/* Tabs */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
-                activeTab === 'reports'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <DocumentChartBarIcon className="h-5 w-5 inline mr-2" />
-              Report Library
-            </button>
-            <button
-              onClick={() => setActiveTab('scheduled')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 ${
-                activeTab === 'scheduled'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <CalendarIcon className="h-5 w-5 inline mr-2" />
-              Scheduled Reports ({mockScheduledReports.length})
-            </button>
-          </nav>
+      <div>
+        <div className="flex gap-1 border-b border-white/10 mb-6">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-blue-400 text-blue-400'
+                    : 'border-transparent text-white/40 hover:text-white/60'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {activeTab === 'reports' && (
-          <div className="p-6">
-            {/* Filters */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-6">
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search reports..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Categories</option>
-                <option value="compliance">Compliance</option>
-                <option value="risk">Risk</option>
-                <option value="access">Access</option>
-                <option value="audit">Audit</option>
-              </select>
-            </div>
+        {isLoading && <LoadingState />}
+        {error && <ErrorState message="Failed to load reports data" />}
 
-            {/* Reports Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredReports.map((report) => {
-                const catConfig = categoryConfig[report.category];
-                const CategoryIcon = catConfig.icon;
-                return (
-                  <div key={report.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start">
-                        <div className={`p-2 ${catConfig.color.split(' ')[0]} rounded-lg`}>
-                          <CategoryIcon className={`h-5 w-5 ${catConfig.color.split(' ')[1]}`} />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-gray-900">{report.name}</h3>
-                          <p className="mt-1 text-xs text-gray-500">{report.description}</p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${catConfig.color}`}>
-                              {catConfig.label}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              Last run: {report.lastRun}
-                            </span>
-                            {report.schedule && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-xs text-blue-700">
-                                <CalendarIcon className="h-3 w-3 mr-1" />
-                                {report.schedule}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2">
-                      <button
-                        onClick={() => handleRunReport(report.id)}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent rounded text-xs font-medium text-white bg-primary-600 hover:bg-primary-700"
-                      >
-                        <PlayIcon className="h-3 w-3 mr-1" />
-                        Run Now
-                      </button>
-                      <button
-                        onClick={() => handleDownload(report.id)}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
-                      >
-                        <ArrowDownTrayIcon className="h-3 w-3 mr-1" />
-                        Download Last
-                      </button>
-                      <Link
-                        to={`/reports/${report.id}`}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {filteredReports.length === 0 && (
-              <div className="text-center py-12">
-                <DocumentChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-gray-500">No reports found matching your criteria</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'scheduled' && (
-          <div className="p-6">
-            <div className="space-y-4">
-              {mockScheduledReports.map((schedule) => (
-                <div key={schedule.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">{schedule.reportName}</h3>
-                      <div className="mt-1 flex items-center gap-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                          <CalendarIcon className="h-3 w-3 mr-1" />
-                          {schedule.schedule}
-                        </span>
-                        <span className="flex items-center">
-                          <ClockIcon className="h-3 w-3 mr-1" />
-                          Next: {schedule.nextRun}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        Recipients: {schedule.recipients.join(', ')}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          schedule.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {schedule.status.charAt(0).toUpperCase() + schedule.status.slice(1)}
-                      </span>
-                      <button
-                        onClick={() => toast.success(`Editing schedule ${schedule.id}...`)}
-                        className="text-primary-600 hover:text-primary-700 text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => toast.success(`Schedule ${schedule.id} deleted`)}
-                        className="text-red-600 hover:text-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {!isLoading && !error && summary && (
+          <>
+            {activeTab === 'access' && <AccessRequestsTab data={summary} />}
+            {activeTab === 'firefighter' && <FirefighterTab data={summary} />}
+            {activeTab === 'risk' && <RiskTab data={summary} />}
+            {activeTab === 'users' && <UsersAuditTab data={summary} />}
+          </>
         )}
       </div>
     </div>

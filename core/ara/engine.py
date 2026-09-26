@@ -144,6 +144,55 @@ class SoDAnalyzer:
 
         return conflicts
 
+    def analyze_profile(
+        self,
+        profile_id: str,
+        auth_objects: List[Dict[str, Any]]
+    ) -> List[SoDConflict]:
+        """
+        Analyze a profile for SoD conflicts based on its authorization content.
+
+        Args:
+            profile_id: Profile identifier
+            auth_objects: List of authorization objects/permissions in the profile
+
+        Returns:
+            List of conflicts with ConflictType.PROFILE_LEVEL
+        """
+        # Flatten auth_objects into an access dict the rule engine can evaluate
+        profile_access: Dict[str, Any] = {"tcodes": [], "auth_objects": {}, "roles": []}
+        for ao in auth_objects:
+            if isinstance(ao, dict):
+                for tcode in ao.get("tcodes", []):
+                    if tcode not in profile_access["tcodes"]:
+                        profile_access["tcodes"].append(tcode)
+                profile_access["auth_objects"].update(ao.get("auth_objects", {}))
+                for role in ao.get("roles", []):
+                    if role not in profile_access["roles"]:
+                        profile_access["roles"].append(role)
+
+        conflicts = []
+        sod_rules = self.rule_engine.list_rules(rule_type="sod")
+
+        for rule in sod_rules:
+            if rule.evaluate(profile_access):
+                conflict = SoDConflict(
+                    rule=rule.to_sod_rule(),
+                    conflict_type=ConflictType.PROFILE_LEVEL,
+                    role_id=profile_id,
+                    function_1_access=self._extract_function_access(
+                        profile_access, rule.function_1_conditions
+                    ),
+                    function_2_access=self._extract_function_access(
+                        profile_access, rule.function_2_conditions
+                    ),
+                    severity=rule.severity,
+                )
+                conflicts.append(conflict)
+                logger.debug(f"Profile SoD conflict: {rule.name} in profile {profile_id}")
+
+        return conflicts
+
     def analyze_cross_role(
         self,
         user_id: str,
@@ -496,6 +545,24 @@ class RiskScorer:
         },
     }
 
+    # Org/region context modifier additions (additive percentage bonuses to base score)
+    ORG_CONTEXT_MODIFIERS = {
+        # +15% if user is in a high-fraud geographic region
+        "high_fraud_region": 0.15,
+        # +10% for finance department roles (inherently higher risk)
+        "finance_department": 0.10,
+        # +20% for cross-border system access (user accessing systems in different countries)
+        "cross_border_access": 0.20,
+        # +25% for heavily regulated business units
+        "regulatory_sensitive": 0.25,
+    }
+
+    # Configurable set of high-fraud countries/regions (ISO-3166 codes or region names)
+    HIGH_FRAUD_REGIONS: Set[str] = set()
+
+    # Configurable set of regulated business units
+    REGULATORY_SENSITIVE_UNITS: Set[str] = {"legal", "compliance", "treasury", "tax", "audit"}
+
     def calculate_score(
         self,
         risk: Risk,
@@ -578,6 +645,26 @@ class RiskScorer:
         # Device trust
         device_weights = self.CONTEXT_WEIGHTS["device_trust_level"]
         modifier *= device_weights.get(uc.device_trust_level, 1.0)
+
+        # Org/region modifiers (additive percentage bonuses applied to the running modifier)
+        country = getattr(uc, "country", None) or getattr(uc, "location_country", None) or ""
+        department = getattr(uc, "department", None) or ""
+        business_unit = getattr(uc, "business_unit", None) or ""
+        access_countries = getattr(uc, "access_countries", None) or []
+
+        if country and country.upper() in {r.upper() for r in self.HIGH_FRAUD_REGIONS}:
+            modifier += self.ORG_CONTEXT_MODIFIERS["high_fraud_region"]
+
+        if any(kw in department.lower() for kw in ("finance", "accounting", "treasury", "fi ")):
+            modifier += self.ORG_CONTEXT_MODIFIERS["finance_department"]
+
+        if access_countries and len({c.upper() for c in access_countries if c} - {country.upper()}) > 0:
+            modifier += self.ORG_CONTEXT_MODIFIERS["cross_border_access"]
+
+        if business_unit and business_unit.lower() in self.REGULATORY_SENSITIVE_UNITS:
+            modifier += self.ORG_CONTEXT_MODIFIERS["regulatory_sensitive"]
+        elif department and department.lower() in self.REGULATORY_SENSITIVE_UNITS:
+            modifier += self.ORG_CONTEXT_MODIFIERS["regulatory_sensitive"]
 
         return modifier
 
@@ -730,6 +817,40 @@ class AccessRiskEngine:
 
         # SoD within role
         conflicts = self.sod_analyzer.analyze_role(role_id, role_access)
+        result.sod_conflicts = conflicts
+
+        for conflict in conflicts:
+            risk = self._conflict_to_risk(conflict)
+            result.risks.append(risk)
+
+        result.calculate_summary()
+        result.duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+
+        return result
+
+    def analyze_profile(
+        self,
+        profile_id: str,
+        auth_objects: List[Dict[str, Any]]
+    ) -> RiskAnalysisResult:
+        """
+        Analyze a SAP profile for SoD conflicts based on its authorization content.
+
+        Args:
+            profile_id: Profile identifier
+            auth_objects: List of authorization objects/permissions in the profile
+
+        Returns:
+            RiskAnalysisResult with ConflictType.PROFILE_LEVEL conflicts
+        """
+        start_time = datetime.now()
+
+        result = RiskAnalysisResult(
+            analysis_type="profile",
+            role_id=profile_id,
+        )
+
+        conflicts = self.sod_analyzer.analyze_profile(profile_id, auth_objects)
         result.sod_conflicts = conflicts
 
         for conflict in conflicts:
@@ -945,6 +1066,92 @@ class AccessRiskEngine:
     # =========================================================================
     # SoD Rule Management
     # =========================================================================
+
+    def analyze_hr_risk(self, user_data: dict) -> List[Risk]:
+        """
+        Analyze HR-specific risks for a user.
+
+        Args:
+            user_data: dict with keys: employment_status, user_type, department,
+                       termination_date, notice_period_end, roles
+
+        Returns:
+            List of Risk objects with risk_type="hr_object"
+        """
+        risks: List[Risk] = []
+        now = datetime.now()
+        user_id = user_data.get("user_id", "unknown")
+        employment_status = user_data.get("employment_status", "")
+        user_type = user_data.get("user_type", "")
+        termination_date = user_data.get("termination_date")
+        notice_period_end = user_data.get("notice_period_end")
+        roles = user_data.get("roles", [])
+
+        # Check: terminated employee with active access
+        if employment_status in ("terminated", "inactive", "offboarded") and roles:
+            risks.append(Risk(
+                risk_type=RiskType.POLICY_VIOLATION,
+                severity=RiskSeverity.CRITICAL,
+                category=RiskCategory.HR,
+                user_id=user_id,
+                title="Terminated Employee with Active Access",
+                description="User has employment_status=terminated but still holds active roles",
+                conflicting_roles=list(roles),
+                base_score=95,
+                rule_id="HR-001",
+            ))
+
+        # Check: contractor with sensitive access
+        if user_type in ("contractor", "vendor", "external"):
+            sensitive_roles = [r for r in roles if any(
+                s in str(r).upper()
+                for s in ("SAP_ALL", "SAP_NEW", "SUPER", "ADMIN", "SECURITY", "DEVELOP", "RFC")
+            )]
+            if sensitive_roles:
+                risks.append(Risk(
+                    risk_type=RiskType.SENSITIVE_ACCESS,
+                    severity=RiskSeverity.HIGH,
+                    category=RiskCategory.HR,
+                    user_id=user_id,
+                    title="Contractor with Sensitive Access",
+                    description=f"Contractor/vendor user holds sensitive roles: {sensitive_roles}",
+                    conflicting_roles=sensitive_roles,
+                    base_score=80,
+                    rule_id="HR-002",
+                ))
+
+        # Check: employee in notice period with critical access
+        if notice_period_end:
+            try:
+                if isinstance(notice_period_end, str):
+                    from datetime import date
+                    npd = datetime.fromisoformat(notice_period_end)
+                else:
+                    npd = notice_period_end
+                if npd >= now:
+                    critical_roles = [r for r in roles if any(
+                        s in str(r).upper()
+                        for s in ("SAP_ALL", "FIREFIGHTER", "EMERGENCY", "ADMIN")
+                    )]
+                    if critical_roles:
+                        risks.append(Risk(
+                            risk_type=RiskType.SENSITIVE_ACCESS,
+                            severity=RiskSeverity.HIGH,
+                            category=RiskCategory.HR,
+                            user_id=user_id,
+                            title="Employee in Notice Period with Critical Access",
+                            description=(
+                                f"User is in notice period (until {notice_period_end}) "
+                                f"and holds critical roles: {critical_roles}"
+                            ),
+                            conflicting_roles=critical_roles,
+                            base_score=85,
+                            rule_id="HR-003",
+                        ))
+            except (ValueError, TypeError):
+                pass
+
+        return risks
 
     def get_sod_rules(self) -> List[SoDRule]:
         """Get all SoD rules."""

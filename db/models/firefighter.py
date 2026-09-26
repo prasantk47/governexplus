@@ -48,6 +48,9 @@ class FirefighterRequest(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+
     # Request identity
     request_id = Column(String(50), unique=True, nullable=False, index=True)
 
@@ -122,6 +125,9 @@ class FirefighterSession(Base, TimestampMixin):
     __tablename__ = 'firefighter_sessions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant support
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
 
     # Session identity
     session_id = Column(String(50), unique=True, nullable=False, index=True)
@@ -247,6 +253,11 @@ class FirefighterActivity(Base):
     requires_review = Column(Boolean, default=False)
     risk_flag = Column(String(50), nullable=True)
 
+    # Change tracking (before/after state for data-modifying actions)
+    change_before = Column(JSON, nullable=True)   # State before the change
+    change_after = Column(JSON, nullable=True)    # State after the change
+    change_type = Column(String(20), nullable=True)  # CREATE / MODIFY / DELETE
+
     # Review
     reviewed = Column(Boolean, default=False)
     reviewer_comments = Column(Text, nullable=True)
@@ -267,4 +278,46 @@ class FirefighterActivity(Base):
             'is_sensitive': self.is_sensitive,
             'requires_review': self.requires_review,
             'action_details': self.action_details
+        }
+
+
+class FirefighterIDConfig(Base, TimestampMixin):
+    """
+    Configuration and ownership record for a Firefighter ID.
+
+    Defines who owns/controls a given firefighter account, session limits,
+    and which reason codes are permitted.
+    """
+    __tablename__ = 'firefighter_id_configs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(100), nullable=False, index=True, default='tenant_default')
+    firefighter_id = Column(String(100), nullable=False, index=True)
+    description = Column(String(255), nullable=True)
+    system_id = Column(String(50), default='SAP')
+    owner_user_id = Column(String(50), nullable=True)
+    controller_user_id = Column(String(50), nullable=True)
+    max_session_hours = Column(Integer, default=4)
+    max_extensions = Column(Integer, default=2)
+    requires_ticket = Column(Boolean, default=True)
+    allowed_reason_codes = Column(JSON, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    def __repr__(self):
+        return f"<FirefighterIDConfig(ff_id='{self.firefighter_id}', tenant='{self.tenant_id}')>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'firefighter_id': self.firefighter_id,
+            'description': self.description,
+            'system_id': self.system_id,
+            'owner_user_id': self.owner_user_id,
+            'controller_user_id': self.controller_user_id,
+            'max_session_hours': self.max_session_hours,
+            'max_extensions': self.max_extensions,
+            'requires_ticket': self.requires_ticket,
+            'allowed_reason_codes': self.allowed_reason_codes,
+            'is_active': self.is_active,
         }

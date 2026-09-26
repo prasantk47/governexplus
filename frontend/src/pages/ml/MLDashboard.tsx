@@ -13,7 +13,6 @@ import {
   ShieldCheckIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -53,110 +52,11 @@ export function MLDashboard() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
   useEffect(() => {
-    // Simulate loading ML data
-    const loadData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setMetrics({
-        riskPrediction: {
-          label: 'Avg Predicted Risk',
-          value: 42,
-          change: -5,
-          trend: 'down',
-          status: 'good'
-        },
-        anomaliesDetected: {
-          label: 'Active Anomalies',
-          value: 7,
-          change: 2,
-          trend: 'up',
-          status: 'warning'
-        },
-        recommendationsGenerated: {
-          label: 'Pending Recommendations',
-          value: 23,
-          status: 'good'
-        },
-        modelAccuracy: {
-          label: 'Model Accuracy',
-          value: '94.2%',
-          change: 1.2,
-          trend: 'up',
-          status: 'good'
-        },
-        usersAnalyzed: {
-          label: 'Users Analyzed',
-          value: '1,250',
-          status: 'good'
-        },
-        rolesOptimized: {
-          label: 'Roles Optimized',
-          value: 52,
-          status: 'good'
-        }
-      });
-
-      setAnomalies([
-        {
-          id: '1',
-          type: 'DATA_EXFILTRATION',
-          severity: 'critical',
-          user: 'mbrown',
-          description: 'Downloaded 5,000+ records from customer table',
-          timestamp: '2 hours ago',
-          acknowledged: false
-        },
-        {
-          id: '2',
-          type: 'UNUSUAL_TIME',
-          severity: 'warning',
-          user: 'jsmith',
-          description: 'Login at 3:42 AM from new location',
-          timestamp: '4 hours ago',
-          acknowledged: false
-        },
-        {
-          id: '3',
-          type: 'PRIVILEGE_ESCALATION',
-          severity: 'warning',
-          user: 'tdavis',
-          description: 'Attempted access to admin functions',
-          timestamp: '6 hours ago',
-          acknowledged: true
-        },
-      ]);
-
-      setRecommendations([
-        {
-          id: '1',
-          type: 'REMOVE_ACCESS',
-          title: 'Remove unused SAP_SD_USER role',
-          confidence: 92,
-          impact: '-5 risk points',
-          status: 'pending'
-        },
-        {
-          id: '2',
-          type: 'ADD_ACCESS',
-          title: 'Add SAP_FI_DISPLAY to Finance team',
-          confidence: 87,
-          impact: 'Productivity boost',
-          status: 'pending'
-        },
-        {
-          id: '3',
-          type: 'CONSOLIDATE',
-          title: 'Merge 3 procurement roles',
-          confidence: 78,
-          impact: '-2 risk points',
-          status: 'accepted'
-        },
-      ]);
-
-      setIsLoading(false);
-    };
-
-    loadData();
+    // ML module requires backend configuration — show empty state immediately
+    setMetrics({});
+    setAnomalies([]);
+    setRecommendations([]);
+    setIsLoading(false);
   }, []);
 
   const getSeverityColor = (severity: string) => {

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api, usersApi, riskApi } from '../../services/api';
 import {
   BeakerIcon,
   UserIcon,
   ShieldExclamationIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon,
+  // XCircleIcon,
   ArrowPathIcon,
   ChartBarIcon,
   DocumentMagnifyingGlassIcon,
@@ -43,29 +45,36 @@ interface SimulationResult {
   recommendations: string[];
 }
 
-const availableRoles: SimulationRole[] = [
-  { id: 'R1', name: 'AP Invoice Processor', system: 'SAP S/4HANA', riskLevel: 'medium', selected: false },
-  { id: 'R2', name: 'AP Payment Run', system: 'SAP S/4HANA', riskLevel: 'high', selected: false },
-  { id: 'R3', name: 'Vendor Master Maintainer', system: 'SAP S/4HANA', riskLevel: 'high', selected: false },
-  { id: 'R4', name: 'GL Posting', system: 'SAP S/4HANA', riskLevel: 'medium', selected: false },
-  { id: 'R5', name: 'Purchase Order Creator', system: 'SAP S/4HANA', riskLevel: 'medium', selected: false },
-  { id: 'R6', name: 'Goods Receipt Processor', system: 'SAP S/4HANA', riskLevel: 'low', selected: false },
-  { id: 'R7', name: 'Financial Report Viewer', system: 'SAP BW', riskLevel: 'low', selected: false },
-  { id: 'R8', name: 'User Administrator', system: 'Active Directory', riskLevel: 'critical', selected: false },
-  { id: 'R9', name: 'Database Admin', system: 'Oracle', riskLevel: 'critical', selected: false },
-  { id: 'R10', name: 'CRM User', system: 'Salesforce', riskLevel: 'low', selected: false },
-];
-
-const mockUsers = [
-  { id: 'U1', name: 'John Smith', department: 'Finance', currentRoles: 3 },
-  { id: 'U2', name: 'Mary Jones', department: 'Procurement', currentRoles: 4 },
-  { id: 'U3', name: 'Robert Wilson', department: 'IT', currentRoles: 5 },
-  { id: 'U4', name: 'Sarah Brown', department: 'HR', currentRoles: 2 },
-];
-
 export function RiskSimulation() {
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => usersApi.list().then(r => r.data),
+  });
+  const users = Array.isArray(usersData) ? usersData : (usersData as any)?.items || [];
+
+  const { data: catalogData } = useQuery({
+    queryKey: ['roleCatalog'],
+    queryFn: () => api.get('/role-engineering/catalog').then(r => r.data),
+  });
+
   const [selectedUser, setSelectedUser] = useState<string>('');
-  const [roles, setRoles] = useState<SimulationRole[]>(availableRoles);
+  const [roles, setRoles] = useState<SimulationRole[]>([]);
+
+  // Update roles when catalog data loads
+  useEffect(() => {
+    const catalog = Array.isArray(catalogData) ? catalogData : (catalogData as any)?.items || [];
+    if (catalog.length > 0) {
+      setRoles(
+        catalog.map((r: any, idx: number) => ({
+          id: r.id || `R${idx + 1}`,
+          name: r.name || r.role_name || '',
+          system: r.system || r.system_id || 'SAP S/4HANA',
+          riskLevel: (r.risk_level || r.riskLevel || 'low').toLowerCase() as SimulationRole['riskLevel'],
+          selected: false,
+        }))
+      );
+    }
+  }, [catalogData]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
   const [result, setResult] = useState<SimulationResult | null>(null);
@@ -83,65 +92,60 @@ export function RiskSimulation() {
   };
 
   const runSimulation = async () => {
+    if (!selectedUser || selectedRoles.length === 0) return;
     setIsSimulating(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Mock simulation result
-    const hasHighRiskRoles = selectedRoles.some((r) => r.riskLevel === 'high' || r.riskLevel === 'critical');
-    const hasSodConflict = selectedRoles.some((r) => r.id === 'R1') && selectedRoles.some((r) => r.id === 'R2');
-    const hasVendorSodConflict = selectedRoles.some((r) => r.id === 'R3') && selectedRoles.some((r) => r.id === 'R2');
-
-    const conflicts = [];
-    if (hasSodConflict) {
-      conflicts.push({
-        id: 'SOD-001',
-        rule: 'AP Processing & Payment Execution',
-        conflictingRoles: ['AP Invoice Processor', 'AP Payment Run'],
-        severity: 'critical' as const,
-        description: 'User can create invoices and execute payments, creating fraud risk',
+    try {
+      const response = await riskApi.simulateAccess({
+        user_id: selectedUser,
+        role_ids: selectedRoles.map((r) => r.name),
       });
-    }
-    if (hasVendorSodConflict) {
-      conflicts.push({
-        id: 'SOD-002',
-        rule: 'Vendor Maintenance & Payment Execution',
-        conflictingRoles: ['Vendor Master Maintainer', 'AP Payment Run'],
-        severity: 'high' as const,
-        description: 'User can create vendors and pay them, enabling ghost vendor fraud',
-      });
-    }
+      const data = response.data;
 
-    setResult({
-      overallRisk: conflicts.length > 0 ? 'critical' : hasHighRiskRoles ? 'high' : 'medium',
-      riskScore: conflicts.length > 0 ? 85 : hasHighRiskRoles ? 65 : 35,
-      sodConflicts: conflicts,
-      sensitiveAccess: selectedRoles
-        .filter((r) => r.riskLevel === 'high' || r.riskLevel === 'critical')
-        .map((r) => ({
-          id: r.id,
-          access: r.name,
-          system: r.system,
-          reason: r.riskLevel === 'critical' ? 'Administrative privileges' : 'Financial transaction access',
+      const violations = data.violations || [];
+      const sensitiveAccess = data.sensitive_access || [];
+
+      setResult({
+        overallRisk: (data.risk_level || 'medium').toLowerCase() as SimulationResult['overallRisk'],
+        riskScore: data.risk_score || 0,
+        sodConflicts: violations.map((v: any, idx: number) => ({
+          id: v.id || v.rule_id || `SOD-${idx + 1}`,
+          rule: v.rule || v.rule_name || 'SoD Violation',
+          conflictingRoles: v.conflicting_roles || v.roles || [],
+          severity: (v.severity || v.risk_level || 'high').toLowerCase() as 'low' | 'medium' | 'high' | 'critical',
+          description: v.description || v.message || 'Segregation of duties conflict detected',
         })),
-      peerComparison: {
-        similarUsers: 45,
-        averageRoles: 4,
-        percentile: selectedRoles.length > 4 ? 85 : 50,
-      },
-      recommendations: [
-        ...(conflicts.length > 0
-          ? ['Remove one of the conflicting roles to eliminate SoD violation']
-          : []),
-        ...(hasHighRiskRoles
-          ? ['Consider implementing compensating controls for high-risk access']
-          : []),
-        selectedRoles.length > 5
-          ? 'Review if all requested roles are necessary - consider least privilege'
-          : 'Role count is within acceptable limits',
-      ],
-    });
-
-    setIsSimulating(false);
+        sensitiveAccess: sensitiveAccess.map((sa: any, idx: number) => ({
+          id: sa.id || `SA-${idx + 1}`,
+          access: sa.access || sa.name || sa.entitlement || '',
+          system: sa.system || sa.system_id || '',
+          reason: sa.reason || sa.description || 'Sensitive access detected',
+        })),
+        // Fallback: backend doesn't return peer comparison yet
+        peerComparison: {
+          similarUsers: 45,
+          averageRoles: 4,
+          percentile: selectedRoles.length > 4 ? 85 : 50,
+        },
+        // Fallback: backend doesn't return recommendations yet
+        recommendations: violations.length > 0
+          ? ['Remove one of the conflicting roles to eliminate SoD violation',
+             'Consider implementing compensating controls for high-risk access']
+          : ['No SoD conflicts detected - role assignment looks safe',
+             'Role count is within acceptable limits'],
+      });
+    } catch {
+      // Fallback to basic result on error
+      setResult({
+        overallRisk: 'medium',
+        riskScore: 0,
+        sodConflicts: [],
+        sensitiveAccess: [],
+        peerComparison: { similarUsers: 0, averageRoles: 0, percentile: 0 },
+        recommendations: ['Simulation could not be completed - please try again'],
+      });
+    } finally {
+      setIsSimulating(false);
+    }
   };
 
   const getRiskColor = (risk: string) => {
@@ -181,7 +185,7 @@ export function RiskSimulation() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select a user to simulate...</option>
-                {mockUsers.map((user) => (
+                {users.map((user: any) => (
                   <option key={user.id} value={user.id}>
                     {user.name} ({user.department}) - {user.currentRoles} current roles
                   </option>

@@ -13,6 +13,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 
 // Pages
 import { Dashboard } from './pages/Dashboard';
+import { CommandCenter } from './pages/CommandCenter';
 import { Login } from './pages/auth/Login';
 
 // Access Request Pages
@@ -49,6 +50,7 @@ import { InactiveUsers } from './pages/users/InactiveUsers';
 // Role Pages
 import { RoleList } from './pages/roles/RoleList';
 import { RoleDesigner } from './pages/roles/RoleDesigner';
+import { BusinessRoleManagement } from './pages/roles/BusinessRoleManagement';
 
 // Reports Pages
 import { ReportsDashboard } from './pages/reports/ReportsDashboard';
@@ -56,13 +58,34 @@ import { ReportViewer } from './pages/reports/ReportViewer';
 
 // Settings Pages
 import { Settings } from './pages/settings/Settings';
+import { ApproverManagement } from './pages/settings/ApproverManagement';
+import { SystemManagement } from './pages/settings/SystemManagement';
+import { OrgRules } from './pages/settings/OrgRules';
+import { MassAdmin } from './pages/settings/MassAdmin';
+import { RepoSync } from './pages/settings/RepoSync';
+import { TransportManagement } from './pages/settings/TransportManagement';
+import { NotificationCenter } from './pages/settings/NotificationCenter';
 import { PolicyManagement } from './pages/settings/PolicyManagement';
+import { DelegationManagement } from './pages/settings/DelegationManagement';
+
+// Compliance Pages
+import { ComplianceDashboard } from './pages/compliance/ComplianceDashboard';
+import { ComplianceAssessment } from './pages/compliance/ComplianceAssessment';
+
+// Audit Pages
+import { AuditReport } from './pages/audit';
+
+// GRC Suite — Risk Management
+import { RiskRegister, RiskHeatmap, KRIDashboard, IncidentLog } from './pages/risk-management';
+
+// GRC Suite — Process Control
+import { ControlLibrary, ControlTesting, DeficiencyTracker, CCMDashboard } from './pages/process-control';
+
+// GRC Suite — Audit Management
+import { AuditDashboard as AuditMgmtDashboard, AuditPlanning, AuditEngagement, FindingsTracker } from './pages/audit-management';
 
 // Integrations Page
 import { Integrations } from './pages/integrations/Integrations';
-
-// Compliance Pages
-import { ComplianceDashboard, ComplianceAssessment } from './pages/compliance';
 
 // Password Self-Service Pages
 import { ChangePassword } from './pages/password/ChangePassword';
@@ -77,11 +100,41 @@ import {
   SecurityControlsEvaluate,
 } from './pages/security-controls';
 
+// Risk - Mitigation Controls
+import { MitigationControls } from './pages/risk/MitigationControls';
+import { CustomTcode } from './pages/risk/CustomTcode';
+import { MitigationMonitoring } from './pages/risk/MitigationMonitoring';
+
+// Model User
+import { ModelUser } from './pages/access-requests/ModelUser';
+
+// Provisioning
+import { ProvisioningDashboard } from './pages/provisioning/ProvisioningDashboard';
+
+// Intelligence Pages (differentiator modules)
+import {
+  AccessTroubleshooter,
+  RoleIntelligence,
+  MigrationAnalyzer,
+  RoleDriftDetection,
+  AuditEvidenceCenter,
+  FioriAnalyzer,
+  AccessTimeline,
+  UpgradeAnalyzer,
+  IdentityCorrelation,
+} from './pages/intelligence';
+
+// Global Search
+import { GlobalSearch } from './pages/intelligence/GlobalSearch';
+
+// ARM Shopping Cart
+import { ShoppingCart } from './pages/access-requests/ShoppingCart';
+
+// Workflow Builder
+import { WorkflowBuilder } from './pages/workflows';
+
 // AI Assistant
 import { AIAssistant } from './pages/ai';
-
-// ML Analytics
-import { MLDashboard, UserBehaviorAnalytics, ModelManagement, PredictiveAnalytics } from './pages/ml';
 
 // Admin Pages (Super Admin Portal)
 import { AdminLogin, AdminDashboard, TenantOnboard } from './pages/admin';
@@ -91,6 +144,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Form Config Context
 import { FormConfigProvider } from './contexts/FormConfigContext';
+
+// Theme Context
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -137,14 +193,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* Dashboard */}
-        <Route path="/" element={<Dashboard />} />
+        {/* Command Center (default home) + legacy dashboard */}
+        <Route path="/" element={<CommandCenter />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
         {/* Access Requests */}
         <Route path="/access-requests" element={<AccessRequestList />} />
         <Route path="/access-requests/new" element={<NewAccessRequest />} />
         <Route path="/access-requests/bulk" element={<BulkAccessRequest />} />
+        <Route path="/access-requests/cart" element={<ShoppingCart />} />
+        <Route path="/access-requests/model-user" element={<ModelUser />} />
         <Route path="/access-requests/:id" element={<AccessRequestDetail />} />
         <Route path="/approvals" element={<ApprovalInbox />} />
 
@@ -167,6 +225,9 @@ function AppRoutes() {
         <Route path="/risk/sod-rules" element={<SodRuleLibrary />} />
         <Route path="/risk/entitlements" element={<EntitlementIntelligence />} />
         <Route path="/risk/contextual" element={<ContextualRisk />} />
+        <Route path="/risk/mitigation" element={<MitigationControls />} />
+        <Route path="/risk/custom-tcode" element={<CustomTcode />} />
+        <Route path="/risk/mitigation-monitoring" element={<MitigationMonitoring />} />
 
         {/* Users */}
         <Route path="/users" element={<UserList />} />
@@ -175,6 +236,7 @@ function AppRoutes() {
 
         {/* Roles */}
         <Route path="/roles" element={<RoleList />} />
+        <Route path="/roles/brm" element={<BusinessRoleManagement />} />
         <Route path="/roles/designer" element={<RoleDesigner />} />
         <Route path="/roles/designer/:roleId" element={<RoleDesigner />} />
 
@@ -184,14 +246,25 @@ function AppRoutes() {
 
         {/* Settings */}
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/approvers" element={<ApproverManagement />} />
+        <Route path="/settings/systems" element={<SystemManagement />} />
+        <Route path="/settings/org-rules" element={<OrgRules />} />
+        <Route path="/settings/mass-admin" element={<MassAdmin />} />
+        <Route path="/settings/repo-sync" element={<RepoSync />} />
+        <Route path="/settings/transports" element={<TransportManagement />} />
+        <Route path="/settings/notifications" element={<NotificationCenter />} />
         <Route path="/settings/policies" element={<PolicyManagement />} />
-
-        {/* Integrations */}
-        <Route path="/integrations" element={<Integrations />} />
+        <Route path="/settings/delegations" element={<DelegationManagement />} />
 
         {/* Compliance */}
         <Route path="/compliance" element={<ComplianceDashboard />} />
         <Route path="/compliance/assessment" element={<ComplianceAssessment />} />
+
+        {/* Audit */}
+        <Route path="/audit" element={<AuditReport />} />
+
+        {/* Integrations */}
+        <Route path="/integrations" element={<Integrations />} />
 
         {/* Password Self-Service */}
         <Route path="/password" element={<Navigate to="/password/change" replace />} />
@@ -205,24 +278,54 @@ function AppRoutes() {
         <Route path="/security-controls/import" element={<SecurityControlsImport />} />
         <Route path="/security-controls/evaluate" element={<SecurityControlsEvaluate />} />
 
+        {/* Provisioning */}
+        <Route path="/provisioning" element={<ProvisioningDashboard />} />
+
+        {/* Intelligence / Differentiator Modules */}
+        <Route path="/intelligence/search" element={<GlobalSearch />} />
+        <Route path="/intelligence/troubleshooter" element={<AccessTroubleshooter />} />
+        <Route path="/intelligence/role-intelligence" element={<RoleIntelligence />} />
+        <Route path="/intelligence/migration" element={<MigrationAnalyzer />} />
+        <Route path="/intelligence/drift" element={<RoleDriftDetection />} />
+        <Route path="/intelligence/audit-evidence" element={<AuditEvidenceCenter />} />
+        <Route path="/intelligence/fiori" element={<FioriAnalyzer />} />
+        <Route path="/intelligence/timeline" element={<AccessTimeline />} />
+        <Route path="/intelligence/upgrade" element={<UpgradeAnalyzer />} />
+        <Route path="/intelligence/identity" element={<IdentityCorrelation />} />
+
+        {/* Workflow Builder */}
+        <Route path="/workflows/builder" element={<WorkflowBuilder />} />
+
+        {/* GRC Suite — Risk Management */}
+        <Route path="/risk-management" element={<RiskRegister />} />
+        <Route path="/risk-management/register" element={<RiskRegister />} />
+        <Route path="/risk-management/heatmap" element={<RiskHeatmap />} />
+        <Route path="/risk-management/kri" element={<KRIDashboard />} />
+        <Route path="/risk-management/incidents" element={<IncidentLog />} />
+
+        {/* GRC Suite — Process Control */}
+        <Route path="/process-control" element={<ControlLibrary />} />
+        <Route path="/process-control/controls" element={<ControlLibrary />} />
+        <Route path="/process-control/testing" element={<ControlTesting />} />
+        <Route path="/process-control/deficiencies" element={<DeficiencyTracker />} />
+        <Route path="/process-control/ccm" element={<CCMDashboard />} />
+
+        {/* GRC Suite — Audit Management */}
+        <Route path="/audit-management" element={<AuditMgmtDashboard />} />
+        <Route path="/audit-management/planning" element={<AuditPlanning />} />
+        <Route path="/audit-management/engagements" element={<AuditEngagement />} />
+        <Route path="/audit-management/findings" element={<FindingsTracker />} />
+
         {/* AI Assistant */}
         <Route path="/ai" element={<AIAssistant />} />
 
-        {/* ML Analytics */}
-        <Route path="/ml" element={<MLDashboard />} />
-        <Route path="/ml/dashboard" element={<MLDashboard />} />
-        <Route path="/ml/ueba" element={<UserBehaviorAnalytics />} />
-        <Route path="/ml/models" element={<ModelManagement />} />
-        <Route path="/ml/analytics" element={<PredictiveAnalytics />} />
-        <Route path="/ml/anomalies" element={<MLDashboard />} />
-        <Route path="/ml/recommendations" element={<MLDashboard />} />
       </Route>
 
-      {/* Super Admin Portal Routes (outside protected routes) */}
+      {/* Super Admin Portal Routes */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/onboard" element={<TenantOnboard />} />
+      <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/onboard" element={<ProtectedRoute><TenantOnboard /></ProtectedRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -233,14 +336,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <FormConfigProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster position="top-right" />
-          </BrowserRouter>
-        </FormConfigProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <FormConfigProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <Toaster position="top-right" />
+            </BrowserRouter>
+          </FormConfigProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

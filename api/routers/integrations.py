@@ -12,10 +12,31 @@ from datetime import datetime
 from core.integrations import (
     ConnectorManager, ConnectionStatus
 )
+from core.integrations.connectors import ConnectorType
+from core.identity.ad_sap_mapping import ADSAPMappingEngine
+from core.scheduler.automation_jobs import AutomationScheduler
 
 router = APIRouter(tags=["Integrations"])
 
 connector_manager = ConnectorManager()
+mapping_engine = ADSAPMappingEngine()
+automation_scheduler = AutomationScheduler()
+
+# Map API type strings to ConnectorType enum
+_TYPE_MAP = {
+    "sap": ConnectorType.SAP_RFC,
+    "sap_rfc": ConnectorType.SAP_RFC,
+    "sap_odata": ConnectorType.SAP_ODATA,
+    "active_directory": ConnectorType.ACTIVE_DIRECTORY,
+    "azure_ad": ConnectorType.AZURE_AD,
+    "okta": ConnectorType.OKTA,
+    "ldap": ConnectorType.LDAP,
+    "generic_rest": ConnectorType.REST_API,
+    "rest_api": ConnectorType.REST_API,
+    "database": ConnectorType.DATABASE,
+    "servicenow": ConnectorType.SERVICENOW,
+    "custom": ConnectorType.CUSTOM,
+}
 
 
 # Request Models
@@ -47,6 +68,18 @@ class SyncConfigRequest(BaseModel):
     full_sync: bool = False
 
 
+class ADSAPMappingRequest(BaseModel):
+    ad_group: str
+    sap_role: str
+    sap_system: str = "DEFAULT"
+    auto_provision: bool = True
+    description: str = ""
+
+
+class ADSAPSyncRequest(BaseModel):
+    user_ids: Optional[List[str]] = None
+
+
 # Connector Management Endpoints
 @router.get("/connectors")
 async def list_connectors(
@@ -54,11 +87,21 @@ async def list_connectors(
     status: Optional[str] = Query(None)
 ):
     """List all configured connectors"""
-    status_enum = ConnectionStatus(status) if status else None
-    connectors = connector_manager.list_connectors(connector_type, status_enum)
+    type_enum = _TYPE_MAP.get(connector_type) if connector_type else None
+    connectors_data = connector_manager.list_connectors(connector_type=type_enum)
+
+    # Manager returns list of {"config": ..., "status": ...} dicts
+    # Flatten into connector info list
+    result = []
+    for item in connectors_data:
+        config = item.get("config", {})
+        st = item.get("status", {})
+        entry = {**config, **st}
+        result.append(entry)
+
     return {
-        "total": len(connectors),
-        "connectors": [c.get_info() for c in connectors]
+        "total": len(result),
+        "connectors": result
     }
 
 
@@ -68,22 +111,29 @@ async def get_connector(connector_id: str):
     connector = connector_manager.get_connector(connector_id)
     if not connector:
         raise HTTPException(status_code=404, detail="Connector not found")
-    return connector.get_info()
+    info = connector.get_info()
+    return info
 
 
 @router.post("/connectors")
 async def create_connector(request: ConnectorConfigRequest):
     """Create a new connector"""
+    type_enum = _TYPE_MAP.get(request.connector_type)
+    if not type_enum:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown connector type: {request.connector_type}. "
+                   f"Valid types: {list(_TYPE_MAP.keys())}"
+        )
     try:
         connector = connector_manager.create_connector(
             name=request.name,
-            connector_type=request.connector_type,
+            connector_type=type_enum,
             host=request.host,
             port=request.port,
             username=request.username,
             password=request.password,
             use_ssl=request.use_ssl,
-            additional_config=request.additional_config
         )
         return connector.get_info()
     except ValueError as e:
@@ -94,17 +144,12 @@ async def create_connector(request: ConnectorConfigRequest):
 async def update_connector(connector_id: str, request: UpdateConnectorRequest):
     """Update connector configuration"""
     try:
-        connector = connector_manager.update_connector(
-            connector_id=connector_id,
-            name=request.name,
-            host=request.host,
-            port=request.port,
-            username=request.username,
-            password=request.password,
-            use_ssl=request.use_ssl,
-            additional_config=request.additional_config
-        )
-        return connector.get_info()
+        updates = {k: v for k, v in request.model_dump().items() if v is not None}
+        connector_manager.update_config(config_id=connector_id, **updates)
+        connector = connector_manager.get_connector(connector_id)
+        if connector:
+            return connector.get_info()
+        raise ValueError(f"Connector {connector_id} not found")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -112,11 +157,10 @@ async def update_connector(connector_id: str, request: UpdateConnectorRequest):
 @router.delete("/connectors/{connector_id}")
 async def delete_connector(connector_id: str):
     """Delete a connector"""
-    try:
-        connector_manager.delete_connector(connector_id)
-        return {"status": "deleted", "connector_id": connector_id}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    deleted = connector_manager.delete_connector(connector_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Connector {connector_id} not found")
+    return {"status": "deleted", "connector_id": connector_id}
 
 
 # Connection Management
@@ -359,3 +403,95 @@ async def import_connector_config(config: Dict):
         return connector.get_info()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
+# AD-SAP Mapping Endpoints
+# ============================================================
+
+@router.get("/ad-sap-mappings")
+async def list_ad_sap_mappings(
+    ad_group: Optional[str] = Query(None),
+    sap_role: Optional[str] = Query(None),
+):
+    """List all AD group to SAP role mappings."""
+    if ad_group:
+        mappings = mapping_engine.get_mappings_for_group(ad_group)
+    elif sap_role:
+        mappings = mapping_engine.get_mappings_for_role(sap_role)
+    else:
+        mappings = mapping_engine.get_all_mappings()
+
+    return {
+        "total": len(mappings),
+        "mappings": [m.to_dict() for m in mappings],
+        "stats": mapping_engine.get_stats(),
+    }
+
+
+@router.post("/ad-sap-mappings")
+async def add_ad_sap_mapping(request: ADSAPMappingRequest):
+    """Add a new AD group to SAP role mapping."""
+    try:
+        mapping = mapping_engine.add_mapping(
+            ad_group=request.ad_group,
+            sap_role=request.sap_role,
+            sap_system=request.sap_system,
+            auto_provision=request.auto_provision,
+            description=request.description,
+        )
+        return mapping.to_dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/ad-sap-mappings/{mapping_id}")
+async def remove_ad_sap_mapping(mapping_id: str):
+    """Remove an AD-SAP mapping by ID."""
+    removed = mapping_engine.remove_mapping_by_id(mapping_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Mapping {mapping_id} not found")
+    return {"status": "deleted", "mapping_id": mapping_id}
+
+
+@router.post("/ad-sap-mappings/sync")
+async def trigger_ad_sap_sync(request: ADSAPSyncRequest = None):
+    """Trigger AD to SAP role synchronization."""
+    user_ids = request.user_ids if request else None
+    result = mapping_engine.bulk_sync(user_ids=user_ids)
+    return result.to_dict()
+
+
+# ============================================================
+# Automation Job Endpoints
+# ============================================================
+
+@router.get("/automation/jobs")
+async def list_automation_jobs():
+    """List all scheduled automation jobs."""
+    jobs = automation_scheduler.get_jobs()
+    return {
+        "total": len(jobs),
+        "jobs": [j.to_dict() for j in jobs],
+    }
+
+
+@router.post("/automation/jobs/{job_name}/run")
+async def trigger_automation_job(job_name: str):
+    """Trigger a specific automation job manually."""
+    job_def = automation_scheduler.get_job(job_name)
+    if not job_def:
+        raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+    result = await automation_scheduler.run_job(job_name)
+    return result.to_dict()
+
+
+@router.get("/automation/history")
+async def get_automation_history(limit: int = Query(default=20, le=100)):
+    """Get recent automation job execution history."""
+    history = automation_scheduler.get_job_history(limit=limit)
+    return {
+        "total": len(history),
+        "history": [h.to_dict() for h in history],
+    }

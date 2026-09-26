@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { firefighterApi } from '../../services/api';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -29,114 +31,6 @@ interface Session {
   approvedBy: string;
 }
 
-const mockSessions: Session[] = [
-  {
-    id: 'FF-2024-001',
-    user: 'Tom Davis',
-    userId: 'tdavis',
-    firefighterId: 'FF_EMERGENCY_SAP_01',
-    system: 'SAP ECC',
-    reason: 'Month-end closing support - need to correct posting errors',
-    startTime: '2024-01-20 14:30',
-    endTime: null,
-    duration: '2h 15m (ongoing)',
-    status: 'active',
-    actions: 28,
-    anomalies: 0,
-    approvedBy: 'John Manager',
-  },
-  {
-    id: 'FF-2024-002',
-    user: 'Mary Brown',
-    userId: 'mbrown',
-    firefighterId: 'FF_ADMIN_AWS',
-    system: 'AWS Production',
-    reason: 'Critical infrastructure patch deployment',
-    startTime: '2024-01-20 15:45',
-    endTime: null,
-    duration: '45m (ongoing)',
-    status: 'active',
-    actions: 12,
-    anomalies: 0,
-    approvedBy: 'IT Security Team',
-  },
-  {
-    id: 'FF-2024-003',
-    user: 'John Smith',
-    userId: 'jsmith',
-    firefighterId: 'FF_EMERGENCY_SAP_01',
-    system: 'SAP ECC',
-    reason: 'Emergency vendor master data correction',
-    startTime: '2024-01-19 09:00',
-    endTime: '2024-01-19 11:30',
-    duration: '2h 30m',
-    status: 'completed',
-    actions: 45,
-    anomalies: 0,
-    approvedBy: 'Sarah Director',
-  },
-  {
-    id: 'FF-2024-004',
-    user: 'David Lee',
-    userId: 'dlee',
-    firefighterId: 'FF_ADMIN_DB',
-    system: 'Production Database',
-    reason: 'Database performance issue investigation',
-    startTime: '2024-01-18 16:00',
-    endTime: '2024-01-18 18:00',
-    duration: '2h 00m',
-    status: 'completed',
-    actions: 28,
-    anomalies: 2,
-    approvedBy: 'DBA Manager',
-  },
-  {
-    id: 'FF-2024-005',
-    user: 'Alice Wilson',
-    userId: 'awilson',
-    firefighterId: 'FF_HR_ADMIN',
-    system: 'Workday',
-    reason: 'Emergency payroll correction',
-    startTime: '2024-01-17 10:00',
-    endTime: '2024-01-17 11:00',
-    duration: '1h 00m',
-    status: 'completed',
-    actions: 12,
-    anomalies: 0,
-    approvedBy: 'Auto-approved',
-  },
-  {
-    id: 'FF-2024-006',
-    user: 'Bob Johnson',
-    userId: 'bjohnson',
-    firefighterId: 'FF_EMERGENCY_SAP_02',
-    system: 'SAP ECC',
-    reason: 'System error investigation',
-    startTime: '2024-01-16 14:00',
-    endTime: '2024-01-16 14:45',
-    duration: '45m',
-    status: 'terminated',
-    actions: 8,
-    anomalies: 3,
-    approvedBy: 'IT Manager',
-  },
-  {
-    id: 'FF-2024-007',
-    user: 'Carol White',
-    userId: 'cwhite',
-    firefighterId: 'FF_NETWORK_ADMIN',
-    system: 'Network Infrastructure',
-    reason: 'Network outage remediation',
-    startTime: '2024-01-15 08:30',
-    endTime: '2024-01-15 09:15',
-    duration: '45m',
-    status: 'completed',
-    actions: 15,
-    anomalies: 0,
-    approvedBy: 'Network Manager',
-  },
-];
-
 const statusConfig = {
   active: { color: 'bg-green-100 text-green-800', label: 'Active', icon: PlayIcon },
   completed: { color: 'bg-gray-100 text-gray-800', label: 'Completed', icon: CheckCircleIcon },
@@ -144,11 +38,41 @@ const statusConfig = {
 };
 
 export function FirefighterSessions() {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [viewingSession, setViewingSession] = useState<Session | null>(null);
 
-  const filteredSessions = mockSessions.filter((session) => {
+  const { data: sessionsData } = useQuery({
+    queryKey: ['firefighter', 'sessions'],
+    queryFn: () => firefighterApi.listSessions().then(r => r.data),
+  });
+  const sessions: Session[] = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.sessions || [];
+
+  const handleEndSession = async (sessionId: string) => {
+    try {
+      const userId = localStorage.getItem('userId') || 'admin';
+      await firefighterApi.endSession(sessionId, userId);
+      toast.success(`Session ${sessionId} ended`);
+      queryClient.invalidateQueries({ queryKey: ['firefighter', 'sessions'] });
+    } catch {
+      toast.error('Failed to end session');
+    }
+  };
+
+  // Compute avg duration from actual data
+  const parseDuration = (d: string): number => {
+    const hMatch = d.match(/(\d+)\s*h/);
+    const mMatch = d.match(/(\d+)\s*m/);
+    return (hMatch ? parseInt(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
+  };
+  const avgMins = sessions.length > 0
+    ? Math.round(sessions.reduce((sum, s) => sum + parseDuration(s.duration), 0) / sessions.length)
+    : 0;
+  const avgDurationStr = avgMins > 0 ? `${Math.floor(avgMins / 60)}h ${avgMins % 60}m` : '0m';
+
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
       session.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
       session.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -157,16 +81,16 @@ export function FirefighterSessions() {
     return matchesSearch && matchesStatus;
   });
 
-  const activeCount = mockSessions.filter((s) => s.status === 'active').length;
-  const completedCount = mockSessions.filter((s) => s.status === 'completed').length;
-  const totalAnomalies = mockSessions.reduce((acc, s) => acc + s.anomalies, 0);
+  const activeCount = sessions.filter((s) => s.status === 'active').length;
+  const completedCount = sessions.filter((s) => s.status === 'completed').length;
+  const totalAnomalies = sessions.reduce((acc, s) => acc + s.anomalies, 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Firefighter Sessions</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Privileged Access Sessions</h1>
           <p className="mt-1 text-sm text-gray-500">
             View and manage all emergency access sessions
           </p>
@@ -211,7 +135,7 @@ export function FirefighterSessions() {
             </div>
             <div>
               <div className="stat-label">Avg Duration</div>
-              <div className="stat-value">1h 25m</div>
+              <div className="stat-value">{avgDurationStr}</div>
             </div>
           </div>
         </div>
@@ -235,7 +159,7 @@ export function FirefighterSessions() {
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by user, session ID, or firefighter ID..."
+              placeholder="Search by user, session ID, or privileged access ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
@@ -351,7 +275,7 @@ export function FirefighterSessions() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => toast.success(`Opening session log for ${session.id}...`)}
+                      onClick={() => setViewingSession(session)}
                       className="text-primary-600 hover:text-primary-900 mr-3"
                     >
                       <EyeIcon className="h-4 w-4 inline mr-1" />
@@ -359,7 +283,7 @@ export function FirefighterSessions() {
                     </button>
                     {session.status === 'active' && (
                       <button
-                        onClick={() => toast.success(`Session ${session.id} terminated`)}
+                        onClick={() => handleEndSession(session.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <StopIcon className="h-4 w-4 inline mr-1" />
@@ -380,6 +304,39 @@ export function FirefighterSessions() {
           </div>
         )}
       </div>
+
+      {/* Session Detail Modal */}
+      {viewingSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Session Log: {viewingSession.id}</h2>
+              <button onClick={() => setViewingSession(null)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-xs text-gray-500">User</p><p className="text-sm font-medium">{viewingSession.user}</p></div>
+                <div><p className="text-xs text-gray-500">Privileged Access ID</p><p className="text-sm font-medium">{viewingSession.firefighterId}</p></div>
+                <div><p className="text-xs text-gray-500">System</p><p className="text-sm">{viewingSession.system}</p></div>
+                <div><p className="text-xs text-gray-500">Status</p><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[viewingSession.status].color}`}>{statusConfig[viewingSession.status].label}</span></div>
+                <div><p className="text-xs text-gray-500">Duration</p><p className="text-sm">{viewingSession.duration}</p></div>
+                <div><p className="text-xs text-gray-500">Actions Performed</p><p className="text-sm">{viewingSession.actions}</p></div>
+                <div><p className="text-xs text-gray-500">Anomalies</p><p className="text-sm">{viewingSession.anomalies > 0 ? <span className="text-red-600 font-medium">{viewingSession.anomalies}</span> : 'None'}</p></div>
+                <div><p className="text-xs text-gray-500">Approved By</p><p className="text-sm">{viewingSession.approvedBy}</p></div>
+                <div><p className="text-xs text-gray-500">Start Time</p><p className="text-sm">{viewingSession.startTime}</p></div>
+                <div><p className="text-xs text-gray-500">End Time</p><p className="text-sm">{viewingSession.endTime || 'In progress'}</p></div>
+              </div>
+              <div><p className="text-xs text-gray-500">Reason</p><p className="text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded">{viewingSession.reason}</p></div>
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200 dark:border-gray-700">
+              {viewingSession.status === 'active' && (
+                <button onClick={() => { handleEndSession(viewingSession.id); setViewingSession(null); }} className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">End Session</button>
+              )}
+              <button onClick={() => setViewingSession(null)} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

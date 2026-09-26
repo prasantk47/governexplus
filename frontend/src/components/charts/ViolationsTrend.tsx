@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '../../services/api';
 
 interface ViolationsTrendProps {
   compact?: boolean;
@@ -7,33 +9,32 @@ interface ViolationsTrendProps {
 export function ViolationsTrend({ compact = false }: ViolationsTrendProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const data = [
-    { month: 'Aug', violations: 65 },
-    { month: 'Sep', violations: 58 },
-    { month: 'Oct', violations: 52 },
-    { month: 'Nov', violations: 48 },
-    { month: 'Dec', violations: 50 },
-    { month: 'Jan', violations: 45 },
-  ];
+  const { data: trendData } = useQuery({
+    queryKey: ['violations-trend'],
+    queryFn: () => dashboardApi.getRiskMetrics().then((res) => res.data?.violations_trend || []),
+  });
 
-  const maxValue = Math.max(...data.map(d => d.violations));
+  const data = (trendData || []).length > 0
+    ? trendData
+    : [{ month: '', violations: 0 }];
+
+  const maxValue = Math.max(...data.map((d: any) => d.violations), 1);
   const barHeight = compact ? 100 : 140;
 
   return (
     <div className={`${compact ? 'h-36' : 'h-48'}`}>
       <div className="flex items-end justify-between gap-3 h-full px-1">
-        {data.map((item, index) => {
+        {data.map((item: any, index: number) => {
           const height = (item.violations / maxValue) * barHeight;
           const isHovered = hoveredIndex === index;
 
           return (
             <div
-              key={item.month}
+              key={item.month || index}
               className="flex-1 flex flex-col items-center group relative"
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {/* Tooltip */}
               {isHovered && (
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-lg whitespace-nowrap z-10">
                   <div className="flex items-center gap-1.5">
@@ -44,10 +45,8 @@ export function ViolationsTrend({ compact = false }: ViolationsTrendProps) {
                 </div>
               )}
 
-              {/* Bar container */}
               <div className="w-full flex justify-center" style={{ height: `${barHeight}px` }}>
                 <div className="relative w-full max-w-[32px] flex items-end">
-                  {/* Bar */}
                   <div
                     className={`w-full rounded-t-lg transition-all duration-300 cursor-pointer ${
                       isHovered ? 'shadow-lg' : ''
@@ -62,7 +61,6 @@ export function ViolationsTrend({ compact = false }: ViolationsTrendProps) {
                 </div>
               </div>
 
-              {/* Label */}
               <div className="mt-2 text-xs font-medium text-gray-500">{item.month}</div>
             </div>
           );
@@ -75,37 +73,36 @@ export function ViolationsTrend({ compact = false }: ViolationsTrendProps) {
 export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const data = [
-    { month: 'Aug', approved: 42, pending: 8, rejected: 5 },
-    { month: 'Sep', approved: 38, pending: 12, rejected: 3 },
-    { month: 'Oct', approved: 55, pending: 6, rejected: 4 },
-    { month: 'Nov', approved: 48, pending: 9, rejected: 6 },
-    { month: 'Dec', approved: 35, pending: 15, rejected: 2 },
-    { month: 'Jan', approved: 52, pending: 7, rejected: 3 },
-  ];
+  const { data: trendData } = useQuery({
+    queryKey: ['access-requests-trend'],
+    queryFn: () => dashboardApi.getRiskMetrics().then((res) => res.data?.access_requests_trend || []),
+  });
 
-  const maxValue = Math.max(...data.map(d => d.approved + d.pending + d.rejected));
+  const data = (trendData || []).length > 0
+    ? trendData
+    : [{ month: '', approved: 0, pending: 0, rejected: 0 }];
+
+  const maxValue = Math.max(...data.map((d: any) => d.approved + d.pending + d.rejected), 1);
   const barHeight = compact ? 100 : 140;
 
   return (
     <div className={`${compact ? 'h-36' : 'h-48'}`}>
       <div className="flex items-end justify-between gap-3 h-full px-1">
-        {data.map((item, index) => {
+        {data.map((item: any, index: number) => {
           const total = item.approved + item.pending + item.rejected;
           const totalHeight = (total / maxValue) * barHeight;
-          const approvedHeight = (item.approved / total) * totalHeight;
-          const pendingHeight = (item.pending / total) * totalHeight;
-          const rejectedHeight = (item.rejected / total) * totalHeight;
+          const approvedHeight = total > 0 ? (item.approved / total) * totalHeight : 0;
+          const pendingHeight = total > 0 ? (item.pending / total) * totalHeight : 0;
+          const rejectedHeight = total > 0 ? (item.rejected / total) * totalHeight : 0;
           const isHovered = hoveredIndex === index;
 
           return (
             <div
-              key={item.month}
+              key={item.month || index}
               className="flex-1 flex flex-col items-center group relative"
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {/* Tooltip */}
               {isHovered && (
                 <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-xs shadow-lg whitespace-nowrap z-10">
                   <div className="font-medium text-gray-300 mb-1">{item.month}</div>
@@ -127,17 +124,14 @@ export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) 
                 </div>
               )}
 
-              {/* Bar container */}
               <div className="w-full flex justify-center" style={{ height: `${barHeight}px` }}>
                 <div className="relative w-full max-w-[32px] flex items-end">
-                  {/* Stacked bar */}
                   <div
                     className={`w-full rounded-t-lg overflow-hidden transition-all duration-300 cursor-pointer ${
                       isHovered ? 'shadow-lg scale-105' : ''
                     }`}
                     style={{ height: `${totalHeight}px` }}
                   >
-                    {/* Rejected (top) */}
                     <div
                       className="w-full"
                       style={{
@@ -147,7 +141,6 @@ export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) 
                           : 'linear-gradient(180deg, #fecaca 0%, #f87171 100%)',
                       }}
                     />
-                    {/* Pending (middle) */}
                     <div
                       className="w-full"
                       style={{
@@ -157,7 +150,6 @@ export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) 
                           : 'linear-gradient(180deg, #fde68a 0%, #fbbf24 100%)',
                       }}
                     />
-                    {/* Approved (bottom) */}
                     <div
                       className="w-full"
                       style={{
@@ -171,7 +163,6 @@ export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) 
                 </div>
               </div>
 
-              {/* Label */}
               <div className="mt-2 text-xs font-medium text-gray-500">{item.month}</div>
             </div>
           );

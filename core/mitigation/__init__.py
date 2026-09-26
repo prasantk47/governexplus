@@ -4,12 +4,33 @@ from .controls import (
     ControlAssignment, ControlEffectiveness, ControlAttestation
 )
 
+from .monitoring import (
+    MitigationMonitor,
+    MitigationRecord,
+    MitigationAlert,
+    MitigationHealthReport,
+    MitigationState,
+    AlertSeverity,
+    AlertType,
+    get_monitor,
+)
+
 __all__ = [
+    # Controls
     "MitigationManager",
     "MitigationControl",
     "ControlType",
     "ControlStatus",
     "ControlAssignment",
     "ControlEffectiveness",
-    "ControlAttestation"
+    "ControlAttestation",
+    # Monitoring
+    "MitigationMonitor",
+    "MitigationRecord",
+    "MitigationAlert",
+    "MitigationHealthReport",
+    "MitigationState",
+    "AlertSeverity",
+    "AlertType",
+    "get_monitor",
 ]

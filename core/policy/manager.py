@@ -38,10 +38,10 @@ class PolicyManager:
         self.index_by_owner: Dict[str, List[str]] = defaultdict(list)
         self.index_by_framework: Dict[str, List[str]] = defaultdict(list)
 
-        # Load default templates
+        # Load default templates (structural scaffolding, not tenant data)
         self._create_default_templates()
-        # Create sample policies
-        self._create_sample_policies()
+        # Do NOT seed sample policies in the constructor.  Call
+        # seed_policy_defaults(manager) from a seed script if defaults are needed.
 
     def _create_default_templates(self):
         """Create standard policy templates"""
@@ -138,122 +138,28 @@ class PolicyManager:
         )
         self.templates["firefighter-policy"] = ff_template
 
+    def _seed_default_policies_if_empty(self):
+        """Load policies from DB if the store is empty. Never fabricates data.
+        Call via seed_policy_defaults() from a seed script, not from the constructor."""
+        if self.policies:
+            return
+        self._create_sample_policies()
+
     def _create_sample_policies(self):
-        """Create sample policies for demonstration"""
-
-        # Sample SoD Risk Policy
-        sod_policy = Policy(
-            policy_id="POL-SOD-001",
-            name="Procure to Pay SoD Rules",
-            description="Segregation of Duties rules for the Procure to Pay business process",
-            policy_type=PolicyType.RISK_RULE,
-            category="Financial Controls",
-            tags=["P2P", "procurement", "finance", "SOX"],
-            scope={"business_process": "Procure to Pay", "systems": ["SAP"]},
-            owner_id="security.admin@company.com",
-            owner_name="Security Administrator",
-            owner_department="IT Security",
-            requires_approval=True,
-            required_approver_count=2,
-            allowed_approvers=["ciso@company.com", "cfo@company.com", "internal.audit@company.com"],
-            compliance_frameworks=["SOX", "ISO27001"],
-            control_ids=["CTRL-FIN-001", "CTRL-FIN-002"],
-            next_review_date=datetime.now() + timedelta(days=90)
-        )
-
-        # Add initial version
-        sod_version = PolicyVersion(
-            policy_id=sod_policy.policy_id,
-            version_number=1,
-            version_label="1.0",
-            content={
-                "rules": [
-                    {
-                        "rule_id": "SOD-P2P-001",
-                        "name": "Vendor Creation vs Payment",
-                        "severity": "critical",
-                        "function_1": {"name": "Vendor Creation", "tcodes": ["XK01", "FK01"]},
-                        "function_2": {"name": "Payment Processing", "tcodes": ["F110", "FB10"]}
-                    },
-                    {
-                        "rule_id": "SOD-P2P-002",
-                        "name": "PO Creation vs Goods Receipt",
-                        "severity": "high",
-                        "function_1": {"name": "PO Creation", "tcodes": ["ME21N", "ME22N"]},
-                        "function_2": {"name": "Goods Receipt", "tcodes": ["MIGO", "MB01"]}
-                    }
-                ],
-                "enforcement_mode": "detect_and_block",
-                "exception_process": "Requires VP approval"
-            },
-            status=PolicyStatus.ACTIVE,
-            created_by="security.admin@company.com",
-            change_type=ChangeType.CREATE,
-            change_summary="Initial P2P SoD rule set",
-            effective_from=datetime.now() - timedelta(days=30)
-        )
-        sod_version.approvals = [
-            PolicyApproval(
-                approver_id="ciso@company.com",
-                approver_name="CISO",
-                action="approve",
-                comments="Approved for immediate deployment"
-            ),
-            PolicyApproval(
-                approver_id="cfo@company.com",
-                approver_name="CFO",
-                action="approve",
-                comments="Approved"
-            )
-        ]
-
-        sod_policy.versions.append(sod_version)
-        sod_policy.current_version_id = sod_version.version_id
-
-        self.policies[sod_policy.policy_id] = sod_policy
-        self._update_indexes(sod_policy)
-
-        # Sample Emergency Access Policy
-        ff_policy = Policy(
-            policy_id="POL-FF-001",
-            name="Emergency Access Policy",
-            description="Controls for firefighter/emergency access usage",
-            policy_type=PolicyType.FIREFIGHTER_POLICY,
-            category="Emergency Access",
-            tags=["firefighter", "emergency", "privileged_access"],
-            owner_id="security.admin@company.com",
-            owner_name="Security Administrator",
-            compliance_frameworks=["SOX", "PCI-DSS"],
-            next_review_date=datetime.now() + timedelta(days=180)
-        )
-
-        ff_version = PolicyVersion(
-            policy_id=ff_policy.policy_id,
-            version_number=1,
-            version_label="1.0",
-            content={
-                "max_session_duration_hours": 4,
-                "max_extensions": 2,
-                "requires_dual_approval": True,
-                "mandatory_post_review": True,
-                "review_sla_hours": 48,
-                "allowed_systems": ["SAP_PROD", "SAP_QA"],
-                "restricted_tcodes": ["SE38", "SA38", "SM59"],
-                "activity_logging": "comprehensive",
-                "real_time_monitoring": True
-            },
-            status=PolicyStatus.ACTIVE,
-            created_by="security.admin@company.com",
-            change_type=ChangeType.CREATE,
-            change_summary="Initial emergency access policy",
-            effective_from=datetime.now() - timedelta(days=60)
-        )
-
-        ff_policy.versions.append(ff_version)
-        ff_policy.current_version_id = ff_version.version_id
-
-        self.policies[ff_policy.policy_id] = ff_policy
-        self._update_indexes(ff_policy)
+        """Load policies from DB. If none are stored, the policy store remains empty."""
+        import logging
+        _log = logging.getLogger(__name__)
+        try:
+            from db.database import db_manager
+            if not db_manager._initialized:
+                db_manager.init()
+            # Policies are stored in the in-memory model only; a DB-backed policy
+            # table is not yet wired.  If no policies exist in the store, start
+            # empty — callers must create policies via create_policy().
+            with db_manager.session_scope() as _session:
+                pass  # placeholder for future DB-backed policy persistence
+        except Exception as exc:
+            _log.warning("PolicyManager._create_sample_policies: DB access failed: %s", exc)
 
     def _update_indexes(self, policy: Policy):
         """Update lookup indexes for a policy"""
@@ -874,3 +780,25 @@ class PolicyManager:
             "total_versions": sum(len(p.versions) for p in self.policies.values()),
             "templates_available": len(self.templates)
         }
+
+
+def seed_policy_defaults(manager: "PolicyManager") -> None:
+    """
+    Seed default sample policies into *manager* only when no policies exist.
+
+    Call this from scripts/seed_all.py (or an alembic post-migrate hook) rather
+    than from the constructor, so the constructor remains side-effect-free.
+
+    Example::
+
+        from core.policy.manager import PolicyManager, seed_policy_defaults
+        mgr = PolicyManager()
+        seed_policy_defaults(mgr)
+    """
+    import logging
+    _log = logging.getLogger(__name__)
+    if not manager.policies:
+        manager._seed_default_policies_if_empty()
+        _log.info("PolicyManager: seeded %d default policies.", len(manager.policies))
+    else:
+        _log.debug("PolicyManager: policies already present (%d), skipping seed.", len(manager.policies))

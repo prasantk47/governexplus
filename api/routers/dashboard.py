@@ -2,6 +2,8 @@
 Dashboard API Router
 
 Endpoints for real-time dashboards and analytics.
+
+All stats are computed from real database tables — no random numbers.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,12 +11,20 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from core.analytics import DashboardManager, MetricsCollector
 from core.analytics.metrics import MetricCategory
+from db.database import get_db
+from db.models.user import User
+from db.models.risk import RiskViolation, ViolationStatus
+from db.models.audit import AccessRequestLog, CertificationCampaignLog
+from db.models.firefighter import FirefighterSession, FFSessionStatus
 
 router = APIRouter(tags=["Dashboard"])
 
-# Initialize managers
+# Initialize managers (still used by the detailed metric / dashboard endpoints below)
 metrics_collector = MetricsCollector()
 dashboard_manager = DashboardManager(metrics_collector)
 
@@ -24,55 +34,68 @@ dashboard_manager = DashboardManager(metrics_collector)
 # =============================================================================
 
 @router.get("/stats")
-async def get_dashboard_stats():
+async def get_dashboard_stats(db: Session = Depends(get_db)):
     """
-    Get main dashboard statistics for the frontend.
+    Get main dashboard statistics from real database tables.
 
     Returns stats in the format expected by the Dashboard component.
     """
-    _seed_sample_metrics()
+    total_users = db.query(func.count(User.id)).scalar() or 0
+
+    # Risk violations from risk_violations table
+    active_violations = (
+        db.query(func.count(RiskViolation.id))
+        .filter(RiskViolation.status.in_([ViolationStatus.OPEN, ViolationStatus.IN_PROGRESS]))
+        .scalar()
+    ) or 0
+
+    risk_score_avg = (
+        db.query(func.avg(RiskViolation.severity_score))
+        .filter(RiskViolation.status.in_([ViolationStatus.OPEN, ViolationStatus.IN_PROGRESS]))
+        .scalar()
+    ) or 0
+
+    # Pending approvals from access_request_logs
+    pending_approvals = (
+        db.query(func.count(AccessRequestLog.id))
+        .filter(AccessRequestLog.status.in_(["pending", "pending_approval"]))
+        .scalar()
+    ) or 0
+
+    # Certification progress from certification_campaigns
+    total_campaigns = (
+        db.query(func.count(CertificationCampaignLog.id))
+        .filter(CertificationCampaignLog.status.in_(["active", "in_progress"]))
+        .scalar()
+    ) or 0
+    total_cert_items = (
+        db.query(func.coalesce(func.sum(CertificationCampaignLog.total_items), 0))
+        .filter(CertificationCampaignLog.status.in_(["active", "in_progress"]))
+        .scalar()
+    ) or 0
+    completed_cert_items = (
+        db.query(func.coalesce(func.sum(CertificationCampaignLog.completed_items), 0))
+        .filter(CertificationCampaignLog.status.in_(["active", "in_progress"]))
+        .scalar()
+    ) or 0
+    cert_progress = round((completed_cert_items / total_cert_items * 100) if total_cert_items > 0 else 0)
+
+    # Active firefighter sessions
+    active_ff_sessions = (
+        db.query(func.count(FirefighterSession.id))
+        .filter(FirefighterSession.status == FFSessionStatus.ACTIVE)
+        .scalar()
+    ) or 0
 
     return {
-        "totalUsers": 1250,
-        "activeViolations": int(metrics_collector.get_current("risk.violations.total") or 45),
-        "pendingApprovals": int(metrics_collector.get_current("access.requests.pending") or 12),
-        "certificationProgress": int(metrics_collector.get_current("certification.completion.rate") or 78),
-        "activeFirefighterSessions": int(metrics_collector.get_current("firefighter.sessions.active") or 2),
-        "riskScore": int(metrics_collector.get_current("risk.score.average") or 42),
-        "riskTrend": "down" if (metrics_collector.get_current("risk.score.average") or 50) < 50 else "up"
+        "totalUsers": total_users,
+        "activeViolations": active_violations,
+        "pendingApprovals": pending_approvals,
+        "certificationProgress": cert_progress,
+        "activeFirefighterSessions": active_ff_sessions,
+        "riskScore": round(float(risk_score_avg)),
+        "riskTrend": "down" if float(risk_score_avg) < 50 else "up",
     }
-
-# Seed some sample metrics for demonstration
-def _seed_sample_metrics():
-    """Seed sample metrics for demo purposes"""
-    import random
-
-    metrics_collector.record("risk.violations.total", random.randint(45, 75))
-    metrics_collector.record("risk.violations.critical", random.randint(3, 12))
-    metrics_collector.record("risk.violations.unmitigated", random.randint(15, 35))
-    metrics_collector.record("risk.score.average", random.uniform(35, 55))
-
-    metrics_collector.record("access.requests.pending", random.randint(20, 60))
-    metrics_collector.record("access.requests.daily", random.randint(15, 45))
-    metrics_collector.record("access.approval.rate", random.uniform(75, 92))
-    metrics_collector.record("access.sla.compliance", random.uniform(85, 98))
-
-    metrics_collector.record("certification.campaigns.active", random.randint(2, 5))
-    metrics_collector.record("certification.items.pending", random.randint(200, 800))
-    metrics_collector.record("certification.completion.rate", random.uniform(40, 85))
-    metrics_collector.record("certification.revocation.rate", random.uniform(5, 15))
-
-    metrics_collector.record("firefighter.sessions.active", random.randint(0, 4))
-    metrics_collector.record("firefighter.requests.pending", random.randint(0, 6))
-    metrics_collector.record("firefighter.usage.daily", random.randint(2, 10))
-    metrics_collector.record("firefighter.reviews.pending", random.randint(3, 15))
-
-    metrics_collector.record("compliance.controls.effective", random.uniform(88, 97))
-    metrics_collector.record("compliance.audit.findings", random.randint(5, 20))
-
-    metrics_collector.record("performance.api.latency", random.uniform(50, 200))
-
-_seed_sample_metrics()
 
 
 # =============================================================================
@@ -168,7 +191,6 @@ async def get_executive_summary():
 
     Provides high-level KPIs and status for executive reporting.
     """
-    _seed_sample_metrics()  # Refresh sample data
     return dashboard_manager.get_executive_summary()
 
 
@@ -177,7 +199,6 @@ async def get_risk_summary():
     """
     Get risk management summary.
     """
-    _seed_sample_metrics()
     return dashboard_manager.get_risk_summary()
 
 
@@ -186,7 +207,6 @@ async def get_access_summary():
     """
     Get access request workflow summary.
     """
-    _seed_sample_metrics()
     return dashboard_manager.get_workflow_summary()
 
 
@@ -195,7 +215,6 @@ async def get_certification_summary():
     """
     Get certification campaign summary.
     """
-    _seed_sample_metrics()
     return dashboard_manager.get_certification_summary()
 
 
@@ -204,7 +223,6 @@ async def get_firefighter_summary():
     """
     Get firefighter/emergency access summary.
     """
-    _seed_sample_metrics()
     return dashboard_manager.get_firefighter_summary()
 
 
@@ -217,7 +235,6 @@ async def list_all_metrics():
     """
     Get all metrics grouped by category.
     """
-    _seed_sample_metrics()
     return dashboard_manager.metrics.get_all_metrics()
 
 
@@ -234,7 +251,6 @@ async def get_category_metrics(category: str):
             detail=f"Invalid category. Valid categories: {[c.value for c in MetricCategory]}"
         )
 
-    _seed_sample_metrics()
     return {
         "category": category,
         "metrics": dashboard_manager.metrics.get_category_metrics(cat)
@@ -246,7 +262,6 @@ async def get_metric(metric_id: str):
     """
     Get a specific metric with current value and status.
     """
-    _seed_sample_metrics()
     result = dashboard_manager.metrics.get_with_status(metric_id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
@@ -312,7 +327,6 @@ async def get_alerts():
     """
     Get all current alerts (metrics in warning/critical state).
     """
-    _seed_sample_metrics()
     alerts = dashboard_manager.metrics.get_alerts()
 
     return {
@@ -328,7 +342,6 @@ async def get_system_health():
     """
     Get overall system health status.
     """
-    _seed_sample_metrics()
     summary = dashboard_manager.metrics.calculate_summary_stats()
     alerts = dashboard_manager.metrics.get_alerts()
 
@@ -357,8 +370,6 @@ async def get_kpi_report(
     """
     Generate a KPI summary report.
     """
-    _seed_sample_metrics()
-
     return {
         "report_type": "kpi_summary",
         "period_days": period_days,

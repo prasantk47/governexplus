@@ -7,7 +7,6 @@ import {
   ExclamationTriangleIcon,
   XCircleIcon,
   ClipboardDocumentCheckIcon,
-  DocumentTextIcon,
   CogIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';

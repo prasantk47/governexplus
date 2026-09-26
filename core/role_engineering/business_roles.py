@@ -300,6 +300,41 @@ class BusinessRoleManager:
         self.business_roles: Dict[str, BusinessRole] = {}
         self.assignments: Dict[str, BusinessRoleAssignment] = {}
         self.user_assignments: Dict[str, List[str]] = {}  # user_id -> [assignment_ids]
+        self._load_from_db_or_seed()
+
+    def _load_from_db_or_seed(self):
+        """Load business roles from DB if available, else use hardcoded seed data."""
+        try:
+            from db.database import db_manager
+            if not db_manager._initialized:
+                db_manager.init()
+            with db_manager.session_scope() as session:
+                from db.models.user import Role
+                roles = session.query(Role).filter(Role.is_active == True).all()
+                if roles:
+                    for r in roles:
+                        br = BusinessRole(
+                            role_id=r.role_id,
+                            name=r.role_name or r.role_id,
+                            description=r.description or "",
+                            business_process="",
+                            department="",
+                            job_function="",
+                            category="general",
+                            risk_level=r.risk_level or "medium",
+                            technical_role_mappings=[
+                                TechnicalRoleMapping(
+                                    technical_role_id=r.role_id,
+                                    system_id=r.source_system or "SAP",
+                                )
+                            ],
+                        )
+                        self.business_roles[br.role_id] = br
+                    return
+        except Exception:
+            pass
+
+        # Fallback to hardcoded seed data
         self._initialize_standard_roles()
 
     def _initialize_standard_roles(self):
@@ -979,3 +1014,104 @@ class BusinessRoleManager:
             }
             for r in roles[:limit]
         ]
+
+    def save_role(self, role: "BusinessRole", db_session=None, tenant_id: str = "tenant_default") -> dict:
+        """
+        Persist a BusinessRole to the Role DB model (upsert).
+
+        Maps BusinessRole fields -> Role columns and commits.
+        Returns the saved role dict.
+        """
+        session = db_session
+        if session is None:
+            try:
+                from db.database import db_manager
+                if not db_manager._initialized:
+                    db_manager.init()
+                # Caller must manage session; return in-memory dict if no session
+                return role.to_dict()
+            except Exception:
+                return role.to_dict()
+
+        try:
+            from db.models.user import Role
+            existing = session.query(Role).filter(
+                Role.role_id == role.role_id,
+                Role.tenant_id == tenant_id,
+            ).first()
+
+            if existing:
+                existing.role_name = role.name
+                existing.description = role.description
+                existing.role_type = role.job_function or "business"
+                existing.risk_level = role.risk_level
+                existing.owner_user_id = role.ownership.owner_id if role.ownership else None
+                existing.prerequisites = role.custom_attributes.get("prerequisites", [])
+                existing.reaffirmation_days = role.custom_attributes.get("reaffirmation_days")
+                existing.methodology_stage = role.custom_attributes.get("methodology_stage", "define")
+                session.commit()
+                return role.to_dict()
+            else:
+                new_role = Role(
+                    tenant_id=tenant_id,
+                    role_id=role.role_id,
+                    role_name=role.name,
+                    description=role.description,
+                    role_type=role.job_function or "business",
+                    risk_level=role.risk_level,
+                    owner_user_id=role.ownership.owner_id if role.ownership else None,
+                    prerequisites=role.custom_attributes.get("prerequisites", []),
+                    reaffirmation_days=role.custom_attributes.get("reaffirmation_days"),
+                    methodology_stage=role.custom_attributes.get("methodology_stage", "define"),
+                    is_active=role.status == BusinessRoleStatus.ACTIVE,
+                )
+                session.add(new_role)
+                session.commit()
+                return role.to_dict()
+        except Exception as e:
+            session.rollback()
+            raise ValueError(f"Failed to save role {role.role_id}: {e}") from e
+
+
+class RoleMethodologyOrchestrator:
+    """8-stage role lifecycle: define→authorize→derive→analyze→test→approve→generate→provision"""
+    STAGES = ["define", "authorize", "derive", "analyze", "test", "approve", "generate", "provision"]
+
+    def __init__(self, tenant_id: str, db_session=None):
+        self.tenant_id = tenant_id
+        self.db = db_session
+
+    def advance_stage(self, role_id: str, current_stage: str, validation_data: dict = None) -> dict:
+        """Advance role to next methodology stage with validation"""
+        idx = self.STAGES.index(current_stage) if current_stage in self.STAGES else -1
+        if idx < 0 or idx >= len(self.STAGES) - 1:
+            return {"error": f"Cannot advance from stage '{current_stage}'"}
+        next_stage = self.STAGES[idx + 1]
+        # Stage-specific validation
+        if next_stage == "analyze" and self.db:
+            # Should run SoD check before proceeding
+            pass  # ARA integration point
+        if next_stage == "approve":
+            if not validation_data or not validation_data.get("risk_analysis_completed"):
+                return {"error": "Risk analysis must be completed before approval"}
+        if next_stage == "provision":
+            if not validation_data or not validation_data.get("approved_by"):
+                return {"error": "Role must be approved before provisioning"}
+        # Update DB
+        if self.db:
+            from db.models.user import Role
+            role = self.db.query(Role).filter(Role.role_id == role_id, Role.tenant_id == self.tenant_id).first()
+            if role:
+                role.methodology_stage = next_stage
+                self.db.commit()
+        return {"role_id": role_id, "previous_stage": current_stage, "current_stage": next_stage, "stages": self.STAGES}
+
+    def get_stage(self, role_id: str) -> dict:
+        if self.db:
+            from db.models.user import Role
+            role = self.db.query(Role).filter(Role.role_id == role_id, Role.tenant_id == self.tenant_id).first()
+            if role:
+                stage = role.methodology_stage or "define"
+                idx = self.STAGES.index(stage) if stage in self.STAGES else 0
+                return {"role_id": role_id, "current_stage": stage, "stage_index": idx, "total_stages": len(self.STAGES), "stages": self.STAGES, "progress_pct": round((idx / (len(self.STAGES) - 1)) * 100)}
+        return {"role_id": role_id, "current_stage": "define", "stage_index": 0}

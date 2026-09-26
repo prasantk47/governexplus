@@ -15,6 +15,11 @@ from enum import Enum
 from collections import defaultdict
 import uuid
 import math
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+_IS_PRODUCTION = os.getenv("APP_ENV", "").lower() == "production"
 
 
 class RecommendationType(Enum):
@@ -156,8 +161,17 @@ class AccessRecommender:
         self.role_users: Dict[str, Set[str]] = defaultdict(set)  # role -> users
         self.role_permissions: Dict[str, Set[str]] = {}  # role -> permissions
 
-        # Create sample data
-        self._create_sample_data()
+        # Populate baseline role/user data.
+        # In production this should be loaded from the database; sample data
+        # is only injected in dev/test to allow the engine to function without
+        # a populated database.
+        if not _IS_PRODUCTION:
+            self._create_sample_data()
+        else:
+            logger.info(
+                "AccessRecommender: skipping sample data seeding (APP_ENV=production). "
+                "User profiles and role permissions will be populated from real data."
+            )
 
     def _create_sample_data(self):
         """Create sample data for demonstration"""

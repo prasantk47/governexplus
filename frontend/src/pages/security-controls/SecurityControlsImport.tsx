@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
@@ -12,7 +12,6 @@ import {
 import { securityControlsApi } from '../../services/api';
 
 export function SecurityControlsImport() {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMethod, setImportMethod] = useState<'file' | 'paste'>('file');
   const [pasteContent, setPasteContent] = useState('');

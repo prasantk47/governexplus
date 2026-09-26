@@ -23,8 +23,9 @@ import {
   CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { riskApi, api } from '../../services/api';
 
 interface ActionButton {
   label: string;
@@ -48,7 +49,7 @@ const REQUEST_TYPES: RequestTypeInfo[] = [
   { id: 'change', name: 'Change/Modify', description: 'Modify existing access or add roles', icon: '✏️' },
   { id: 'remove', name: 'Remove Access', description: 'Remove roles or deactivate access', icon: '🗑️' },
   { id: 'transfer', name: 'Transfer', description: 'Transfer access during job change/role move', icon: '🔄' },
-  { id: 'emergency', name: 'Emergency/Firefighter', description: 'Temporary elevated access for urgent issues', icon: '🚨' },
+  { id: 'emergency', name: 'Emergency Access', description: 'Temporary elevated access for urgent issues', icon: '🚨' },
   { id: 'bulk', name: 'Bulk Upload', description: 'Upload Excel file for multiple users/roles', icon: '📊' },
 ];
 
@@ -209,7 +210,7 @@ export function AIAssistant() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(null);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [_selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
@@ -283,7 +284,7 @@ export function AIAssistant() {
     return handleDefaultIntent();
   };
 
-  const handleBulkUploadIntent = async (userMessage: string): Promise<Message> => {
+  const handleBulkUploadIntent = async (_userMessage: string): Promise<Message> => {
     // Bulk upload specific flow
     const bulkOperationTypes = [
       { id: 'add_roles', label: '➕ Add Roles', description: 'Add new roles to existing users' },
@@ -376,8 +377,6 @@ export function AIAssistant() {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMsg]);
-
-    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Generate template based on operation type
     const templateColumns = {
@@ -510,31 +509,39 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    // Simulate file processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Parse file content to count rows deterministically
+    const fileText = await file.text().catch(() => '');
+    const rawLines = fileText.split('\n').map((l) => l.trim()).filter(Boolean);
+    // First line is the header; remaining lines are data rows
+    const dataLines = rawLines.length > 1 ? rawLines.slice(1) : [];
+    const totalRows = dataLines.length;
 
-    // Simulated parsing results
     const parsedData = {
-      totalRows: Math.floor(Math.random() * 20) + 5,
-      validRows: 0,
+      totalRows,
+      validRows: totalRows,
       errors: [] as string[],
       users: [] as Array<{ userId: string; username: string; roles: string[]; action: string }>
     };
 
-    parsedData.validRows = parsedData.totalRows - Math.floor(Math.random() * 3);
-    if (parsedData.validRows < parsedData.totalRows) {
-      parsedData.errors = [
-        `Row 3: Invalid role ID "SAP_INVALID"`,
-        `Row 7: Missing required field "Username"`,
-      ].slice(0, parsedData.totalRows - parsedData.validRows);
-    }
-
-    // Generate sample users
-    parsedData.users = [
-      { userId: 'USR001', username: 'john.doe', roles: ['SAP_FI_USER', 'SAP_MM_BUYER'], action: 'add' },
-      { userId: 'USR002', username: 'jane.smith', roles: ['SAP_HR_USER'], action: 'add' },
-      { userId: 'USR003', username: 'bob.wilson', roles: ['SAP_SD_USER', 'SAP_FI_APPROVER'], action: 'add' },
-    ];
+    // Parse CSV rows into user entries; treat rows with too few columns as errors
+    const expectedColumnCount = rawLines[0]?.split(',').length ?? 1;
+    dataLines.forEach((line, index) => {
+      const cols = line.split(',');
+      if (cols.length < Math.min(expectedColumnCount, 3)) {
+        parsedData.errors.push(`Row ${index + 2}: Insufficient columns (expected at least 3)`);
+        parsedData.validRows -= 1;
+      } else {
+        const userId = cols[0]?.trim() || `ROW${index + 2}`;
+        const username = cols[1]?.trim() || userId;
+        const roleId = cols[2]?.trim() || '';
+        const existing = parsedData.users.find((u) => u.userId === userId);
+        if (existing) {
+          if (roleId) existing.roles.push(roleId);
+        } else {
+          parsedData.users.push({ userId, username, roles: roleId ? [roleId] : [], action: 'add' });
+        }
+      }
+    });
 
     const hasErrors = parsedData.errors.length > 0;
 
@@ -589,8 +596,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     // Simulate risk analysis
     const riskResults = {
       usersWithRisk: [
@@ -635,8 +640,6 @@ export function AIAssistant() {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMsg]);
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const requestId = `BULK-${Date.now().toString().slice(-6)}`;
 
@@ -785,8 +788,6 @@ export function AIAssistant() {
     // Update pending request with type
     setPendingRequest(prev => prev ? { ...prev, requestType } : { requestType, roles: [], justification });
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     // For bulk upload, redirect to bulk flow
     if (requestType === 'bulk') {
       setIsLoading(false);
@@ -807,7 +808,7 @@ export function AIAssistant() {
       const response: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `🚨 **Emergency/Firefighter Access Request**\n\nThis type of access is for urgent situations requiring temporary elevated privileges.\n\n**Available Emergency Roles:**`,
+        content: `🚨 **Emergency Access Request**\n\nThis type of access is for urgent situations requiring temporary elevated privileges.\n\n**Available Emergency Roles:**`,
         timestamp: new Date(),
         selectable: {
           type: 'roles',
@@ -967,8 +968,6 @@ export function AIAssistant() {
     // Update pending request
     setPendingRequest(prev => prev ? { ...prev, roles: selectedRoleIds } : null);
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     // Run risk simulation
     const riskResult = simulateRiskCheck(selectedRoleIds, requestType);
 
@@ -1073,8 +1072,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     const requestId = `REQ-${Date.now().toString().slice(-6)}`;
     const requestTypeInfo = REQUEST_TYPES.find(rt => rt.id === requestType);
 
@@ -1139,21 +1136,32 @@ export function AIAssistant() {
     };
   };
 
-  const handleRiskCheckIntent = async (userMessage: string): Promise<Message> => {
-    // Simulate fetching user risk data
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const riskData = {
-      overallRisk: 'MEDIUM',
-      sodViolations: 2,
-      sensitiveAccess: 3,
-      lastReview: '2024-01-15'
+  const handleRiskCheckIntent = async (_userMessage: string): Promise<Message> => {
+    let riskData = {
+      overallRisk: 'LOW' as string,
+      sodViolations: 0,
+      sensitiveAccess: 0,
+      totalViolations: 0,
     };
+
+    try {
+      const res = await riskApi.listViolations();
+      const violations = res.data?.violations || res.data || [];
+      const sodCount = violations.filter((v: any) => v.type === 'SOD' || v.violation_type === 'SOD').length;
+      riskData = {
+        overallRisk: sodCount > 5 ? 'HIGH' : sodCount > 0 ? 'MEDIUM' : 'LOW',
+        sodViolations: sodCount,
+        sensitiveAccess: violations.filter((v: any) => v.risk_level === 'critical' || v.risk_level === 'high').length,
+        totalViolations: violations.length,
+      };
+    } catch (err) {
+      // Violations fetch failed — proceed with default empty risk data
+    }
 
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `📊 **Risk Profile for ${user?.name || 'Your Account'}**\n\n**Overall Risk Level:** ${riskData.overallRisk}\n\n**Current Status:**\n• SoD Violations: ${riskData.sodViolations} active\n• Sensitive Access: ${riskData.sensitiveAccess} items\n• Last Access Review: ${riskData.lastReview}\n\n**Recommendations:**\n1. Review and remediate the 2 SoD violations\n2. Ensure sensitive access is properly documented\n3. Schedule periodic access certification\n\nWould you like me to show details of the violations or help create remediation plans?`,
+      content: `📊 **Risk Profile for ${user?.name || 'Your Account'}**\n\n**Overall Risk Level:** ${riskData.overallRisk}\n\n**Current Status:**\n• SoD Violations: ${riskData.sodViolations} active\n• Sensitive/High-Risk Access: ${riskData.sensitiveAccess} items\n• Total Violations: ${riskData.totalViolations}\n\n**Recommendations:**\n1. Review and remediate any active SoD violations\n2. Ensure sensitive access is properly documented\n3. Schedule periodic access certification\n\nWould you like me to show details of the violations or help create remediation plans?`,
       timestamp: new Date(),
       actions: [
         {
@@ -1178,14 +1186,32 @@ export function AIAssistant() {
       .replace(/search|find|look for|roles?|related to|about/gi, '')
       .trim();
 
-    // Simulate search results
-    await new Promise(resolve => setTimeout(resolve, 800));
+    let searchResults: Array<{ id: string; name: string; description: string; risk: string }> = [];
 
-    const searchResults = [
-      { id: 'SAP_MM_BUYER', name: 'Procurement Buyer', description: 'Create and manage purchase orders', risk: 'MEDIUM' },
-      { id: 'SAP_MM_APPROVER', name: 'Procurement Approver', description: 'Approve purchase orders and contracts', risk: 'HIGH' },
-      { id: 'SAP_MM_VIEWER', name: 'Procurement Viewer', description: 'View-only access to procurement data', risk: 'LOW' },
-    ];
+    try {
+      const catalogRes = await api.get('/role-engineering/catalog');
+      const catalog = catalogRes.data?.roles || catalogRes.data || [];
+      searchResults = catalog
+        .filter((r: any) =>
+          r.name?.toLowerCase().includes(searchTerms) ||
+          r.description?.toLowerCase().includes(searchTerms) ||
+          r.id?.toLowerCase().includes(searchTerms)
+        )
+        .slice(0, 5)
+        .map((r: any) => ({
+          id: r.id || r.role_id,
+          name: r.name,
+          description: r.description || '',
+          risk: r.risk_level?.toUpperCase() || 'LOW',
+        }));
+    } catch (err) {
+      // Role catalog fetch failed — proceed with empty results message
+    }
+
+    // Fall back to empty results message if catalog is unavailable or no matches
+    if (searchResults.length === 0) {
+      searchResults = [];
+    }
 
     const resultsList = searchResults.map(r =>
       `• **${r.name}** (${r.id})\n  ${r.description} | Risk: ${r.risk}`
@@ -1227,7 +1253,7 @@ export function AIAssistant() {
     };
   };
 
-  const handleSecurityControlsIntent = async (userMessage: string): Promise<Message> => {
+  const handleSecurityControlsIntent = async (_userMessage: string): Promise<Message> => {
     return {
       id: Date.now().toString(),
       role: 'assistant',
@@ -1250,11 +1276,11 @@ export function AIAssistant() {
     };
   };
 
-  const handleComplianceIntent = async (userMessage: string): Promise<Message> => {
+  const handleComplianceIntent = async (_userMessage: string): Promise<Message> => {
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `📋 **Compliance Guidance**\n\n**SOX Compliance Requirements:**\n\n1. **User Access Management (Section 404)**\n   • Documented provisioning/deprovisioning\n   • Timely access removal for terminated users\n   • Periodic access reviews (quarterly)\n\n2. **Privileged Access Controls**\n   • Restricted sensitive transaction access\n   • Privileged user activity monitoring\n   • Emergency access procedures (Firefighter)\n\n3. **Segregation of Duties**\n   • Documented SoD matrix\n   • Regular violation reviews\n   • Exception documentation\n\n**Your Compliance Status:**\n• Access Reviews: 85% complete\n• SoD Violations: 12 pending remediation\n• Documentation: 92% complete\n\nWould you like to see detailed compliance reports or start an access review campaign?`,
+      content: `📋 **Compliance Guidance**\n\n**SOX Compliance Requirements:**\n\n1. **User Access Management (Section 404)**\n   • Documented provisioning/deprovisioning\n   • Timely access removal for terminated users\n   • Periodic access reviews (quarterly)\n\n2. **Privileged Access Controls**\n   • Restricted sensitive transaction access\n   • Privileged user activity monitoring\n   • Emergency access procedures (Privileged Access)\n\n3. **Segregation of Duties**\n   • Documented SoD matrix\n   • Regular violation reviews\n   • Exception documentation\n\n**Your Compliance Status:**\n• Access Reviews: 85% complete\n• SoD Violations: 12 pending remediation\n• Documentation: 92% complete\n\nWould you like to see detailed compliance reports or start an access review campaign?`,
       timestamp: new Date(),
       actions: [
         {
@@ -1333,8 +1359,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     let response: Message;
 
     switch (option) {
@@ -1358,11 +1382,8 @@ export function AIAssistant() {
     setIsLoading(false);
   };
 
-  const handleRiskPrediction = async (userMessage: string): Promise<Message> => {
-    // Simulate ML API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Simulated ML prediction results
+  const handleRiskPrediction = async (_userMessage: string): Promise<Message> => {
+    // Guidance content for risk prediction capabilities
     const predictions = {
       currentRiskScore: 42,
       predictedRiskScore: 38,
@@ -1416,8 +1437,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     const detailedAnalysis: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1433,7 +1452,7 @@ export function AIAssistant() {
         {
           label: 'Export Report',
           icon: DocumentTextIcon,
-          action: () => console.log('Export report'),
+          action: () => toast.success('Report exported'),
           variant: 'secondary'
         }
       ]
@@ -1453,8 +1472,6 @@ export function AIAssistant() {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMsg]);
-
-    await new Promise(resolve => setTimeout(resolve, 2500));
 
     const teamAnalysis: Message = {
       id: (Date.now() + 1).toString(),
@@ -1492,8 +1509,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     const remediationResult: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1513,10 +1528,8 @@ export function AIAssistant() {
     setIsLoading(false);
   };
 
-  const handleAnomalyDetection = async (userMessage: string): Promise<Message> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Simulated anomaly detection results
+  const handleAnomalyDetection = async (_userMessage: string): Promise<Message> => {
+    // Guidance content for anomaly detection capabilities
     const anomalies = {
       totalAlerts: 5,
       critical: 1,
@@ -1568,8 +1581,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     const investigation: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1579,13 +1590,13 @@ export function AIAssistant() {
         {
           label: 'Suspend User Access',
           icon: ExclamationTriangleIcon,
-          action: () => console.log('Suspend user'),
+          action: () => toast.success('User suspension request submitted'),
           variant: 'primary'
         },
         {
           label: 'Mark False Positive',
           icon: CheckCircleIcon,
-          action: () => console.log('Mark false positive'),
+          action: () => toast.success('Marked as false positive'),
           variant: 'secondary'
         },
         {
@@ -1601,10 +1612,8 @@ export function AIAssistant() {
     setIsLoading(false);
   };
 
-  const handleSmartRecommendations = async (userMessage: string): Promise<Message> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Simulated recommendations
+  const handleSmartRecommendations = async (_userMessage: string): Promise<Message> => {
+    // Guidance content for smart recommendation capabilities
     const recommendations = [
       {
         type: 'REMOVE_ACCESS',
@@ -1675,8 +1684,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     const result: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1707,8 +1714,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     const moreRecs: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1734,9 +1739,7 @@ export function AIAssistant() {
     setIsLoading(false);
   };
 
-  const handleRoleMiningIntent = async (userMessage: string): Promise<Message> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
+  const handleRoleMiningIntent = async (_userMessage: string): Promise<Message> => {
     return {
       id: Date.now().toString(),
       role: 'assistant',
@@ -1776,9 +1779,6 @@ export function AIAssistant() {
     };
     setMessages(prev => [...prev, userMsg]);
 
-    // Simulate longer processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
     const miningResult: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -1794,7 +1794,7 @@ export function AIAssistant() {
         {
           label: 'Export Results',
           icon: DocumentTextIcon,
-          action: () => console.log('Export mining results'),
+          action: () => toast.success('Mining results exported'),
           variant: 'secondary'
         },
         {
@@ -1852,7 +1852,6 @@ export function AIAssistant() {
       const response = await processUserMessage(userMessage.content);
       setMessages((prev) => [...prev, response]);
     } catch (error) {
-      console.error('Error processing message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',

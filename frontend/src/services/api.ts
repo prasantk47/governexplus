@@ -13,11 +13,10 @@ const getApiBaseUrl = (): string => {
   if (envUrl) return envUrl;
 
   if (import.meta.env.DEV) {
-    return 'http://localhost:9000';
+    return 'http://localhost:8000';
   }
 
-  // In production without VITE_API_URL, log warning and use relative path
-  console.warn('VITE_API_URL not configured. Using relative API path.');
+  // In production without VITE_API_URL, use relative path
   return '/api';
 };
 
@@ -61,11 +60,6 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
 
-    if (error.response?.status === 403) {
-      // Forbidden - show permission error
-      console.error('Permission denied');
-    }
-
     return Promise.reject(error);
   }
 );
@@ -84,7 +78,7 @@ export const authApi = {
 
 // ==================== Access Requests API ====================
 export const accessRequestApi = {
-  list: (params?: { status?: string; page?: number; limit?: number }) =>
+  list: (params?: Record<string, string | number>) =>
     api.get('/access-requests', { params }),
 
   get: (id: string) => api.get(`/access-requests/${id}`),
@@ -101,9 +95,14 @@ export const accessRequestApi = {
 
   previewRisk: (data: any) => api.post('/access-requests/preview-risk', data),
 
-  getPendingApprovals: () => api.get('/access-requests/approvals/pending'),
+  getPendingApprovals: (params?: Record<string, string>) =>
+    api.get('/access-requests/approvals/pending', { params }),
 
   getMyRequests: () => api.get('/access-requests/my-requests'),
+
+  getStatistics: () => api.get('/access-requests/statistics'),
+
+  getSlaStats: () => api.get('/access-requests/statistics/sla'),
 };
 
 // ==================== Certification API ====================
@@ -335,17 +334,20 @@ export const reportsApi = {
       params: { format },
       responseType: 'blob',
     }),
+
+  getDashboardSummary: (days?: number) =>
+    api.get('/reports/dashboard-summary', { params: { days } }),
 };
 
 // ==================== Dashboard API ====================
 export const dashboardApi = {
-  getStats: () => api.get('/dashboard/summary'),
+  getStats: () => api.get('/dashboard/stats'),
 
-  getRiskMetrics: () => api.get('/dashboard/risk-metrics'),
+  getRiskMetrics: () => api.get('/dashboard/summary/risk'),
 
-  getCertificationMetrics: () => api.get('/dashboard/certification-metrics'),
+  getCertificationMetrics: () => api.get('/dashboard/summary/certification'),
 
-  getFirefighterMetrics: () => api.get('/dashboard/firefighter-metrics'),
+  getFirefighterMetrics: () => api.get('/dashboard/summary/firefighter'),
 };
 
 // ==================== AI API ====================
@@ -495,6 +497,132 @@ export const securityControlsApi = {
 
   getImportTemplate: (format: 'json' | 'csv' = 'json') =>
     api.get('/security-controls/import/template', { params: { format } }),
+};
+
+// ==================== Audit API ====================
+export const auditApi = {
+  getLogs: (params?: {
+    action?: string;
+    category?: string;
+    actor?: string;
+    target_id?: string;
+    target_type?: string;
+    search?: string;
+    start_date?: string;
+    end_date?: string;
+    compliance_only?: boolean;
+    success_only?: boolean;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/audit/logs', { params }),
+
+  getActions: () => api.get('/audit/logs/actions'),
+
+  getUserTrail: (userId: string, days?: number) =>
+    api.get(`/audit/logs/user/${userId}`, { params: { days } }),
+
+  getTargetTrail: (targetType: string, targetId: string, days?: number) =>
+    api.get(`/audit/logs/target/${targetType}/${targetId}`, { params: { days } }),
+
+  getSummary: (days?: number) =>
+    api.get('/audit/reports/summary', { params: { days } }),
+
+  getComplianceReport: (data: { start_date: string; end_date: string; compliance_tags?: string[] }) =>
+    api.post('/audit/reports/compliance', data),
+
+  exportCsv: (params: { start_date: string; end_date: string; action?: string }) =>
+    api.get('/audit/export/csv', { params }),
+};
+
+// ==================== Approver Management API ====================
+export const approverManagementApi = {
+  list: (params?: {
+    search?: string;
+    approver_type?: string;
+    status?: string;
+    is_available?: boolean;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/approver-management', { params }),
+
+  getStats: () => api.get('/approver-management/stats'),
+
+  getTypes: () => api.get('/approver-management/types'),
+
+  get: (approverId: string) => api.get(`/approver-management/${approverId}`),
+
+  create: (data: {
+    approver_id: string;
+    name: string;
+    email?: string;
+    approver_type: string;
+    process_scope?: string[];
+    system_scope?: string[];
+    department?: string;
+    job_title?: string;
+  }) => api.post('/approver-management', data),
+
+  update: (approverId: string, data: {
+    name?: string;
+    email?: string;
+    approver_type?: string;
+    process_scope?: string[];
+    system_scope?: string[];
+    department?: string;
+    job_title?: string;
+    status?: string;
+  }) => api.put(`/approver-management/${approverId}`, data),
+
+  delete: (approverId: string) =>
+    api.delete(`/approver-management/${approverId}`),
+
+  toggleAvailability: (approverId: string, data: { is_available: boolean }) =>
+    api.post(`/approver-management/${approverId}/toggle-availability`, data),
+
+  setOOO: (approverId: string, data: { ooo_until: string; delegate_id?: string }) =>
+    api.post(`/approver-management/${approverId}/set-ooo`, data),
+
+  clearOOO: (approverId: string) =>
+    api.post(`/approver-management/${approverId}/clear-ooo`),
+};
+
+// ==================== ARM Shopping Cart API ====================
+export const armApi = {
+  getCatalog: (params?: Record<string, string>) =>
+    api.get('/arm/catalog', { params }),
+
+  createCart: (requesterId: string) =>
+    api.post('/arm/cart', { requester_id: requesterId }),
+
+  addToCart: (cartId: string, roleId: string, data: object) =>
+    api.post(`/arm/cart/${cartId}/add`, { role_id: roleId, ...data }),
+
+  checkConflicts: (cartId: string, existingRoles: string[]) =>
+    api.post(`/arm/cart/${cartId}/check-conflicts`, { existing_user_roles: existingRoles }),
+
+  submitCart: (cartId: string, comments: string) =>
+    api.post(`/arm/cart/${cartId}/submit`, { comments }),
+
+  getCart: (cartId: string) =>
+    api.get(`/arm/cart/${cartId}`),
+
+  removeFromCart: (cartId: string, roleId: string) =>
+    api.delete(`/arm/cart/${cartId}/items/${roleId}`),
+};
+
+// ==================== Workflow Builder API ====================
+export const workflowBuilderApi = {
+  getPalette: () => api.get('/workflows/builder/palette'),
+
+  validate: (canvas: any) => api.post('/workflows/builder/validate', canvas),
+
+  preview: (canvas: any) => api.post('/workflows/builder/preview', canvas),
+
+  exportToPolicy: (canvas: any) => api.post('/workflows/builder/export', canvas),
+
+  getTemplates: () => api.get('/workflows/builder/templates'),
+
+  loadTemplate: (name: string) => api.get(`/workflows/builder/templates/${name}`),
 };
 
 export default api;

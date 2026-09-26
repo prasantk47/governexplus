@@ -5,17 +5,19 @@ Centralized audit logging service for all GRC platform activities.
 Provides structured logging to database with support for compliance requirements.
 """
 
-import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from functools import wraps
 import json
 import uuid
 
+import logging
+
+from core.logging import get_logger
 from db.models.audit import AuditLog, AuditAction
 from db.database import db_manager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AuditLogger:
@@ -154,6 +156,8 @@ class AuditLogger:
             return 'risk'
         elif action_name.startswith('ff_'):
             return 'firefighter'
+        elif action_name.startswith('approver_'):
+            return 'approver'
         else:
             return 'system'
 
@@ -269,13 +273,62 @@ class AuditLogger:
     # Query Methods
     # ==========================================================================
 
+    def _build_query(self, session,
+                     action: Optional[AuditAction] = None,
+                     actor_user_id: Optional[str] = None,
+                     target_id: Optional[str] = None,
+                     target_type: Optional[str] = None,
+                     category: Optional[str] = None,
+                     search: Optional[str] = None,
+                     start_date: Optional[datetime] = None,
+                     end_date: Optional[datetime] = None,
+                     compliance_only: bool = False,
+                     success_only: bool = False):
+        """Build a filtered query for audit logs."""
+        from sqlalchemy import or_
+
+        q = session.query(AuditLog)
+
+        if action:
+            q = q.filter(AuditLog.action == action)
+        if actor_user_id:
+            q = q.filter(AuditLog.actor_user_id == actor_user_id)
+        if target_id:
+            q = q.filter(AuditLog.target_id == target_id)
+        if target_type:
+            q = q.filter(AuditLog.target_type == target_type)
+        if category:
+            q = q.filter(AuditLog.action_category == category)
+        if search:
+            term = f"%{search}%"
+            q = q.filter(or_(
+                AuditLog.actor_user_id.ilike(term),
+                AuditLog.actor_username.ilike(term),
+                AuditLog.target_id.ilike(term),
+                AuditLog.target_name.ilike(term),
+            ))
+        if start_date:
+            q = q.filter(AuditLog.timestamp >= start_date)
+        if end_date:
+            q = q.filter(AuditLog.timestamp <= end_date)
+        if compliance_only:
+            q = q.filter(AuditLog.compliance_relevant == True)
+        if success_only:
+            q = q.filter(AuditLog.success == True)
+
+        return q
+
     def query(self,
               action: Optional[AuditAction] = None,
               actor_user_id: Optional[str] = None,
               target_id: Optional[str] = None,
+              target_type: Optional[str] = None,
+              category: Optional[str] = None,
+              search: Optional[str] = None,
               start_date: Optional[datetime] = None,
               end_date: Optional[datetime] = None,
               compliance_tags: Optional[List[str]] = None,
+              compliance_only: bool = False,
               success_only: bool = False,
               limit: int = 100,
               offset: int = 0) -> List[AuditLog]:
@@ -286,30 +339,45 @@ class AuditLogger:
         """
         session = self._get_session()
         try:
-            query = session.query(AuditLog)
+            q = self._build_query(
+                session, action=action, actor_user_id=actor_user_id,
+                target_id=target_id, target_type=target_type,
+                category=category, search=search,
+                start_date=start_date, end_date=end_date,
+                compliance_only=compliance_only, success_only=success_only
+            )
 
-            if action:
-                query = query.filter(AuditLog.action == action)
-            if actor_user_id:
-                query = query.filter(AuditLog.actor_user_id == actor_user_id)
-            if target_id:
-                query = query.filter(AuditLog.target_id == target_id)
-            if start_date:
-                query = query.filter(AuditLog.timestamp >= start_date)
-            if end_date:
-                query = query.filter(AuditLog.timestamp <= end_date)
-            if success_only:
-                query = query.filter(AuditLog.success == True)
-            if compliance_tags:
-                # Note: This requires JSON containment, which varies by database
-                # For PostgreSQL: AuditLog.compliance_tags.contains(compliance_tags)
-                pass
+            q = q.order_by(AuditLog.timestamp.desc())
+            q = q.offset(offset).limit(limit)
 
-            query = query.order_by(AuditLog.timestamp.desc())
-            query = query.offset(offset).limit(limit)
+            return q.all()
 
-            return query.all()
+        finally:
+            if not self._db_session:
+                session.close()
 
+    def count(self,
+              action: Optional[AuditAction] = None,
+              actor_user_id: Optional[str] = None,
+              target_id: Optional[str] = None,
+              target_type: Optional[str] = None,
+              category: Optional[str] = None,
+              search: Optional[str] = None,
+              start_date: Optional[datetime] = None,
+              end_date: Optional[datetime] = None,
+              compliance_only: bool = False,
+              success_only: bool = False) -> int:
+        """Count audit logs matching filters."""
+        session = self._get_session()
+        try:
+            q = self._build_query(
+                session, action=action, actor_user_id=actor_user_id,
+                target_id=target_id, target_type=target_type,
+                category=category, search=search,
+                start_date=start_date, end_date=end_date,
+                compliance_only=compliance_only, success_only=success_only
+            )
+            return q.count()
         finally:
             if not self._db_session:
                 session.close()

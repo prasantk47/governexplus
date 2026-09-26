@@ -8,7 +8,7 @@
  * - end_user: Submit requests, request for others, password self-service
  */
 
-export type UserRole = 'admin' | 'security_admin' | 'manager' | 'end_user';
+export type UserRole = 'admin' | 'security_admin' | 'manager' | 'auditor' | 'end_user';
 
 // Request types available in the system
 export const REQUEST_TYPES = {
@@ -135,6 +135,34 @@ export const PERMISSIONS = {
   // Live Session Monitoring
   VIEW_LIVE_SESSIONS: 'view_live_sessions',
   TERMINATE_SESSIONS: 'terminate_sessions',
+
+  // Approver Management
+  MANAGE_APPROVERS: 'manage_approvers',
+  VIEW_APPROVERS: 'view_approvers',
+
+  // Provisioning
+  VIEW_PROVISIONING: 'view_provisioning',
+  MANAGE_PROVISIONING: 'manage_provisioning',
+
+  // Mitigation Controls
+  VIEW_MITIGATION: 'view_mitigation',
+  MANAGE_MITIGATION: 'manage_mitigation',
+
+  // Delegation
+  VIEW_DELEGATIONS: 'view_delegations',
+  MANAGE_DELEGATIONS: 'manage_delegations',
+
+  // Business Role Management
+  VIEW_BRM: 'view_brm',
+  MANAGE_BRM: 'manage_brm',
+
+  // Audit Independence (NF-02)
+  // Auditors can view AC/RM/PC data but CANNOT modify operational data.
+  // They can only create/edit objects within the Audit Management module.
+  VIEW_AUDIT_MANAGEMENT: 'view_audit_management',   // Access the audit module at all
+  MANAGE_AUDIT_PLANS: 'manage_audit_plans',          // Create / approve audit plans
+  EXECUTE_AUDIT_WORK: 'execute_audit_work',          // Perform fieldwork, create findings
+  VIEW_AUDIT_READONLY: 'view_audit_readonly',        // Read-only view of AC/RM/PC data
 } as const;
 
 // Role definitions with their permissions
@@ -159,6 +187,16 @@ export const ROLES: Record<UserRole, RoleConfig> = {
       PERMISSIONS.MANAGE_SOD_RULES,
       PERMISSIONS.MANAGE_COMPLIANCE,
       PERMISSIONS.MANAGE_POLICIES,
+      PERMISSIONS.MANAGE_APPROVERS,
+      PERMISSIONS.VIEW_APPROVERS,
+      PERMISSIONS.VIEW_PROVISIONING,
+      PERMISSIONS.MANAGE_PROVISIONING,
+      PERMISSIONS.VIEW_MITIGATION,
+      PERMISSIONS.MANAGE_MITIGATION,
+      PERMISSIONS.VIEW_DELEGATIONS,
+      PERMISSIONS.MANAGE_DELEGATIONS,
+      PERMISSIONS.VIEW_BRM,
+      PERMISSIONS.MANAGE_BRM,
     ],
   },
   security_admin: {
@@ -201,6 +239,16 @@ export const ROLES: Record<UserRole, RoleConfig> = {
       PERMISSIONS.VIEW_POLICIES,
       PERMISSIONS.VIEW_LIVE_SESSIONS,
       PERMISSIONS.TERMINATE_SESSIONS,
+      PERMISSIONS.MANAGE_APPROVERS,
+      PERMISSIONS.VIEW_APPROVERS,
+      PERMISSIONS.VIEW_PROVISIONING,
+      PERMISSIONS.MANAGE_PROVISIONING,
+      PERMISSIONS.VIEW_MITIGATION,
+      PERMISSIONS.MANAGE_MITIGATION,
+      PERMISSIONS.VIEW_DELEGATIONS,
+      PERMISSIONS.MANAGE_DELEGATIONS,
+      PERMISSIONS.VIEW_BRM,
+      PERMISSIONS.MANAGE_BRM,
     ],
   },
   manager: {
@@ -234,6 +282,67 @@ export const ROLES: Record<UserRole, RoleConfig> = {
       PERMISSIONS.VIEW_CONTEXTUAL_RISK,
       PERMISSIONS.VIEW_POLICIES,
       PERMISSIONS.VIEW_LIVE_SESSIONS,
+    ],
+  },
+  auditor: {
+    id: 'auditor',
+    name: 'Auditor',
+    description:
+      'Independence-enforced auditor role. Full read access to AC, RM, and PC data. ' +
+      'Write access restricted to Audit Management module objects only (plans, findings, fieldwork). ' +
+      'Cannot modify operational data such as roles, users, risk rules, or workflow settings.',
+    permissions: [
+      PERMISSIONS.VIEW_DASHBOARD,
+
+      // Access Control — READ ONLY (independence: cannot approve or create requests)
+      PERMISSIONS.VIEW_ACCESS_REQUESTS,
+
+      // Risk Management — READ ONLY (cannot remediate or manage rules)
+      PERMISSIONS.VIEW_RISK_DASHBOARD,
+      PERMISSIONS.VIEW_VIOLATIONS,
+      PERMISSIONS.VIEW_SOD_RULES,
+      PERMISSIONS.VIEW_ENTITLEMENT_INTELLIGENCE,
+      PERMISSIONS.VIEW_CONTEXTUAL_RISK,
+
+      // Roles & Users — READ ONLY
+      PERMISSIONS.VIEW_ROLES,
+      PERMISSIONS.VIEW_USERS,
+
+      // Certification — READ ONLY (cannot certify/approve)
+      PERMISSIONS.VIEW_CERTIFICATIONS,
+
+      // Firefighter — READ ONLY (cannot request or approve)
+      PERMISSIONS.VIEW_FIREFIGHTER,
+
+      // Reports — can view, run, and export
+      PERMISSIONS.VIEW_REPORTS,
+      PERMISSIONS.RUN_REPORTS,
+      PERMISSIONS.EXPORT_REPORTS,
+
+      // Audit Log — full visibility for evidence gathering
+      PERMISSIONS.VIEW_AUDIT_LOG,
+
+      // Compliance & Policy — READ ONLY
+      PERMISSIONS.VIEW_COMPLIANCE,
+      PERMISSIONS.VIEW_POLICIES,
+
+      // Live session monitoring — READ ONLY (cannot terminate)
+      PERMISSIONS.VIEW_LIVE_SESSIONS,
+
+      // Mitigation, BRM, Approvers, Provisioning, Delegations — READ ONLY
+      PERMISSIONS.VIEW_MITIGATION,
+      PERMISSIONS.VIEW_BRM,
+      PERMISSIONS.VIEW_APPROVERS,
+      PERMISSIONS.VIEW_PROVISIONING,
+      PERMISSIONS.VIEW_DELEGATIONS,
+
+      // Audit Management module — WRITE access (auditor's own domain)
+      PERMISSIONS.VIEW_AUDIT_MANAGEMENT,
+      PERMISSIONS.MANAGE_AUDIT_PLANS,
+      PERMISSIONS.EXECUTE_AUDIT_WORK,
+
+      // Shorthand read-only marker used by UI guards
+      PERMISSIONS.VIEW_AUDIT_READONLY,
     ],
   },
   end_user: {
@@ -334,7 +443,7 @@ export const NAV_PERMISSIONS: NavItemConfig[] = [
     permissions: [PERMISSIONS.VIEW_CERTIFICATIONS],
   },
   {
-    name: 'Firefighter',
+    name: 'Privileged Access',
     href: '/firefighter',
     permissions: [PERMISSIONS.VIEW_FIREFIGHTER],
     children: [
@@ -352,6 +461,28 @@ export const NAV_PERMISSIONS: NavItemConfig[] = [
     name: 'Audit Log',
     href: '/audit',
     permissions: [PERMISSIONS.VIEW_AUDIT_LOG],
+  },
+  {
+    name: 'Audit Management',
+    href: '/audit-management',
+    permissions: [PERMISSIONS.VIEW_AUDIT_MANAGEMENT],
+    children: [
+      {
+        name: 'Engagements',
+        href: '/audit-management/engagements',
+        permissions: [PERMISSIONS.VIEW_AUDIT_MANAGEMENT],
+      },
+      {
+        name: 'Audit Plans',
+        href: '/audit-management/plans',
+        permissions: [PERMISSIONS.MANAGE_AUDIT_PLANS],
+      },
+      {
+        name: 'Fieldwork & Findings',
+        href: '/audit-management/findings',
+        permissions: [PERMISSIONS.EXECUTE_AUDIT_WORK],
+      },
+    ],
   },
   {
     name: 'Settings',

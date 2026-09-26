@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  ExclamationTriangleIcon,
+  // ExclamationTriangleIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   FireIcon,
   ClockIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { riskApi, api } from '../../services/api';
 import { StatCard } from '../../components/StatCard';
 import {
   PageHeader,
@@ -33,51 +36,7 @@ interface Violation {
   systems: string[];
 }
 
-const mockViolations: Violation[] = [
-  {
-    id: 'VIO-2024-001', user: 'John Smith', userId: 'jsmith', department: 'Finance',
-    type: 'SoD Conflict', rule: 'Create Vendor / Approve Payment', riskLevel: 'critical',
-    detectedDate: '2024-01-20', status: 'open', systems: ['SAP ECC', 'SAP S/4HANA'],
-  },
-  {
-    id: 'VIO-2024-002', user: 'Mary Brown', userId: 'mbrown', department: 'IT',
-    type: 'Excessive Access', rule: 'Admin access without business need', riskLevel: 'high',
-    detectedDate: '2024-01-19', status: 'in_review', systems: ['Azure AD', 'AWS'],
-  },
-  {
-    id: 'VIO-2024-003', user: 'Tom Davis', userId: 'tdavis', department: 'Procurement',
-    type: 'SoD Conflict', rule: 'Create PO / Approve PO', riskLevel: 'high',
-    detectedDate: '2024-01-18', status: 'mitigated', mitigation: 'Dual approval workflow implemented',
-    systems: ['SAP ECC'],
-  },
-  {
-    id: 'VIO-2024-004', user: 'Alice Wilson', userId: 'awilson', department: 'HR',
-    type: 'Sensitive Access', rule: 'Payroll data access', riskLevel: 'medium',
-    detectedDate: '2024-01-17', status: 'open', systems: ['Workday'],
-  },
-  {
-    id: 'VIO-2024-005', user: 'Bob Johnson', userId: 'bjohnson', department: 'Finance',
-    type: 'SoD Conflict', rule: 'Create GL Entry / Post GL Entry', riskLevel: 'critical',
-    detectedDate: '2024-01-16', status: 'open', systems: ['SAP ECC'],
-  },
-  {
-    id: 'VIO-2024-006', user: 'Carol White', userId: 'cwhite', department: 'Sales',
-    type: 'Dormant Account', rule: 'No login activity for 90+ days', riskLevel: 'low',
-    detectedDate: '2024-01-15', status: 'accepted', mitigation: 'Employee on extended leave',
-    systems: ['Salesforce'],
-  },
-  {
-    id: 'VIO-2024-007', user: 'David Lee', userId: 'dlee', department: 'Engineering',
-    type: 'Excessive Access', rule: 'Production DB admin without justification', riskLevel: 'high',
-    detectedDate: '2024-01-14', status: 'in_review', systems: ['AWS RDS', 'MongoDB Atlas'],
-  },
-  {
-    id: 'VIO-2024-008', user: 'Emma Garcia', userId: 'egarcia', department: 'Finance',
-    type: 'SoD Conflict', rule: 'Create Invoice / Approve Invoice', riskLevel: 'critical',
-    detectedDate: '2024-01-13', status: 'mitigated', mitigation: 'Invoice approval removed',
-    systems: ['SAP ECC'],
-  },
-];
+// Violations are fetched from the API — no hardcoded data
 
 const statusVariant: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
   open: 'danger',
@@ -94,10 +53,29 @@ const statusLabel: Record<string, string> = {
 };
 
 export function RiskViolations() {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedViolation, setSelectedViolation] = useState<Violation | null>(null);
+  const [mitigatingViolation, setMitigatingViolation] = useState<Violation | null>(null);
+  const [mitigationNote, setMitigationNote] = useState('');
+  const [mitigationControl, setMitigationControl] = useState('');
+  const [mitigationSubmitting, setMitigationSubmitting] = useState(false);
+
+  const { data: violationsData } = useQuery<Violation[]>({
+    queryKey: ['risk-violations', statusFilter, riskFilter],
+    queryFn: () =>
+      riskApi
+        .listViolations({
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          risk_level: riskFilter !== 'all' ? riskFilter : undefined,
+        })
+        .then((res) => res.data?.violations || res.data || []),
+  });
+
+  const violations: Violation[] = violationsData || [];
 
   const handleExportReport = () => {
     const headers = ['ID', 'User', 'User ID', 'Department', 'Type', 'Rule', 'Risk Level', 'Status', 'Detected Date', 'Systems', 'Mitigation'];
@@ -121,7 +99,7 @@ export function RiskViolations() {
     toast.success(`Exported ${filteredViolations.length} violations to CSV`);
   };
 
-  const filteredViolations = mockViolations.filter((v) => {
+  const filteredViolations = violations.filter((v) => {
     const matchesSearch =
       v.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,10 +110,10 @@ export function RiskViolations() {
     return matchesSearch && matchesStatus && matchesRisk && matchesType;
   });
 
-  const criticalCount = mockViolations.filter((v) => v.riskLevel === 'critical' && v.status === 'open').length;
-  const highCount = mockViolations.filter((v) => v.riskLevel === 'high' && v.status === 'open').length;
-  const openCount = mockViolations.filter((v) => v.status === 'open').length;
-  const mitigatedCount = mockViolations.filter((v) => v.status === 'mitigated').length;
+  const criticalCount = violations.filter((v) => v.riskLevel === 'critical' && v.status === 'open').length;
+  const highCount = violations.filter((v) => v.riskLevel === 'high' && v.status === 'open').length;
+  const openCount = violations.filter((v) => v.status === 'open').length;
+  const mitigatedCount = violations.filter((v) => v.status === 'mitigated').length;
 
   const columns = [
     {
@@ -197,14 +175,14 @@ export function RiskViolations() {
       render: (v: Violation) => (
         <div className="flex justify-end gap-2">
           <button
-            onClick={() => toast.success(`Opening violation ${v.id}...`)}
+            onClick={() => setSelectedViolation(v)}
             className="text-xs font-medium text-primary-600 hover:text-primary-800 transition-colors"
           >
             View
           </button>
           {v.status === 'open' && (
             <button
-              onClick={() => toast.success(`Opening mitigation workflow for ${v.id}...`)}
+              onClick={() => { setMitigatingViolation(v); setMitigationNote(''); setMitigationControl(''); }}
               className="text-xs font-medium text-green-600 hover:text-green-800 transition-colors"
             >
               Mitigate
@@ -290,6 +268,153 @@ export function RiskViolations() {
         data={filteredViolations}
         emptyMessage="No violations found matching your criteria"
       />
+
+      {/* View Violation Detail Modal */}
+      {selectedViolation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Violation Details</h2>
+              <button onClick={() => setSelectedViolation(null)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">Violation ID</p>
+                  <p className="text-sm font-medium text-primary-600">{selectedViolation.id}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Risk Level</p>
+                  <RiskBadge level={selectedViolation.riskLevel} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">User</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedViolation.user}</p>
+                  <p className="text-xs text-gray-400">{selectedViolation.userId}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Department</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedViolation.department}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Type</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedViolation.type}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Status</p>
+                  <Badge variant={statusVariant[selectedViolation.status] || 'neutral'} size="sm">
+                    {statusLabel[selectedViolation.status] || selectedViolation.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Detected Date</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedViolation.detectedDate}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Systems</p>
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {selectedViolation.systems.map((s) => (
+                      <Badge key={s} variant="neutral" size="sm">{s}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Rule</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">{selectedViolation.rule}</p>
+              </div>
+              {selectedViolation.mitigation && (
+                <div>
+                  <p className="text-xs text-gray-500">Mitigation</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedViolation.mitigation}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200 dark:border-gray-700">
+              {selectedViolation.status === 'open' && (
+                <Button size="sm" onClick={() => { setMitigatingViolation(selectedViolation); setSelectedViolation(null); setMitigationNote(''); setMitigationControl(''); }}>
+                  Mitigate
+                </Button>
+              )}
+              <Button size="sm" variant="secondary" onClick={() => setSelectedViolation(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mitigation Modal */}
+      {mitigatingViolation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Mitigate Violation</h2>
+              <button onClick={() => setMitigatingViolation(null)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs text-gray-500">Violation</p>
+                <p className="text-sm font-medium text-primary-600">{mitigatingViolation.id}</p>
+                <p className="text-xs text-gray-400">{mitigatingViolation.rule}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mitigation Control</label>
+                <select
+                  value={mitigationControl}
+                  onChange={(e) => setMitigationControl(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Select a control...</option>
+                  <option value="compensating_control">Compensating Control</option>
+                  <option value="monitoring">Continuous Monitoring</option>
+                  <option value="exception">Risk Exception</option>
+                  <option value="access_removal">Access Removal</option>
+                  <option value="role_redesign">Role Redesign</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Justification / Notes</label>
+                <textarea
+                  value={mitigationNote}
+                  onChange={(e) => setMitigationNote(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Describe the mitigation rationale..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200 dark:border-gray-700">
+              <Button size="sm" variant="secondary" onClick={() => setMitigatingViolation(null)}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={!mitigationControl || mitigationSubmitting}
+                onClick={async () => {
+                  setMitigationSubmitting(true);
+                  try {
+                    await api.post('/mitigation/controls', {
+                      risk_id: mitigatingViolation.id,
+                      control_type: mitigationControl,
+                      justification: mitigationNote,
+                    });
+                    toast.success(`Mitigation applied to ${mitigatingViolation.id}`);
+                    setMitigatingViolation(null);
+                    queryClient.invalidateQueries({ queryKey: ['risk-violations'] });
+                  } catch {
+                    toast.error('Failed to apply mitigation. Please try again.');
+                  } finally {
+                    setMitigationSubmitting(false);
+                  }
+                }}
+              >
+                {mitigationSubmitting ? 'Submitting...' : 'Apply Mitigation'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

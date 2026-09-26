@@ -94,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('userRole', role);
         localStorage.setItem('userData', JSON.stringify(demoUser));
         setUser(demoUser);
-        console.warn('Demo mode: Using fallback authentication');
         return;
       }
 
@@ -111,7 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authApi.logout();
     } catch (error) {
       // Continue with local logout even if API call fails
-      console.warn('Logout API call failed, proceeding with local logout');
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -199,6 +197,7 @@ function getRoleDisplayName(role: UserRole, username: string): string {
     admin: 'System Administrator',
     security_admin: 'Security Admin',
     manager: 'Manager',
+    auditor: 'Auditor',
     end_user: 'End User',
   };
   return `${names[role]} (${username})`;
@@ -209,6 +208,7 @@ function getDepartmentForRole(role: UserRole): string {
     admin: 'IT Infrastructure',
     security_admin: 'IT Security',
     manager: 'Operations',
+    auditor: 'Audit & Compliance',
     end_user: 'General',
   };
   return departments[role];

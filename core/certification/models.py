@@ -41,6 +41,14 @@ class CampaignType(Enum):
     CONTINUOUS = "continuous"           # Always-on reviews
 
 
+class ReviewType(Enum):
+    """Who is performing the review"""
+    MANAGER_REVIEW = "manager_review"
+    ROLE_OWNER_REVIEW = "role_owner_review"
+    APP_OWNER_REVIEW = "app_owner_review"
+    COMPLIANCE_REVIEW = "compliance_review"
+
+
 @dataclass
 class CertificationItem:
     """
@@ -78,6 +86,9 @@ class CertificationItem:
     reviewer_name: str = ""
     reviewer_email: str = ""
 
+    # Review type
+    review_type: str = "manager_review"
+
     # Decision
     decision: Optional[CertificationAction] = None
     decision_date: Optional[datetime] = None
@@ -88,6 +99,14 @@ class CertificationItem:
     is_completed: bool = False
     is_overdue: bool = False
     reminder_sent: bool = False
+
+    # Escalation
+    escalation_level: int = 0
+    escalated_to: Optional[str] = None
+    escalated_at: Optional[datetime] = None
+
+    # Evidence
+    evidence: List[Dict] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
         return {
@@ -108,6 +127,29 @@ class CertificationItem:
             "decision_comments": self.decision_comments,
             "is_completed": self.is_completed,
             "last_used": self.last_used.isoformat() if self.last_used else None
+        }
+
+
+@dataclass
+class ReviewEvidence:
+    """Evidence attached to a certification review item."""
+    evidence_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    item_id: str = ""
+    evidence_type: str = "justification"  # screenshot, report, approval_email, justification
+    description: str = ""
+    file_path: Optional[str] = None
+    content: Optional[str] = None
+    uploaded_by: str = ""
+    uploaded_at: datetime = field(default_factory=datetime.now)
+
+    def to_dict(self) -> Dict:
+        return {
+            "evidence_id": self.evidence_id,
+            "item_id": self.item_id,
+            "evidence_type": self.evidence_type,
+            "description": self.description,
+            "uploaded_by": self.uploaded_by,
+            "uploaded_at": self.uploaded_at.isoformat(),
         }
 
 
@@ -151,6 +193,9 @@ class CertificationCampaign:
     """
     campaign_id: str = field(default_factory=lambda: f"CERT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}")
 
+    # Tenant isolation
+    tenant_id: str = ""
+
     # Campaign details
     name: str = ""
     description: str = ""
@@ -193,7 +238,8 @@ class CertificationCampaign:
     def calculate_progress(self) -> Dict:
         """Calculate campaign progress statistics"""
         if not self.items:
-            return {"progress": 0, "completed": 0, "total": 0}
+            return {"progress_percent": 0, "total_items": 0, "completed_items": 0,
+                    "pending_items": 0, "certified_count": 0, "revoked_count": 0, "overdue_items": 0}
 
         total = len(self.items)
         completed = sum(1 for i in self.items if i.is_completed)

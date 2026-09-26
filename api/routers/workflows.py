@@ -1,7 +1,7 @@
 # Workflows API Router
 # MSMP Multi-Stage Multi-Path Workflow Management
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -11,10 +11,22 @@ from core.workflow import (
     ParallelPath, AgentRule, AgentRuleType
 )
 
-router = APIRouter(prefix="/workflows", tags=["Workflows"])
+router = APIRouter(tags=["Workflows"])
 
-# Global engine instance
-workflow_engine = MSMPEngine()
+DEFAULT_TENANT = "tenant_default"
+
+# Cache engines per tenant
+_engines: Dict[str, MSMPEngine] = {}
+
+
+def _get_tenant_id(x_tenant_id: Optional[str] = Header(None)) -> str:
+    return x_tenant_id or DEFAULT_TENANT
+
+
+def _get_engine(tenant_id: str = Depends(_get_tenant_id)) -> MSMPEngine:
+    if tenant_id not in _engines:
+        _engines[tenant_id] = MSMPEngine()
+    return _engines[tenant_id]
 
 
 # ==================== Request/Response Models ====================
@@ -56,7 +68,7 @@ class DetermineAgentsRequest(BaseModel):
 # ==================== Workflow Definitions ====================
 
 @router.get("/")
-async def list_workflows():
+async def list_workflows(engine: MSMPEngine = Depends(_get_engine)):
     """
     List all workflow definitions
 
@@ -72,18 +84,18 @@ async def list_workflows():
                 "has_parallel_paths": any(len(s.parallel_paths) > 0 for s in wf.stages),
                 "conditions": wf.conditions
             }
-            for wf in workflow_engine.workflows.values()
+            for wf in engine.workflows.values()
         ]
     }
 
 
 @router.get("/{workflow_id}")
-async def get_workflow(workflow_id: str):
+async def get_workflow(workflow_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Get detailed workflow definition"""
-    if workflow_id not in workflow_engine.workflows:
+    if workflow_id not in engine.workflows:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
-    wf = workflow_engine.workflows[workflow_id]
+    wf = engine.workflows[workflow_id]
 
     return {
         "id": wf.id,
@@ -124,9 +136,9 @@ async def get_workflow(workflow_id: str):
 
 
 @router.post("/")
-async def create_workflow(request: CreateWorkflowRequest):
+async def create_workflow(request: CreateWorkflowRequest, engine: MSMPEngine = Depends(_get_engine)):
     """Create a new custom workflow"""
-    if request.id in workflow_engine.workflows:
+    if request.id in engine.workflows:
         raise HTTPException(status_code=400, detail="Workflow ID already exists")
 
     stages = []
@@ -164,7 +176,7 @@ async def create_workflow(request: CreateWorkflowRequest):
         conditions=request.conditions
     )
 
-    workflow_engine.workflows[request.id] = workflow
+    engine.workflows[request.id] = workflow
 
     return {
         "success": True,
@@ -174,23 +186,23 @@ async def create_workflow(request: CreateWorkflowRequest):
 
 
 @router.delete("/{workflow_id}")
-async def delete_workflow(workflow_id: str):
+async def delete_workflow(workflow_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Delete a custom workflow"""
-    if workflow_id not in workflow_engine.workflows:
+    if workflow_id not in engine.workflows:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
     # Prevent deletion of built-in workflows
     if workflow_id.startswith("wf_"):
         raise HTTPException(status_code=400, detail="Cannot delete built-in workflows")
 
-    del workflow_engine.workflows[workflow_id]
+    del engine.workflows[workflow_id]
     return {"success": True, "message": "Workflow deleted"}
 
 
 # ==================== Agent Rules ====================
 
 @router.get("/agent-rules")
-async def list_agent_rules():
+async def list_agent_rules(engine: MSMPEngine = Depends(_get_engine)):
     """List all agent rule definitions"""
     return {
         "rules": [
@@ -201,7 +213,7 @@ async def list_agent_rules():
                 "description": rule.description,
                 "priority": rule.priority
             }
-            for rule in workflow_engine.agent_rules.values()
+            for rule in engine.agent_rules.values()
         ]
     }
 
@@ -231,12 +243,12 @@ async def list_agent_rule_types():
 
 
 @router.get("/agent-rules/{rule_id}")
-async def get_agent_rule(rule_id: str):
+async def get_agent_rule(rule_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Get agent rule details"""
-    if rule_id not in workflow_engine.agent_rules:
+    if rule_id not in engine.agent_rules:
         raise HTTPException(status_code=404, detail="Agent rule not found")
 
-    rule = workflow_engine.agent_rules[rule_id]
+    rule = engine.agent_rules[rule_id]
     return {
         "id": rule.id,
         "name": rule.name,
@@ -249,7 +261,7 @@ async def get_agent_rule(rule_id: str):
 
 
 @router.post("/agent-rules")
-async def create_agent_rule(request: AgentRuleRequest):
+async def create_agent_rule(request: AgentRuleRequest, engine: MSMPEngine = Depends(_get_engine)):
     """Create a new agent rule"""
     try:
         rule_type = AgentRuleType(request.rule_type)
@@ -266,7 +278,7 @@ async def create_agent_rule(request: AgentRuleRequest):
         agent_expression=request.agent_expression
     )
 
-    workflow_engine.agent_rules[request.id] = rule
+    engine.agent_rules[request.id] = rule
 
     return {
         "success": True,
@@ -278,24 +290,24 @@ async def create_agent_rule(request: AgentRuleRequest):
 # ==================== Workflow Selection ====================
 
 @router.post("/select")
-async def select_workflow(request_context: Dict[str, Any]):
+async def select_workflow(request_context: Dict[str, Any], engine: MSMPEngine = Depends(_get_engine)):
     """
     Select the appropriate workflow for a request
 
     Evaluates request context against workflow conditions.
     """
-    result = workflow_engine.select_workflow(request_context)
+    result = engine.select_workflow(request_context)
     return result
 
 
 @router.post("/determine-agents")
-async def determine_agents(request: DetermineAgentsRequest):
+async def determine_agents(request: DetermineAgentsRequest, engine: MSMPEngine = Depends(_get_engine)):
     """
     Determine approvers for a workflow stage
 
     Uses dynamic agent rules (BRF+ style) to find appropriate approvers.
     """
-    result = workflow_engine.determine_agents(
+    result = engine.determine_agents(
         workflow_id=request.workflow_id,
         stage_index=request.stage_index,
         path_index=request.path_index,
@@ -311,13 +323,13 @@ async def determine_agents(request: DetermineAgentsRequest):
 # ==================== Workflow Execution ====================
 
 @router.post("/start")
-async def start_workflow(request_id: str, workflow_id: str, context: Dict[str, Any]):
+async def start_workflow(request_id: str, workflow_id: str, context: Dict[str, Any], engine: MSMPEngine = Depends(_get_engine)):
     """
     Start a workflow for a request
 
     Creates workflow instance and determines first stage approvers.
     """
-    result = workflow_engine.start_workflow(
+    result = engine.start_workflow(
         request_id=request_id,
         workflow_id=workflow_id,
         context=context
@@ -330,12 +342,12 @@ async def start_workflow(request_id: str, workflow_id: str, context: Dict[str, A
 
 
 @router.get("/instances/{request_id}")
-async def get_workflow_instance(request_id: str):
+async def get_workflow_instance(request_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Get workflow instance status for a request"""
-    if request_id not in workflow_engine.active_workflows:
+    if request_id not in engine.active_workflows:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
-    instance = workflow_engine.active_workflows[request_id]
+    instance = engine.active_workflows[request_id]
     return {
         "request_id": request_id,
         "workflow_id": instance["workflow_id"],
@@ -348,13 +360,13 @@ async def get_workflow_instance(request_id: str):
 
 
 @router.post("/instances/{request_id}/process")
-async def process_stage(request_id: str, request: ProcessStageRequest):
+async def process_stage(request_id: str, request: ProcessStageRequest, engine: MSMPEngine = Depends(_get_engine)):
     """
     Process a workflow stage action (approve/reject)
 
     Handles parallel path completion and stage advancement.
     """
-    result = workflow_engine.process_stage(
+    result = engine.process_stage(
         request_id=request_id,
         stage_index=request.stage_index,
         action=request.action,
@@ -369,13 +381,13 @@ async def process_stage(request_id: str, request: ProcessStageRequest):
 
 
 @router.get("/instances/{request_id}/next-stage")
-async def get_next_stage(request_id: str):
+async def get_next_stage(request_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Get next stage info for a workflow"""
-    if request_id not in workflow_engine.active_workflows:
+    if request_id not in engine.active_workflows:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
-    instance = workflow_engine.active_workflows[request_id]
-    workflow = workflow_engine.workflows.get(instance["workflow_id"])
+    instance = engine.active_workflows[request_id]
+    workflow = engine.workflows.get(instance.get("workflow_id", ""))
 
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow definition not found")
@@ -399,10 +411,11 @@ async def get_next_stage(request_id: str):
 async def get_workflow_history(
     status: Optional[str] = None,
     limit: int = Query(default=50, le=200),
-    offset: int = 0
+    offset: int = 0,
+    engine: MSMPEngine = Depends(_get_engine),
 ):
     """Get workflow execution history"""
-    history = list(workflow_engine.workflow_history)
+    history = list(engine.workflow_history)
 
     if status:
         history = [h for h in history if h.get("status") == status]
@@ -417,10 +430,10 @@ async def get_workflow_history(
 
 
 @router.get("/history/{request_id}")
-async def get_request_history(request_id: str):
+async def get_request_history(request_id: str, engine: MSMPEngine = Depends(_get_engine)):
     """Get workflow history for a specific request"""
     history = [
-        h for h in workflow_engine.workflow_history
+        h for h in engine.workflow_history
         if h.get("request_id") == request_id
     ]
 
@@ -433,21 +446,21 @@ async def get_request_history(request_id: str):
 # ==================== Workflow Statistics ====================
 
 @router.get("/stats")
-async def get_workflow_stats():
+async def get_workflow_stats(engine: MSMPEngine = Depends(_get_engine)):
     """Get workflow statistics"""
-    active_count = len(workflow_engine.active_workflows)
+    active_count = len(engine.active_workflows)
     completed_count = len([
-        h for h in workflow_engine.workflow_history
+        h for h in engine.workflow_history
         if h.get("status") == "completed"
     ])
     rejected_count = len([
-        h for h in workflow_engine.workflow_history
+        h for h in engine.workflow_history
         if h.get("status") == "rejected"
     ])
 
     # Workflows by type
     by_workflow = {}
-    for instance in workflow_engine.active_workflows.values():
+    for instance in engine.active_workflows.values():
         wf_id = instance["workflow_id"]
         if wf_id not in by_workflow:
             by_workflow[wf_id] = 0
@@ -458,8 +471,8 @@ async def get_workflow_stats():
         "completed_workflows": completed_count,
         "rejected_workflows": rejected_count,
         "by_workflow_type": by_workflow,
-        "workflow_definitions": len(workflow_engine.workflows),
-        "agent_rules": len(workflow_engine.agent_rules)
+        "workflow_definitions": len(engine.workflows),
+        "agent_rules": len(engine.agent_rules)
     }
 
 
@@ -502,3 +515,115 @@ async def list_prebuilt_workflows():
     ]
 
     return {"prebuilt_workflows": prebuilt}
+
+
+# ==================== Visual Workflow Builder ====================
+
+from core.workflow.builder import WorkflowBuilder, WorkflowCanvas
+
+_builder = WorkflowBuilder()
+
+
+@router.get("/builder/palette")
+async def get_builder_palette():
+    """Get the drag-and-drop block palette for the workflow builder"""
+    return _builder.get_block_palette()
+
+
+@router.post("/builder/validate")
+async def validate_canvas(canvas: Dict[str, Any]):
+    """Validate a workflow canvas configuration"""
+    try:
+        blocks = canvas.get("blocks", [])
+        connections = canvas.get("connections", [])
+        errors = []
+        warnings = []
+
+        triggers = [b for b in blocks if b.get("type") == "TRIGGER"]
+        if not triggers:
+            errors.append("Workflow must have at least one trigger")
+        approvals = [b for b in blocks if b.get("type") == "APPROVAL"]
+        if not approvals:
+            warnings.append("Workflow has no approval steps")
+
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "block_count": len(blocks),
+            "connection_count": len(connections),
+        }
+    except Exception as e:
+        return {"valid": False, "errors": [str(e)], "warnings": []}
+
+
+@router.post("/builder/preview")
+async def preview_canvas(canvas: Dict[str, Any]):
+    """Generate a human-readable preview of the workflow"""
+    blocks = canvas.get("blocks", [])
+    lines = []
+    for b in blocks:
+        btype = b.get("type", "UNKNOWN")
+        name = b.get("name", b.get("label", btype))
+        lines.append(f"[{btype}] {name}")
+    preview = " -> ".join(lines) if lines else "Empty workflow"
+    return {"preview": preview}
+
+
+@router.post("/builder/export")
+async def export_canvas(canvas: Dict[str, Any]):
+    """Export a workflow canvas to an executable policy"""
+    blocks = canvas.get("blocks", [])
+    connections = canvas.get("connections", [])
+
+    triggers = [b for b in blocks if b.get("type") == "TRIGGER"]
+    if not triggers:
+        raise HTTPException(status_code=400, detail="Workflow must have at least one trigger")
+
+    return {
+        "policy": {
+            "name": canvas.get("name", "Exported Workflow"),
+            "blocks": blocks,
+            "connections": connections,
+            "exported_at": datetime.now().isoformat(),
+        },
+        "block_count": len(blocks),
+    }
+
+
+@router.get("/builder/templates")
+async def get_builder_templates():
+    """Get pre-built workflow templates for the builder"""
+    return {
+        "templates": [
+            {
+                "name": "simple_access",
+                "label": "Simple Access Request",
+                "description": "Single-approver workflow for low-risk access requests",
+            },
+            {
+                "name": "multi_approver",
+                "label": "Multi-Approver Workflow",
+                "description": "Manager + role owner + security officer for high-risk requests",
+            },
+            {
+                "name": "partial_provisioning",
+                "label": "Partial Provisioning",
+                "description": "Risk-based partial provisioning with conditional approval",
+            },
+        ]
+    }
+
+
+@router.get("/builder/templates/{template_name}")
+async def load_builder_template(template_name: str):
+    """Load a specific workflow template"""
+    try:
+        canvas = _builder.load_template(template_name)
+        return {
+            "template_name": template_name,
+            "canvas": canvas.to_dict(),
+            "preview": canvas.generate_preview(),
+        }
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=404, detail=str(e))

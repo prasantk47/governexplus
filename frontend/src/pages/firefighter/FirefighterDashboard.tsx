@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FireIcon,
   ClockIcon,
@@ -19,6 +20,7 @@ import {
   RiskBadge,
   EmptyState,
 } from '../../components/ui';
+import { firefighterApi } from '../../services/api';
 
 interface ActiveSession {
   id: string;
@@ -45,40 +47,65 @@ interface RecentSession {
   anomalies: number;
 }
 
-const activeSessions: ActiveSession[] = [
-  {
-    id: 'FF-001', user: 'Tom Davis', userId: 'tdavis',
-    firefighterId: 'FF_EMERGENCY_SAP_01', system: 'SAP ECC',
-    reason: 'Month-end closing support', startTime: '2024-01-20 14:30',
-    duration: '2h 15m', riskLevel: 'high', status: 'active',
-  },
-  {
-    id: 'FF-002', user: 'Mary Brown', userId: 'mbrown',
-    firefighterId: 'FF_ADMIN_AWS', system: 'AWS Production',
-    reason: 'Critical infrastructure patch', startTime: '2024-01-20 15:45',
-    duration: '45m', riskLevel: 'critical', status: 'ending_soon',
-  },
-];
-
-const recentSessions: RecentSession[] = [
-  {
-    id: 'FF-098', user: 'John Smith', firefighterId: 'FF_EMERGENCY_SAP_01',
-    system: 'SAP ECC', startTime: '2024-01-19 09:00', endTime: '2024-01-19 11:30',
-    duration: '2h 30m', actions: 45, anomalies: 0,
-  },
-  {
-    id: 'FF-097', user: 'David Lee', firefighterId: 'FF_ADMIN_DB',
-    system: 'Production Database', startTime: '2024-01-18 16:00', endTime: '2024-01-18 18:00',
-    duration: '2h 00m', actions: 28, anomalies: 2,
-  },
-  {
-    id: 'FF-096', user: 'Alice Wilson', firefighterId: 'FF_HR_ADMIN',
-    system: 'Workday', startTime: '2024-01-17 10:00', endTime: '2024-01-17 11:00',
-    duration: '1h 00m', actions: 12, anomalies: 0,
-  },
-];
-
 export function FirefighterDashboard() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: activeSessionsData } = useQuery({
+    queryKey: ['firefighterActiveSessions'],
+    queryFn: () => firefighterApi.getActiveSessions().then(r => r.data),
+  });
+
+  const { data: recentSessionsData } = useQuery({
+    queryKey: ['firefighterRecentSessions'],
+    queryFn: () => firefighterApi.listSessions().then(r => r.data),
+  });
+
+  const { data: firefightersData } = useQuery({
+    queryKey: ['firefighterList'],
+    queryFn: () => firefighterApi.listFirefighters().then(r => r.data),
+  });
+
+  const activeSessions: ActiveSession[] = Array.isArray(activeSessionsData) ? activeSessionsData : (activeSessionsData as any)?.sessions || [];
+  const recentSessions: RecentSession[] = Array.isArray(recentSessionsData) ? recentSessionsData : (recentSessionsData as any)?.sessions || [];
+  const firefighters: { id: string; desc: string; status: string }[] = Array.isArray(firefightersData) ? firefightersData : (firefightersData as any)?.firefighters || [];
+
+  // Compute stats from actual data
+  const parseDuration = (d: string): number => {
+    const hMatch = d.match(/(\d+)\s*h/);
+    const mMatch = d.match(/(\d+)\s*m/);
+    return (hMatch ? parseInt(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
+  };
+
+  const allSessions = [...recentSessions];
+  const avgDurationMins = allSessions.length > 0
+    ? Math.round(allSessions.reduce((sum, s) => sum + parseDuration(s.duration), 0) / allSessions.length)
+    : 0;
+  const avgDurationStr = avgDurationMins > 0
+    ? `${Math.floor(avgDurationMins / 60)}h ${avgDurationMins % 60}m`
+    : '0m';
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recentCompleted = recentSessions.filter((s) => {
+    if (!s.endTime) return false;
+    return new Date(s.endTime) >= sevenDaysAgo;
+  }).length;
+
+  const recentAnomalies = recentSessions
+    .filter((s) => s.endTime && new Date(s.endTime) >= sevenDaysAgo)
+    .reduce((sum, s) => sum + s.anomalies, 0);
+
+  const handleEndSession = async (sessionId: string) => {
+    try {
+      const userId = localStorage.getItem('userId') || 'admin';
+      await firefighterApi.endSession(sessionId, userId);
+      toast.success(`Session ${sessionId} ended`);
+      queryClient.invalidateQueries({ queryKey: ['firefighterActiveSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['firefighterRecentSessions'] });
+    } catch {
+      toast.error('Failed to end session');
+    }
+  };
+
   const recentColumns = [
     {
       key: 'session',
@@ -133,7 +160,7 @@ export function FirefighterDashboard() {
       className: 'text-right',
       render: (s: RecentSession) => (
         <button
-          onClick={() => toast.success(`Opening session log for ${s.id}`)}
+          onClick={() => navigate(`/firefighter/sessions?highlight=${s.id}`)}
           className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
         >
           View Log
@@ -145,7 +172,7 @@ export function FirefighterDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Firefighter Dashboard"
+        title="Privileged Access Dashboard"
         subtitle="Monitor and manage emergency privileged access sessions"
         actions={
           <Button size="sm" icon={<FireIcon className="h-4 w-4" />} href="/firefighter/request">
@@ -157,9 +184,9 @@ export function FirefighterDashboard() {
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <StatCard title="Active Sessions" value={activeSessions.length} icon={PlayIcon} iconBgColor="stat-icon-orange" iconColor="" />
-        <StatCard title="Avg. Duration" value="1h 30m" icon={ClockIcon} iconBgColor="stat-icon-blue" iconColor="" />
-        <StatCard title="Completed (7D)" value={23} icon={CheckCircleIcon} iconBgColor="stat-icon-green" iconColor="" />
-        <StatCard title="Anomalies (7D)" value={3} icon={ExclamationTriangleIcon} iconBgColor="stat-icon-red" iconColor="" />
+        <StatCard title="Avg. Duration" value={avgDurationStr} icon={ClockIcon} iconBgColor="stat-icon-blue" iconColor="" />
+        <StatCard title="Completed (7D)" value={recentCompleted} icon={CheckCircleIcon} iconBgColor="stat-icon-green" iconColor="" />
+        <StatCard title="Anomalies (7D)" value={recentAnomalies} icon={ExclamationTriangleIcon} iconBgColor="stat-icon-red" iconColor="" />
       </div>
 
       {/* Active Sessions */}
@@ -213,7 +240,7 @@ export function FirefighterDashboard() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => toast.success(`Opening live monitor for session ${session.id}`)}
+                      onClick={() => navigate('/firefighter/monitor')}
                     >
                       Monitor
                     </Button>
@@ -221,7 +248,7 @@ export function FirefighterDashboard() {
                       variant="danger"
                       size="sm"
                       icon={<StopIcon className="h-3.5 w-3.5" />}
-                      onClick={() => toast.success(`Session ${session.id} terminated`)}
+                      onClick={() => handleEndSession(session.id)}
                     >
                       End
                     </Button>
@@ -235,7 +262,7 @@ export function FirefighterDashboard() {
             <EmptyState
               icon={<CheckCircleIcon className="h-8 w-8 text-green-400" />}
               title="No active sessions"
-              description="No active firefighter sessions"
+              description="No active privileged access sessions"
             />
           </div>
         )}
@@ -252,15 +279,11 @@ export function FirefighterDashboard() {
       {/* Firefighter IDs Overview */}
       <Card>
         <div className="px-6 py-4 border-b border-white/20">
-          <h2 className="text-sm font-semibold text-gray-900">Available Firefighter IDs</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Available Privileged Access IDs</h2>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {[
-              { id: 'FF_EMERGENCY_SAP_01', desc: 'SAP ECC Emergency Admin', status: 'Available' },
-              { id: 'FF_ADMIN_AWS', desc: 'AWS Production Admin', status: 'In Use' },
-              { id: 'FF_ADMIN_DB', desc: 'Database Admin', status: 'Available' },
-            ].map((ff) => (
+            {firefighters.map((ff) => (
               <div key={ff.id} className="p-3 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-900">{ff.id}</span>

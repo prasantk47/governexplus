@@ -1,14 +1,17 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { riskApi, api } from '../../services/api';
 import {
   ShieldExclamationIcon,
   PlusIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
+  // FunnelIcon,
   PencilIcon,
   TrashIcon,
   DocumentDuplicateIcon,
   PlayIcon,
-  CheckCircleIcon,
+  // CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
@@ -38,167 +41,237 @@ const SOD_CATEGORIES = [
   'Master Data',
 ];
 
-const mockSodRules: SodRule[] = [
-  {
-    id: 'SOD-001',
-    name: 'AP Processing & Payment Execution',
-    description: 'Prevents user from both processing invoices and executing payments',
-    category: 'Procure-to-Pay (P2P)',
-    businessProcess: 'Accounts Payable',
-    severity: 'critical',
-    function1: { name: 'Invoice Processing', transactions: ['FB60', 'MIRO', 'FV60'] },
-    function2: { name: 'Payment Execution', transactions: ['F110', 'F-53', 'F-58'] },
-    status: 'active',
-    violationCount: 12,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-002',
-    name: 'Vendor Master & Payment',
-    description: 'Prevents user from maintaining vendors and executing payments to them',
-    category: 'Procure-to-Pay (P2P)',
-    businessProcess: 'Vendor Management',
-    severity: 'critical',
-    function1: { name: 'Vendor Maintenance', transactions: ['XK01', 'XK02', 'FK01', 'FK02'] },
-    function2: { name: 'Payment Execution', transactions: ['F110', 'F-53', 'F-58'] },
-    status: 'active',
-    violationCount: 8,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-003',
-    name: 'Purchase Requisition & Approval',
-    description: 'Prevents user from creating and approving their own purchase requisitions',
-    category: 'Procure-to-Pay (P2P)',
-    businessProcess: 'Procurement',
-    severity: 'high',
-    function1: { name: 'PR Creation', transactions: ['ME51N', 'ME52N'] },
-    function2: { name: 'PR Approval', transactions: ['ME54N', 'ME55'] },
-    status: 'active',
-    violationCount: 23,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-004',
-    name: 'Sales Order & Billing',
-    description: 'Prevents user from creating sales orders and processing billing',
-    category: 'Order-to-Cash (O2C)',
-    businessProcess: 'Sales',
-    severity: 'high',
-    function1: { name: 'Sales Order Processing', transactions: ['VA01', 'VA02'] },
-    function2: { name: 'Billing', transactions: ['VF01', 'VF02', 'VF04'] },
-    status: 'active',
-    violationCount: 5,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-005',
-    name: 'Customer Master & Credit Management',
-    description: 'Prevents user from maintaining customer data and managing credit limits',
-    category: 'Order-to-Cash (O2C)',
-    businessProcess: 'Customer Management',
-    severity: 'medium',
-    function1: { name: 'Customer Maintenance', transactions: ['XD01', 'XD02', 'FD01', 'FD02'] },
-    function2: { name: 'Credit Management', transactions: ['FD32', 'UKM_BP'] },
-    status: 'active',
-    violationCount: 3,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-006',
-    name: 'HR Master Data & Payroll',
-    description: 'Prevents user from maintaining employee data and processing payroll',
-    category: 'Hire-to-Retire (H2R)',
-    businessProcess: 'Human Resources',
-    severity: 'critical',
-    function1: { name: 'HR Master Data', transactions: ['PA30', 'PA40'] },
-    function2: { name: 'Payroll Processing', transactions: ['PC00_M99_CALC', 'PC00_M99_CIPE'] },
-    status: 'active',
-    violationCount: 2,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-007',
-    name: 'GL Posting & Period Close',
-    description: 'Prevents user from posting to GL and closing periods',
-    category: 'Record-to-Report (R2R)',
-    businessProcess: 'Financial Reporting',
-    severity: 'high',
-    function1: { name: 'GL Posting', transactions: ['FB01', 'FB50', 'F-02'] },
-    function2: { name: 'Period Close', transactions: ['MMPV', 'OB52', 'S_ALR_87003642'] },
-    status: 'active',
-    violationCount: 4,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-008',
-    name: 'User Admin & Role Admin',
-    description: 'Prevents user from having both user and role administration access',
-    category: 'IT Administration',
-    businessProcess: 'Security',
-    severity: 'critical',
-    function1: { name: 'User Administration', transactions: ['SU01', 'SU10'] },
-    function2: { name: 'Role Administration', transactions: ['PFCG', 'SU24'] },
-    status: 'active',
-    violationCount: 1,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-009',
-    name: 'Material Master & Inventory Posting',
-    description: 'Prevents user from maintaining material data and posting inventory movements',
-    category: 'Master Data',
-    businessProcess: 'Materials Management',
-    severity: 'medium',
-    function1: { name: 'Material Maintenance', transactions: ['MM01', 'MM02'] },
-    function2: { name: 'Inventory Posting', transactions: ['MIGO', 'MB1A', 'MB1B', 'MB1C'] },
-    status: 'active',
-    violationCount: 15,
-    lastRun: '2024-01-18 08:00',
-    createdBy: 'System',
-    isCustom: false,
-  },
-  {
-    id: 'SOD-010',
-    name: 'Custom: AP Clerk Access Restriction',
-    description: 'Custom rule for AP clerks - no access to vendor banking data',
-    category: 'Procure-to-Pay (P2P)',
-    businessProcess: 'Accounts Payable',
-    severity: 'high',
-    function1: { name: 'AP Processing', transactions: ['FB60', 'MIRO'] },
-    function2: { name: 'Vendor Bank Data', transactions: ['FK02 (Bank Tab)', 'XK02 (Bank Tab)'] },
-    status: 'draft',
-    violationCount: 0,
-    lastRun: '-',
-    createdBy: 'Security Admin',
-    isCustom: true,
-  },
-];
+
+interface RuleFormData {
+  name: string;
+  description: string;
+  category: string;
+  businessProcess: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  function1Name: string;
+  function1Transactions: string;
+  function2Name: string;
+  function2Transactions: string;
+  status: 'active' | 'inactive' | 'draft';
+}
+
+const emptyForm: RuleFormData = {
+  name: '',
+  description: '',
+  category: '',
+  businessProcess: '',
+  severity: 'medium',
+  function1Name: '',
+  function1Transactions: '',
+  function2Name: '',
+  function2Transactions: '',
+  status: 'draft',
+};
+
+function formFromRule(rule: SodRule): RuleFormData {
+  return {
+    name: rule.name,
+    description: rule.description,
+    category: rule.category,
+    businessProcess: rule.businessProcess,
+    severity: rule.severity,
+    function1Name: rule.function1.name,
+    function1Transactions: rule.function1.transactions.join(', '),
+    function2Name: rule.function2.name,
+    function2Transactions: rule.function2.transactions.join(', '),
+    status: rule.status,
+  };
+}
+
+function formToPayload(form: RuleFormData) {
+  return {
+    name: form.name,
+    description: form.description,
+    category: form.category,
+    business_process: form.businessProcess,
+    severity: form.severity,
+    function1: {
+      name: form.function1Name,
+      transactions: form.function1Transactions.split(',').map((t) => t.trim()).filter(Boolean),
+    },
+    function2: {
+      name: form.function2Name,
+      transactions: form.function2Transactions.split(',').map((t) => t.trim()).filter(Boolean),
+    },
+    status: form.status,
+  };
+}
+
+function RuleFormModal({
+  title,
+  initial,
+  onClose,
+  onSubmit,
+  isSubmitting,
+}: {
+  title: string;
+  initial: RuleFormData;
+  onClose: () => void;
+  onSubmit: (data: RuleFormData) => void;
+  isSubmitting: boolean;
+}) {
+  const [form, setForm] = useState<RuleFormData>(initial);
+  const set = (field: keyof RuleFormData, value: string) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XCircleIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rule Name *</label>
+            <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={2}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select value={form.category} onChange={(e) => set('category', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <option value="">Select Category</option>
+                {SOD_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Business Process</label>
+              <input type="text" value={form.businessProcess} onChange={(e) => set('businessProcess', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+              <select value={form.severity} onChange={(e) => set('severity', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select value={form.status} onChange={(e) => set('status', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-red-700">Function 1</h4>
+              <input type="text" placeholder="Function name" value={form.function1Name} onChange={(e) => set('function1Name', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              <input type="text" placeholder="Transactions (comma-separated)" value={form.function1Transactions} onChange={(e) => set('function1Transactions', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-orange-700">Function 2</h4>
+              <input type="text" placeholder="Function name" value={form.function2Name} onChange={(e) => set('function2Name', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              <input type="text" placeholder="Transactions (comma-separated)" value={form.function2Transactions} onChange={(e) => set('function2Transactions', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+          <button onClick={onClose}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm">
+            Cancel
+          </button>
+          <button onClick={() => onSubmit(form)} disabled={!form.name || isSubmitting}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm disabled:opacity-50">
+            {isSubmitting ? 'Saving...' : 'Save Rule'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function SodRuleLibrary() {
-  const [rules, setRules] = useState<SodRule[]>(mockSodRules);
+  const queryClient = useQueryClient();
+  const { data: rulesData } = useQuery({
+    queryKey: ['sod-rules'],
+    queryFn: () => riskApi.listRules().then(r => r.data),
+  });
+  const rules: SodRule[] = Array.isArray(rulesData) ? rulesData : (rulesData as any)?.rules || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedRule, setSelectedRule] = useState<SodRule | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingRule, setEditingRule] = useState<SodRule | null>(null);
+  const [deleteConfirmRule, setDeleteConfirmRule] = useState<SodRule | null>(null);
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: (data: RuleFormData) => api.post('/sod-rules/custom', formToPayload(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
+      toast.success('Rule created successfully');
+      setShowCreateModal(false);
+    },
+    onError: () => toast.error('Failed to create rule'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RuleFormData }) =>
+      api.put(`/sod-rules/custom/${id}`, formToPayload(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
+      toast.success('Rule updated successfully');
+      setEditingRule(null);
+    },
+    onError: () => toast.error('Failed to update rule'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/sod-rules/custom/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
+      toast.success('Rule deleted successfully');
+      setDeleteConfirmRule(null);
+    },
+    onError: () => toast.error('Failed to delete rule'),
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: () => api.post('/sod-rules/analyze', { scope: 'all' }),
+    onSuccess: (res) => {
+      const count = res.data?.violations_found ?? res.data?.total ?? 'N/A';
+      toast.success(`Analysis complete. ${count} violations found.`);
+      queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
+    },
+    onError: () => toast.error('Analysis failed'),
+  });
+
+  const handleDuplicate = (rule: SodRule) => {
+    setEditingRule(null);
+    setShowCreateModal(true);
+    // The create modal will be opened with pre-filled data via duplicateSource
+    setDuplicateSource(rule);
+  };
+  const [duplicateSource, setDuplicateSource] = useState<SodRule | null>(null);
 
   const filteredRules = rules.filter(
     (rule) =>
@@ -391,20 +464,36 @@ export function SodRuleLibrary() {
                     >
                       <MagnifyingGlassIcon className="h-4 w-4" />
                     </button>
-                    <button className="p-1 text-gray-400 hover:text-gray-600" title="Run Now">
+                    <button
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                      title="Run Now"
+                      onClick={() => runNowMutation.mutate()}
+                    >
                       <PlayIcon className="h-4 w-4" />
                     </button>
                     {rule.isCustom && (
                       <>
-                        <button className="p-1 text-gray-400 hover:text-blue-600" title="Edit">
+                        <button
+                          className="p-1 text-gray-400 hover:text-blue-600"
+                          title="Edit"
+                          onClick={() => setEditingRule(rule)}
+                        >
                           <PencilIcon className="h-4 w-4" />
                         </button>
-                        <button className="p-1 text-gray-400 hover:text-red-600" title="Delete">
+                        <button
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete"
+                          onClick={() => setDeleteConfirmRule(rule)}
+                        >
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </>
                     )}
-                    <button className="p-1 text-gray-400 hover:text-gray-600" title="Duplicate">
+                    <button
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                      title="Duplicate"
+                      onClick={() => handleDuplicate(rule)}
+                    >
                       <DocumentDuplicateIcon className="h-4 w-4" />
                     </button>
                   </div>
@@ -501,9 +590,61 @@ export function SodRuleLibrary() {
               >
                 Close
               </button>
-              <button className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm flex items-center gap-2">
+              <button
+                onClick={() => { runNowMutation.mutate(); setSelectedRule(null); }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm flex items-center gap-2"
+              >
                 <PlayIcon className="h-4 w-4" />
                 Run Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Duplicate Rule Modal */}
+      {showCreateModal && (
+        <RuleFormModal
+          title={duplicateSource ? `Duplicate Rule: ${duplicateSource.name}` : 'Create New Rule'}
+          initial={duplicateSource ? { ...formFromRule(duplicateSource), name: `${duplicateSource.name} (Copy)`, status: 'draft' } : emptyForm}
+          onClose={() => { setShowCreateModal(false); setDuplicateSource(null); }}
+          onSubmit={(data) => createMutation.mutate(data)}
+          isSubmitting={createMutation.isPending}
+        />
+      )}
+
+      {/* Edit Rule Modal */}
+      {editingRule && (
+        <RuleFormModal
+          title={`Edit Rule: ${editingRule.name}`}
+          initial={formFromRule(editingRule)}
+          onClose={() => setEditingRule(null)}
+          onSubmit={(data) => updateMutation.mutate({ id: editingRule.id, data })}
+          isSubmitting={updateMutation.isPending}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteConfirmRule && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Rule</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete <strong>{deleteConfirmRule.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirmRule(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteConfirmRule.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

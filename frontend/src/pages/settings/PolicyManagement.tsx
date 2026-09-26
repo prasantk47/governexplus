@@ -1,18 +1,14 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   CodeBracketIcon,
-  DocumentTextIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  PlayIcon,
   PencilIcon,
-  TrashIcon,
   ArrowPathIcon,
   DocumentDuplicateIcon,
   EyeIcon,
   BeakerIcon,
 } from '@heroicons/react/24/outline';
+import { api } from '../../services/api';
 
 interface Policy {
   id: string;
@@ -28,149 +24,7 @@ interface Policy {
   code: string;
 }
 
-const mockPolicies: Policy[] = [
-  {
-    id: 'POL-001',
-    name: 'High-Risk Access Approval',
-    description: 'Require dual approval for high-risk access requests',
-    category: 'Access Control',
-    version: '2.1.0',
-    status: 'active',
-    lastModified: '2024-01-15',
-    modifiedBy: 'Security Admin',
-    appliedTo: 1250,
-    violations: 0,
-    code: `policy "high_risk_approval" {
-  description = "Require dual approval for high-risk access"
-
-  when {
-    request.risk_level in ["high", "critical"]
-    request.type == "access_request"
-  }
-
-  then {
-    require_approvals(2)
-    require_approver_role("security_admin")
-    set_sla("24h")
-    notify("security_team")
-  }
-}`,
-  },
-  {
-    id: 'POL-002',
-    name: 'SoD Violation Prevention',
-    description: 'Block requests that would create SoD conflicts',
-    category: 'Risk Management',
-    version: '1.5.0',
-    status: 'active',
-    lastModified: '2024-01-10',
-    modifiedBy: 'Risk Manager',
-    appliedTo: 3420,
-    violations: 12,
-    code: `policy "sod_prevention" {
-  description = "Prevent SoD violations at request time"
-
-  when {
-    simulation.has_sod_conflict == true
-    simulation.conflict_severity in ["high", "critical"]
-  }
-
-  then {
-    block_request()
-    set_message("Request blocked: Critical SoD conflict detected")
-    create_violation_record()
-    notify("risk_team", "compliance_team")
-  }
-}`,
-  },
-  {
-    id: 'POL-003',
-    name: 'Firefighter Session Limits',
-    description: 'Enforce time limits on emergency access sessions',
-    category: 'Privileged Access',
-    version: '1.2.0',
-    status: 'active',
-    lastModified: '2024-01-12',
-    modifiedBy: 'Security Admin',
-    appliedTo: 89,
-    violations: 3,
-    code: `policy "firefighter_limits" {
-  description = "Enforce emergency access time limits"
-
-  when {
-    session.type == "firefighter"
-    session.duration > "4h"
-  }
-
-  then {
-    terminate_session()
-    create_audit_log("forced_termination")
-    notify("security_admin", "manager")
-    require_review_within("24h")
-  }
-}`,
-  },
-  {
-    id: 'POL-004',
-    name: 'Dormant Access Cleanup',
-    description: 'Auto-revoke access not used in 90 days',
-    category: 'Entitlement Governance',
-    version: '1.0.0',
-    status: 'testing',
-    lastModified: '2024-01-18',
-    modifiedBy: 'IT Admin',
-    appliedTo: 0,
-    violations: 0,
-    code: `policy "dormant_cleanup" {
-  description = "Automatically revoke unused access"
-
-  schedule = "daily at 02:00"
-
-  when {
-    entitlement.last_used > "90d"
-    entitlement.is_sensitive == true
-  }
-
-  then {
-    flag_for_review()
-    notify("manager", "user")
-    if (no_response_within("7d")) {
-      revoke_access()
-      create_audit_log("auto_revoked")
-    }
-  }
-}`,
-  },
-  {
-    id: 'POL-005',
-    name: 'Geo-Restricted Access',
-    description: 'Block access from unauthorized countries',
-    category: 'Contextual Security',
-    version: '1.1.0',
-    status: 'draft',
-    lastModified: '2024-01-17',
-    modifiedBy: 'Security Admin',
-    appliedTo: 0,
-    violations: 0,
-    code: `policy "geo_restriction" {
-  description = "Block access from high-risk locations"
-
-  blocked_countries = ["RU", "CN", "KP", "IR"]
-
-  when {
-    request.geo_location.country in blocked_countries
-    user.travel_exception != true
-  }
-
-  then {
-    block_request()
-    require_mfa()
-    alert_security("geo_violation")
-    log_event("blocked_geo_access")
-  }
-}`,
-  },
-];
+// Policies are fetched from the API
 
 const categories = [
   'Access Control',
@@ -182,13 +36,17 @@ const categories = [
 ];
 
 export function PolicyManagement() {
-  const [policies, setPolicies] = useState<Policy[]>(mockPolicies);
+  const { data: policiesData } = useQuery<Policy[]>({
+    queryKey: ['policies'],
+    queryFn: () => api.get('/policy').then((res) => res.data?.policies || res.data || []),
+  });
+  const policies: Policy[] = policiesData || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'code'>('list');
-  const [isTestMode, setIsTestMode] = useState(false);
+  const [_isTestMode, _setIsTestMode] = useState(false);
 
   const filteredPolicies = policies.filter(
     (p) =>

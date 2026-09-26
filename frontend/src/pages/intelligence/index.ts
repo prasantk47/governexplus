@@ -1,0 +1,9 @@
+export { AccessTroubleshooter } from './AccessTroubleshooter';
+export { RoleIntelligence } from './RoleIntelligence';
+export { AccessTimeline } from './AccessTimeline';
+export { RoleDriftDetection } from './RoleDriftDetection';
+export { FioriAnalyzer } from './FioriAnalyzer';
+export { MigrationAnalyzer } from './MigrationAnalyzer';
+export { AuditEvidenceCenter } from './AuditEvidenceCenter';
+export { UpgradeAnalyzer } from './UpgradeAnalyzer';
+export { IdentityCorrelation } from './IdentityCorrelation';

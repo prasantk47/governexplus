@@ -361,7 +361,7 @@ export function Settings() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm text-gray-900">Firefighter Session Alerts</div>
+                        <div className="text-sm text-gray-900">Privileged Access Session Alerts</div>
                         <div className="text-xs text-gray-500">Notify on emergency access usage</div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -429,7 +429,7 @@ export function Settings() {
               {/* Firefighter SLAs */}
               <div className="bg-white shadow rounded-lg">
                 <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Firefighter / Privileged Access SLAs</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Privileged Access SLAs</h2>
                   <p className="mt-1 text-sm text-gray-500">Emergency access session controls</p>
                 </div>
                 <div className="overflow-x-auto">
@@ -648,7 +648,7 @@ export function Settings() {
               {/* Firefighter RACI */}
               <div className="bg-white shadow rounded-lg">
                 <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Firefighter / Privileged Access</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Privileged Access</h2>
                   <p className="mt-1 text-sm text-gray-500">RACI matrix for emergency access management</p>
                 </div>
                 <div className="overflow-x-auto">

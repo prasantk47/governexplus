@@ -46,6 +46,13 @@ class AuditAction(enum.Enum):
     FF_SESSION_REVOKED = "ff_session_revoked"
     FF_ACTIVITY_LOGGED = "ff_activity_logged"
 
+    # Approver management actions
+    APPROVER_CREATED = "approver_created"
+    APPROVER_MODIFIED = "approver_modified"
+    APPROVER_DELETED = "approver_deleted"
+    APPROVER_OOO_SET = "approver_ooo_set"
+    APPROVER_AVAILABILITY_TOGGLED = "approver_availability_toggled"
+
     # System actions
     SYSTEM_CONFIG_CHANGED = "system_config_changed"
     RULE_CREATED = "rule_created"
@@ -112,12 +119,20 @@ class AuditLog(Base):
             'id': self.id,
             'timestamp': self.timestamp.isoformat(),
             'action': self.action.value,
+            'action_category': self.action_category,
             'actor_user_id': self.actor_user_id,
             'actor_username': self.actor_username,
+            'actor_type': self.actor_type,
             'target_type': self.target_type,
             'target_id': self.target_id,
+            'target_name': self.target_name,
             'success': self.success,
-            'details': self.details
+            'error_message': self.error_message,
+            'details': self.details,
+            'old_values': self.old_values,
+            'new_values': self.new_values,
+            'compliance_relevant': self.compliance_relevant,
+            'compliance_tags': self.compliance_tags,
         }
 
 
@@ -130,6 +145,9 @@ class AccessRequestLog(Base):
     __tablename__ = 'access_request_logs'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Tenant isolation
+    tenant_id = Column(String(100), nullable=False, index=True, default="tenant_default")
 
     # Request identity
     request_id = Column(String(100), unique=True, nullable=False, index=True)
@@ -200,4 +218,110 @@ class AccessRequestLog(Base):
             'risk_score': self.risk_score,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None
+        }
+
+
+class CertificationCampaignLog(Base):
+    """
+    Persistent certification campaign — replaces in-memory self.campaigns dict.
+    """
+    __tablename__ = 'certification_campaigns'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    campaign_id = Column(String(100), unique=True, nullable=False, index=True)
+    tenant_id = Column(String(100), nullable=False, index=True, default="tenant_default")
+
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    campaign_type = Column(String(50), nullable=False, default="user_access")
+    status = Column(String(50), nullable=False, default="draft")
+
+    owner_id = Column(String(50), nullable=False)
+    owner_name = Column(String(255), nullable=True)
+
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Scope
+    included_systems = Column(JSON, nullable=True)
+    included_departments = Column(JSON, nullable=True)
+    risk_threshold = Column(Integer, nullable=True)
+
+    # Stats
+    total_items = Column(Integer, default=0)
+    completed_items = Column(Integer, default=0)
+    certified_count = Column(Integer, default=0)
+    revoked_count = Column(Integer, default=0)
+
+    # Config overrides (JSON bag)
+    config = Column(JSON, nullable=True)
+
+    def to_dict(self):
+        return {
+            'campaign_id': self.campaign_id,
+            'tenant_id': self.tenant_id,
+            'name': self.name,
+            'description': self.description,
+            'campaign_type': self.campaign_type,
+            'status': self.status,
+            'owner_id': self.owner_id,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'total_items': self.total_items,
+            'completed_items': self.completed_items,
+            'certified_count': self.certified_count,
+            'revoked_count': self.revoked_count,
+        }
+
+
+class CertificationItemLog(Base):
+    """
+    Persistent certification item — replaces in-memory campaign.items list.
+    """
+    __tablename__ = 'certification_items'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_id = Column(String(100), unique=True, nullable=False, index=True)
+    campaign_id = Column(String(100), nullable=False, index=True)
+    tenant_id = Column(String(100), nullable=False, index=True, default="tenant_default")
+
+    # What is being reviewed
+    user_id = Column(String(50), nullable=False, index=True)
+    user_name = Column(String(255), nullable=True)
+    user_department = Column(String(100), nullable=True)
+    access_type = Column(String(50), default="role")
+    access_id = Column(String(100), nullable=False)
+    access_name = Column(String(255), nullable=True)
+    system = Column(String(50), default="SAP")
+    granted_date = Column(DateTime, nullable=True)
+
+    # Risk
+    risk_score = Column(Integer, default=0)
+    has_sod_violation = Column(Boolean, default=False)
+    risk_flags = Column(JSON, nullable=True)
+
+    # Review
+    reviewer_id = Column(String(50), nullable=False)
+    reviewer_name = Column(String(255), nullable=True)
+    decision = Column(String(50), nullable=True)  # certify, revoke, delegate
+    decision_date = Column(DateTime, nullable=True)
+    decision_comments = Column(Text, nullable=True)
+    is_completed = Column(Boolean, default=False)
+
+    # Escalation
+    escalation_level = Column(Integer, default=0)
+    is_overdue = Column(Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'item_id': self.item_id,
+            'campaign_id': self.campaign_id,
+            'user_id': self.user_id,
+            'user_name': self.user_name,
+            'access_id': self.access_id,
+            'access_name': self.access_name,
+            'risk_score': self.risk_score,
+            'decision': self.decision,
+            'is_completed': self.is_completed,
         }

@@ -63,6 +63,11 @@ from core.ara.analytics import (
     ControlEffectivenessMetrics,
 )
 
+from db.database import get_db
+from db.models.risk import RiskSeverityLevel
+from db.models.user import User
+from repositories.risk_repository import RiskViolationRepository
+
 router = APIRouter(prefix="/ara", tags=["Access Risk Analysis"])
 
 # =============================================================================
@@ -105,6 +110,72 @@ def get_behavioral_analyzer() -> BehavioralAnalyzer:
     if _behavioral_analyzer is None:
         _behavioral_analyzer = BehavioralAnalyzer()
     return _behavioral_analyzer
+
+
+# =============================================================================
+# DB Persistence Helpers
+# =============================================================================
+
+_SEVERITY_MAP = {
+    "critical": RiskSeverityLevel.CRITICAL,
+    "high": RiskSeverityLevel.HIGH,
+    "medium": RiskSeverityLevel.MEDIUM,
+    "low": RiskSeverityLevel.LOW,
+}
+
+
+def _persist_risks(risks, user_external_id: str, tenant_id: str = "tenant_default") -> None:
+    """
+    Best-effort persistence of ARA Risk objects to the risk_violations table.
+
+    Looks up the user's integer PK by external ID. If the user is not found
+    in the DB the violation is skipped (the analysis result is still returned).
+    Errors are silently swallowed so persistence failures never affect the API
+    response.
+    """
+    if not risks:
+        return
+    try:
+        db = next(get_db())
+        try:
+            # Resolve user FK once for all risks in this batch
+            user_row = db.query(User).filter(
+                User.user_id == user_external_id,
+                User.tenant_id == tenant_id,
+            ).first()
+            if user_row is None:
+                return  # Cannot write violations without a valid user FK
+
+            repo = RiskViolationRepository(db)
+            for risk in risks:
+                severity_str = risk.severity.value if hasattr(risk.severity, "value") else str(risk.severity)
+                severity_level = _SEVERITY_MAP.get(severity_str, RiskSeverityLevel.MEDIUM)
+
+                violation_data = {
+                    "violation_id": f"ARA-{risk.risk_id}",
+                    "rule_id": risk.rule_id or risk.risk_type.value,
+                    "rule_name": risk.title or risk.description or risk.risk_type.value,
+                    "rule_type": risk.risk_type.value,
+                    "user_id": user_row.id,
+                    "user_external_id": user_external_id,
+                    "username": user_external_id,
+                    "severity": severity_level,
+                    "severity_score": risk.final_score,
+                    "risk_category": risk.category.value,
+                    "conflicting_functions": risk.conflicting_functions or [],
+                    "conflicting_entitlements": risk.conflicting_auth_objects or [],
+                    "business_impact": risk.business_impact or "",
+                    "detected_by": "ARA_ENGINE",
+                }
+                try:
+                    repo.create_violation(tenant_id, violation_data)
+                except Exception:
+                    # Skip individual violations that fail (e.g. duplicate key)
+                    db.rollback()
+        finally:
+            db.close()
+    except Exception:
+        pass  # Never let persistence errors propagate to the caller
 
 
 # =============================================================================
@@ -272,6 +343,14 @@ async def analyze_user_access(
         # Index for analytics (background)
         background_tasks.add_task(analytics.index_analysis_result, result)
 
+        # Persist violations to DB (best-effort, background)
+        if result.risks:
+            background_tasks.add_task(
+                _persist_risks,
+                result.risks,
+                request.access_data.user_id,
+            )
+
         # Build response
         response = {
             "analysis_id": result.analysis_id,
@@ -438,6 +517,10 @@ async def simulate_access_request(request: SimulateAccessRequest):
                 "tcodes": request.requested_tcodes,
             }
         )
+
+        # Persist net-new violations to DB (best-effort)
+        if result.new_risks:
+            _persist_risks(result.new_risks, request.user_id)
 
         return {
             "simulation_id": result.simulation_id,

@@ -18,7 +18,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '20260117_000001'
@@ -39,8 +38,8 @@ def upgrade() -> None:
         sa.Column('domain', sa.String(255), unique=True),
         sa.Column('tier', sa.String(50), nullable=False, default='starter'),
         sa.Column('status', sa.String(50), nullable=False, default='active'),
-        sa.Column('settings', postgresql.JSONB, default={}),
-        sa.Column('limits', postgresql.JSONB, default={}),
+        sa.Column('settings', sa.JSON, default={}),
+        sa.Column('limits', sa.JSON, default={}),
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
         sa.Column('trial_ends_at', sa.DateTime, nullable=True),
@@ -163,11 +162,11 @@ def upgrade() -> None:
         sa.Column('requester_id', sa.String(100), nullable=False),
         sa.Column('target_user_id', sa.String(100), nullable=False),
         sa.Column('business_justification', sa.Text),
-        sa.Column('requested_roles', postgresql.JSONB, default=[]),
+        sa.Column('requested_roles', sa.JSON, default=[]),
         sa.Column('status', sa.String(50), default='draft'),
         sa.Column('risk_score', sa.Float, default=0.0),
         sa.Column('risk_level', sa.String(20)),
-        sa.Column('violations', postgresql.JSONB, default=[]),
+        sa.Column('violations', sa.JSON, default=[]),
         sa.Column('priority', sa.String(20), default='normal'),
         sa.Column('valid_from', sa.DateTime),
         sa.Column('valid_to', sa.DateTime),
@@ -215,8 +214,8 @@ def upgrade() -> None:
         sa.Column('campaign_type', sa.String(50)),  # user_access, role_membership, sod_violations
         sa.Column('status', sa.String(50), default='draft'),
         sa.Column('owner_id', sa.String(100)),
-        sa.Column('scope', postgresql.JSONB, default={}),
-        sa.Column('settings', postgresql.JSONB, default={}),
+        sa.Column('scope', sa.JSON, default={}),
+        sa.Column('settings', sa.JSON, default={}),
         sa.Column('start_date', sa.DateTime),
         sa.Column('end_date', sa.DateTime),
         sa.Column('reminder_frequency_days', sa.Integer, default=7),
@@ -239,7 +238,7 @@ def upgrade() -> None:
         sa.Column('user_id', sa.String(100), nullable=False),
         sa.Column('role_id', sa.String(100)),
         sa.Column('entitlement_type', sa.String(50)),
-        sa.Column('entitlement_details', postgresql.JSONB, default={}),
+        sa.Column('entitlement_details', sa.JSON, default={}),
         sa.Column('reviewer_id', sa.String(100)),
         sa.Column('status', sa.String(50), default='pending'),
         sa.Column('decision', sa.String(50)),  # certified, revoked, modified
@@ -308,7 +307,7 @@ def upgrade() -> None:
         sa.Column('started_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('ended_at', sa.DateTime),
         sa.Column('scheduled_end', sa.DateTime),
-        sa.Column('activities', postgresql.JSONB, default=[]),
+        sa.Column('activities', sa.JSON, default=[]),
         sa.Column('activity_count', sa.Integer, default=0),
         sa.Column('sensitive_actions', sa.Integer, default=0),
         sa.Column('review_status', sa.String(50)),
@@ -334,9 +333,9 @@ def upgrade() -> None:
         sa.Column('rule_type', sa.String(50)),  # sod, sensitive_access, critical_action
         sa.Column('module', sa.String(50)),  # FI, MM, SD, HR, BASIS
         sa.Column('risk_level', sa.String(20), default='high'),
-        sa.Column('function_1', postgresql.JSONB),
-        sa.Column('function_2', postgresql.JSONB),
-        sa.Column('compliance_frameworks', postgresql.JSONB, default=[]),
+        sa.Column('function_1', sa.JSON),
+        sa.Column('function_2', sa.JSON),
+        sa.Column('compliance_frameworks', sa.JSON, default=[]),
         sa.Column('status', sa.String(50), default='active'),
         sa.Column('violation_count', sa.Integer, default=0),
         sa.Column('created_by', sa.String(100)),
@@ -357,7 +356,7 @@ def upgrade() -> None:
         sa.Column('user_id', sa.String(100), nullable=False),
         sa.Column('risk_level', sa.String(20)),
         sa.Column('violation_type', sa.String(50)),
-        sa.Column('details', postgresql.JSONB, default={}),
+        sa.Column('details', sa.JSON, default={}),
         sa.Column('status', sa.String(50), default='open'),
         sa.Column('mitigation_id', sa.String(100)),
         sa.Column('remediation_action', sa.String(50)),
@@ -397,7 +396,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String(255)),
         sa.Column('description', sa.Text),
         sa.Column('category', sa.String(100)),
-        sa.Column('risk_rules', postgresql.JSONB, default=[]),
+        sa.Column('risk_rules', sa.JSON, default=[]),
         sa.Column('assessment_frequency', sa.String(50)),
         sa.Column('last_assessed', sa.DateTime),
         sa.Column('compliance_status', sa.String(50)),
@@ -419,8 +418,8 @@ def upgrade() -> None:
         sa.Column('description', sa.Text),
         sa.Column('control_type', sa.String(50)),  # preventive, detective, compensating
         sa.Column('owner_id', sa.String(100)),
-        sa.Column('risk_rules', postgresql.JSONB, default=[]),
-        sa.Column('assigned_users', postgresql.JSONB, default=[]),
+        sa.Column('risk_rules', sa.JSON, default=[]),
+        sa.Column('assigned_users', sa.JSON, default=[]),
         sa.Column('valid_from', sa.DateTime),
         sa.Column('valid_to', sa.DateTime),
         sa.Column('status', sa.String(50), default='active'),
@@ -448,12 +447,12 @@ def upgrade() -> None:
         sa.Column('target_type', sa.String(100)),
         sa.Column('target_id', sa.String(255)),
         sa.Column('source_system', sa.String(100)),
-        sa.Column('details', postgresql.JSONB, default={}),
-        sa.Column('old_values', postgresql.JSONB),
-        sa.Column('new_values', postgresql.JSONB),
+        sa.Column('details', sa.JSON, default={}),
+        sa.Column('old_values', sa.JSON),
+        sa.Column('new_values', sa.JSON),
         sa.Column('success', sa.Boolean, default=True),
         sa.Column('error_message', sa.Text),
-        sa.Column('compliance_tags', postgresql.JSONB, default=[]),
+        sa.Column('compliance_tags', sa.JSON, default=[]),
         sa.Column('retention_period_days', sa.Integer, default=2555),  # 7 years
     )
 
@@ -474,9 +473,9 @@ def upgrade() -> None:
         sa.Column('name', sa.String(255), nullable=False),
         sa.Column('description', sa.Text),
         sa.Column('workflow_type', sa.String(50)),  # access_request, certification, firefighter
-        sa.Column('trigger_conditions', postgresql.JSONB, default={}),
-        sa.Column('steps', postgresql.JSONB, default=[]),
-        sa.Column('escalation_rules', postgresql.JSONB, default={}),
+        sa.Column('trigger_conditions', sa.JSON, default={}),
+        sa.Column('steps', sa.JSON, default=[]),
+        sa.Column('escalation_rules', sa.JSON, default={}),
         sa.Column('sla_hours', sa.Integer, default=48),
         sa.Column('status', sa.String(50), default='active'),
         sa.Column('version', sa.Integer, default=1),
@@ -501,7 +500,7 @@ def upgrade() -> None:
         sa.Column('channel', sa.String(50)),  # email, slack, teams, webhook
         sa.Column('subject', sa.String(500)),
         sa.Column('body', sa.Text),
-        sa.Column('variables', postgresql.JSONB, default=[]),
+        sa.Column('variables', sa.JSON, default=[]),
         sa.Column('is_active', sa.Boolean, default=True),
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.UniqueConstraint('tenant_id', 'template_id', name='uq_notification_templates_tenant_template')
@@ -538,7 +537,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String(255)),
         sa.Column('system_type', sa.String(50)),  # sap_ecc, sap_s4, azure_ad, etc.
         sa.Column('connection_type', sa.String(50)),  # rfc, rest, database, ldap
-        sa.Column('connection_config', postgresql.JSONB, default={}),
+        sa.Column('connection_config', sa.JSON, default={}),
         sa.Column('status', sa.String(50), default='active'),
         sa.Column('last_sync', sa.DateTime),
         sa.Column('sync_frequency_minutes', sa.Integer, default=60),
@@ -584,7 +583,7 @@ def upgrade() -> None:
         sa.Column('status', sa.String(50), default='draft'),
         sa.Column('due_date', sa.Date),
         sa.Column('paid_at', sa.DateTime),
-        sa.Column('line_items', postgresql.JSONB, default=[]),
+        sa.Column('line_items', sa.JSON, default=[]),
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
     )
 

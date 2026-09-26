@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -11,7 +12,7 @@ import {
   EyeIcon,
   InboxIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import { api, accessRequestApi } from '../../services/api';
 
 interface ApprovalItem {
   id: string;
@@ -26,86 +27,12 @@ interface ApprovalItem {
   sodConflicts: boolean;
 }
 
-const mockApprovals: ApprovalItem[] = [
-  {
-    id: 'REQ-2024-001',
-    type: 'access_request',
-    requester: 'John Smith',
-    requesterDept: 'Finance',
-    summary: 'SAP_FI_AP_CLERK, SAP_FI_GL_ACCOUNTANT',
-    riskLevel: 'high',
-    submittedDate: '2024-01-15',
-    dueDate: '2024-01-18',
-    priority: 'urgent',
-    sodConflicts: true,
-  },
-  {
-    id: 'REQ-2024-002',
-    type: 'access_request',
-    requester: 'Emily Davis',
-    requesterDept: 'Sales',
-    summary: 'SALESFORCE_ADMIN',
-    riskLevel: 'high',
-    submittedDate: '2024-01-16',
-    dueDate: '2024-01-19',
-    priority: 'high',
-    sodConflicts: false,
-  },
-  {
-    id: 'CERT-2024-015',
-    type: 'certification',
-    requester: 'System',
-    requesterDept: 'IT',
-    summary: 'Q1 User Access Certification - Finance Team',
-    riskLevel: 'medium',
-    submittedDate: '2024-01-10',
-    dueDate: '2024-01-25',
-    priority: 'normal',
-    sodConflicts: false,
-  },
-  {
-    id: 'FF-2024-008',
-    type: 'firefighter',
-    requester: 'Mike Brown',
-    requesterDept: 'IT Operations',
-    summary: 'Emergency AWS Admin Access',
-    riskLevel: 'critical',
-    submittedDate: '2024-01-17',
-    dueDate: '2024-01-17',
-    priority: 'urgent',
-    sodConflicts: false,
-  },
-  {
-    id: 'REQ-2024-003',
-    type: 'access_request',
-    requester: 'Lisa Chen',
-    requesterDept: 'HR',
-    summary: 'WORKDAY_HR_ADMIN',
-    riskLevel: 'medium',
-    submittedDate: '2024-01-14',
-    dueDate: '2024-01-21',
-    priority: 'normal',
-    sodConflicts: false,
-  },
-  {
-    id: 'ROLE-2024-001',
-    type: 'role_change',
-    requester: 'IT Security',
-    requesterDept: 'IT',
-    summary: 'AWS_DEVELOPER role modification',
-    riskLevel: 'medium',
-    submittedDate: '2024-01-16',
-    dueDate: '2024-01-23',
-    priority: 'normal',
-    sodConflicts: false,
-  },
-];
 
 const typeConfig = {
   access_request: { color: 'bg-blue-100 text-blue-800', label: 'Access Request' },
   role_change: { color: 'bg-purple-100 text-purple-800', label: 'Role Change' },
   certification: { color: 'bg-indigo-100 text-indigo-800', label: 'Certification' },
-  firefighter: { color: 'bg-orange-100 text-orange-800', label: 'Firefighter' },
+  firefighter: { color: 'bg-orange-100 text-orange-800', label: 'Privileged Access' },
 };
 
 const riskConfig = {
@@ -123,11 +50,32 @@ const priorityConfig = {
 
 export function ApprovalInbox() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-  const filteredApprovals = mockApprovals.filter((item) => {
+  // Debounce search input — wait 300 ms before firing a new request
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { data: approvals = [] } = useQuery({
+    queryKey: ['pendingApprovals', typeFilter, priorityFilter, debouncedSearch],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (typeFilter !== 'all') params.type = typeFilter;
+      if (priorityFilter !== 'all') params.priority = priorityFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await accessRequestApi.getPendingApprovals(params);
+      return res.data?.approvals || res.data || [];
+    },
+  });
+
+  // Client-side fallback filter in case the backend ignores the params
+  const filteredApprovals = (approvals as ApprovalItem[]).filter((item) => {
     const matchesSearch =
+      !searchTerm ||
       item.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.summary.toLowerCase().includes(searchTerm.toLowerCase());
@@ -136,11 +84,11 @@ export function ApprovalInbox() {
     return matchesSearch && matchesType && matchesPriority;
   });
 
-  const urgentCount = mockApprovals.filter((a) => a.priority === 'urgent').length;
-  const highRiskCount = mockApprovals.filter(
+  const urgentCount = (approvals as ApprovalItem[]).filter((a) => a.priority === 'urgent').length;
+  const highRiskCount = (approvals as ApprovalItem[]).filter(
     (a) => a.riskLevel === 'high' || a.riskLevel === 'critical'
   ).length;
-  const overdueCount = mockApprovals.filter(
+  const overdueCount = (approvals as ApprovalItem[]).filter(
     (a) => new Date(a.dueDate) < new Date()
   ).length;
 
@@ -181,7 +129,7 @@ export function ApprovalInbox() {
             </div>
             <div>
               <div className="stat-label">Total Pending</div>
-              <div className="stat-value">{mockApprovals.length}</div>
+              <div className="stat-value">{(approvals as ApprovalItem[]).length}</div>
             </div>
           </div>
         </div>
@@ -245,7 +193,7 @@ export function ApprovalInbox() {
                 <option value="access_request">Access Requests</option>
                 <option value="role_change">Role Changes</option>
                 <option value="certification">Certifications</option>
-                <option value="firefighter">Firefighter</option>
+                <option value="firefighter">Privileged Access</option>
               </select>
               <select
                 value={priorityFilter}

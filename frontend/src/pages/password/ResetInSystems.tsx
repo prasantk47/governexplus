@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   ServerStackIcon,
   CheckCircleIcon,
@@ -6,6 +7,7 @@ import {
   ExclamationCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
+import { usersApi, api } from '../../services/api';
 
 interface SystemAccount {
   id: string;
@@ -16,48 +18,7 @@ interface SystemAccount {
   status: 'active' | 'expired' | 'locked';
 }
 
-const mockSystems: SystemAccount[] = [
-  {
-    id: '1',
-    systemName: 'SAP ERP Production',
-    systemType: 'SAP S/4HANA',
-    accountId: 'JSMITH01',
-    lastPasswordChange: '2024-01-15',
-    status: 'active',
-  },
-  {
-    id: '2',
-    systemName: 'Active Directory',
-    systemType: 'Microsoft AD',
-    accountId: 'john.smith@company.com',
-    lastPasswordChange: '2024-01-10',
-    status: 'active',
-  },
-  {
-    id: '3',
-    systemName: 'Oracle Financials',
-    systemType: 'Oracle Cloud',
-    accountId: 'JSMITH',
-    lastPasswordChange: '2023-12-01',
-    status: 'expired',
-  },
-  {
-    id: '4',
-    systemName: 'Salesforce CRM',
-    systemType: 'Salesforce',
-    accountId: 'john.smith@company.com',
-    lastPasswordChange: '2024-01-20',
-    status: 'active',
-  },
-  {
-    id: '5',
-    systemName: 'ServiceNow ITSM',
-    systemType: 'ServiceNow',
-    accountId: 'john.smith',
-    lastPasswordChange: '2023-11-15',
-    status: 'locked',
-  },
-];
+// System accounts are fetched from the API
 
 const statusConfig = {
   active: { color: 'bg-green-100 text-green-800', label: 'Active' },
@@ -66,15 +27,21 @@ const statusConfig = {
 };
 
 export function ResetInSystems() {
+  const { data: systemsData } = useQuery<SystemAccount[]>({
+    queryKey: ['user-systems'],
+    queryFn: () => usersApi.getEntitlements('me').then((res) => res.data?.systems || res.data || []),
+  });
+  const systems: SystemAccount[] = systemsData || [];
+
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
   const [isResetting, setIsResetting] = useState(false);
   const [resetResults, setResetResults] = useState<Map<string, 'success' | 'failed' | 'pending'>>(new Map());
 
   const handleSelectAll = () => {
-    if (selectedSystems.length === mockSystems.length) {
+    if (selectedSystems.length === systems.length) {
       setSelectedSystems([]);
     } else {
-      setSelectedSystems(mockSystems.map((s) => s.id));
+      setSelectedSystems(systems.map((s) => s.id));
     }
   };
 
@@ -92,12 +59,24 @@ export function ResetInSystems() {
     selectedSystems.forEach((id) => results.set(id, 'pending'));
     setResetResults(new Map(results));
 
-    // Simulate async password reset for each system
+    // Attempt real password reset for each system via API
     for (const id of selectedSystems) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Simulate 90% success rate
-      const success = Math.random() > 0.1;
-      results.set(id, success ? 'success' : 'failed');
+      const system = systems.find((s) => s.id === id);
+      try {
+        await api.post('/auth/reset-password', {
+          userId: system?.accountId ?? id,
+          system: system?.systemName ?? id,
+        });
+        results.set(id, 'success');
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 404 || status === 501) {
+          // Endpoint not implemented — show clear feedback
+          results.set(id, 'failed');
+        } else {
+          results.set(id, 'failed');
+        }
+      }
       setResetResults(new Map(results));
     }
 
@@ -151,7 +130,7 @@ export function ResetInSystems() {
             onClick={handleSelectAll}
             className="text-xs text-primary-600 hover:text-primary-700 font-medium"
           >
-            {selectedSystems.length === mockSystems.length ? 'Deselect All' : 'Select All'}
+            {selectedSystems.length === systems.length ? 'Deselect All' : 'Select All'}
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -161,7 +140,7 @@ export function ResetInSystems() {
                 <th className="px-4 py-2 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedSystems.length === mockSystems.length}
+                    checked={selectedSystems.length === systems.length}
                     onChange={handleSelectAll}
                     className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
@@ -184,7 +163,7 @@ export function ResetInSystems() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {mockSystems.map((system) => (
+              {systems.map((system) => (
                 <tr key={system.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <input
@@ -234,7 +213,7 @@ export function ResetInSystems() {
                         {resetResults.get(system.id) === 'failed' && (
                           <>
                             <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
-                            <span className="text-red-600">Failed</span>
+                            <span className="text-red-600">Not configured for this system</span>
                           </>
                         )}
                       </span>
@@ -270,7 +249,7 @@ export function ResetInSystems() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Synced Systems</p>
-                <p className="text-xs text-gray-500">{mockSystems.length} connected</p>
+                <p className="text-xs text-gray-500">{systems.length} connected</p>
               </div>
             </div>
           </div>

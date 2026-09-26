@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { certificationApi } from '../../services/api';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -25,99 +28,6 @@ interface CertificationItem {
   anomalies: string[];
 }
 
-const mockItems: CertificationItem[] = [
-  {
-    id: 'CERT-001',
-    user: 'John Smith',
-    userId: 'jsmith',
-    department: 'Finance',
-    role: 'SAP_FI_AP_CLERK',
-    system: 'SAP ECC',
-    riskLevel: 'low',
-    lastUsed: '2024-01-18',
-    grantedDate: '2023-06-15',
-    decision: 'pending',
-    anomalies: [],
-  },
-  {
-    id: 'CERT-002',
-    user: 'John Smith',
-    userId: 'jsmith',
-    department: 'Finance',
-    role: 'SAP_FI_GL_ACCOUNTANT',
-    system: 'SAP ECC',
-    riskLevel: 'high',
-    lastUsed: '2024-01-19',
-    grantedDate: '2023-08-20',
-    decision: 'pending',
-    anomalies: ['SoD conflict with SAP_FI_AP_CLERK'],
-  },
-  {
-    id: 'CERT-003',
-    user: 'Emily Davis',
-    userId: 'edavis',
-    department: 'Finance',
-    role: 'SAP_MM_BUYER',
-    system: 'SAP ECC',
-    riskLevel: 'medium',
-    lastUsed: '2024-01-15',
-    grantedDate: '2023-04-10',
-    decision: 'pending',
-    anomalies: [],
-  },
-  {
-    id: 'CERT-004',
-    user: 'Emily Davis',
-    userId: 'edavis',
-    department: 'Finance',
-    role: 'AWS_DEVELOPER',
-    system: 'AWS',
-    riskLevel: 'medium',
-    lastUsed: '2023-10-05',
-    grantedDate: '2023-03-01',
-    decision: 'pending',
-    anomalies: ['Not used in 90+ days'],
-  },
-  {
-    id: 'CERT-005',
-    user: 'Michael Brown',
-    userId: 'mbrown',
-    department: 'Finance',
-    role: 'WORKDAY_VIEWER',
-    system: 'Workday',
-    riskLevel: 'low',
-    lastUsed: '2024-01-10',
-    grantedDate: '2023-01-15',
-    decision: 'certified',
-    anomalies: [],
-  },
-  {
-    id: 'CERT-006',
-    user: 'Sarah Wilson',
-    userId: 'swilson',
-    department: 'Finance',
-    role: 'SAP_FI_AP_MANAGER',
-    system: 'SAP ECC',
-    riskLevel: 'high',
-    lastUsed: '2024-01-17',
-    grantedDate: '2022-12-01',
-    decision: 'pending',
-    anomalies: [],
-  },
-  {
-    id: 'CERT-007',
-    user: 'David Lee',
-    userId: 'dlee',
-    department: 'Finance',
-    role: 'SALESFORCE_ADMIN',
-    system: 'Salesforce',
-    riskLevel: 'high',
-    lastUsed: '2023-08-15',
-    grantedDate: '2023-02-20',
-    decision: 'pending',
-    anomalies: ['Not used in 90+ days', 'Role no longer needed'],
-  },
-];
 
 const riskConfig = {
   low: { color: 'bg-green-100 text-green-800' },
@@ -128,7 +38,18 @@ const riskConfig = {
 
 export function CertificationReview() {
   const { campaignId } = useParams();
-  const [items, setItems] = useState(mockItems);
+
+  const { data: reviewData } = useQuery({
+    queryKey: ['certificationMyReviews'],
+    queryFn: () => certificationApi.getMyReviews().then(r => r.data),
+  });
+
+  const [items, setItems] = useState<CertificationItem[]>([]);
+
+  useEffect(() => {
+    const fetched: CertificationItem[] = Array.isArray(reviewData) ? reviewData : (reviewData as any)?.items || [];
+    setItems(fetched);
+  }, [reviewData]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDecision, setFilterDecision] = useState<string>('all');
   const [filterRisk, setFilterRisk] = useState<string>('all');
@@ -147,10 +68,15 @@ export function CertificationReview() {
   const pendingCount = items.filter((i) => i.decision === 'pending').length;
   const certifiedCount = items.filter((i) => i.decision === 'certified').length;
   const revokedCount = items.filter((i) => i.decision === 'revoked').length;
-  const progress = Math.round(((certifiedCount + revokedCount) / items.length) * 100);
+  const progress = items.length > 0 ? Math.round(((certifiedCount + revokedCount) / items.length) * 100) : 0;
 
-  const handleDecision = (itemId: string, decision: 'certified' | 'revoked') => {
+  const handleDecision = async (itemId: string, decision: 'certified' | 'revoked') => {
     setItems(items.map((item) => (item.id === itemId ? { ...item, decision } : item)));
+    try {
+      await certificationApi.submitDecision(campaignId || 'default', itemId, { decision });
+    } catch {
+      toast.error('Failed to submit decision to server');
+    }
   };
 
   const handleBulkAction = () => {

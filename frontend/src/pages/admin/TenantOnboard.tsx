@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { api } from '../../services/api';
 import {
   ArrowLeftIcon,
   BuildingOffice2Icon,
@@ -15,13 +16,10 @@ import {
   CpuChipIcon,
   BoltIcon,
   ClipboardDocumentCheckIcon,
-  GlobeAltIcon,
   LockClosedIcon,
   DocumentDuplicateIcon,
   ArrowRightIcon,
-  StarIcon,
   FireIcon,
-  BeakerIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid';
@@ -76,12 +74,11 @@ const availableModules = [
   { id: 'risk_analytics', name: 'Risk Analytics', description: 'Risk scoring, SoD analysis, violations', icon: ChartBarIcon, color: 'amber' },
   { id: 'ai_assistant', name: 'AI Assistant', description: 'Natural language queries, smart recommendations', icon: SparklesIcon, color: 'purple' },
   { id: 'advanced_ml', name: 'Advanced ML', description: 'Role mining, anomaly detection, predictions', icon: CpuChipIcon, color: 'pink' },
-  { id: 'firefighter', name: 'Firefighter Access', description: 'Emergency access management & audit', icon: FireIcon, color: 'red' },
+  { id: 'firefighter', name: 'Privileged Access', description: 'Emergency access management & audit', icon: FireIcon, color: 'red' },
   { id: 'siem_integration', name: 'SIEM Integration', description: 'Security event monitoring & alerts', icon: BoltIcon, color: 'cyan' },
 ];
 
 export function TenantOnboard() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdTenant, setCreatedTenant] = useState<any>(null);
@@ -122,16 +119,8 @@ export function TenantOnboard() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/admin/tenants', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
+      const response = await api.post('/admin/tenants', formData);
+      const data = response.data;
 
       if (data.success) {
         setCreatedTenant(data);
@@ -223,7 +212,7 @@ export function TenantOnboard() {
               { num: 2, label: 'Admin User', icon: UserIcon },
               { num: 3, label: 'Plan & Modules', icon: CubeIcon },
               { num: 4, label: 'Complete', icon: CheckIcon }
-            ].map((s, i) => (
+            ].map((s) => (
               <div key={s.num} className="relative flex flex-col items-center">
                 <div className={clsx(
                   'w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 z-10',

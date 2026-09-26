@@ -119,14 +119,14 @@ class RemediationAdvisor:
        - Learns organizational preferences
     """
 
-    def __init__(self):
+    def __init__(self, db_session=None):
         # Knowledge base of remediation patterns
         self.remediation_patterns: Dict[str, List[Dict]] = {}
 
         # Historical remediation data
         self.remediation_history: List[Dict] = []
 
-        # Organizational preferences
+        # Organizational preferences (loaded from DB if available)
         self.org_preferences = {
             "prefer_mitigation_over_removal": True,
             "auto_execute_threshold": "simple",
@@ -134,6 +134,7 @@ class RemediationAdvisor:
             "max_users_for_auto": 10
         }
 
+        self._db = db_session
         self._initialize_patterns()
 
     def _initialize_patterns(self):
@@ -222,7 +223,232 @@ class RemediationAdvisor:
                     "risk_reduction": 50,
                     "recommended": False
                 }
-            ]
+            ],
+            # Invoice vs Payment
+            "invoice_payment_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Split AP Invoice and Payment Roles",
+                    "description": "Create separate roles for invoice entry and payment execution",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 95,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Add Payment Approval Workflow",
+                    "description": "Require manager approval for any payment matching invoices entered by same user",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 75,
+                    "recommended": False
+                }
+            ],
+            # Bank Master + Payment
+            "bank_payment_sod": [
+                {
+                    "action_type": ActionType.REMOVE_ROLE,
+                    "title": "Remove Bank Master Access",
+                    "description": "Remove bank maintenance authorization from payment processors",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 100,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Bank Change Dual Authorization",
+                    "description": "Require treasury manager approval for any bank master changes",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 85,
+                    "recommended": False
+                }
+            ],
+            # HR Personnel + Payroll
+            "personnel_payroll_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Separate HR Admin from Payroll",
+                    "description": "Assign personnel maintenance and payroll to different teams",
+                    "complexity": ActionComplexity.COMPLEX,
+                    "risk_reduction": 100,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Payroll Change Report Review",
+                    "description": "Monthly review of payroll changes by independent auditor",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 60,
+                    "recommended": False
+                },
+                {
+                    "action_type": ActionType.CREATE_WORKFLOW,
+                    "title": "Payroll Pre-Run Verification",
+                    "description": "Automated comparison of personnel changes vs payroll output",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 80,
+                    "recommended": False
+                }
+            ],
+            # Treasury Payment + Bank Account
+            "treasury_bank_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Separate Treasury Operations",
+                    "description": "Create distinct roles for bank account management and payment execution",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 100,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Wire Transfer Dual Authorization",
+                    "description": "Require CFO approval for wire transfers above threshold",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 85,
+                    "recommended": False
+                }
+            ],
+            # Asset Master + Acquisition
+            "asset_acquisition_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Separate Asset Registry from Acquisition",
+                    "description": "Assign asset creation and capitalization to different roles",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 90,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Asset Capitalization Review",
+                    "description": "Monthly review of new asset acquisitions by controller",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 65,
+                    "recommended": False
+                }
+            ],
+            # Inventory + Physical Inventory
+            "inventory_count_sod": [
+                {
+                    "action_type": ActionType.REASSIGN_TASK,
+                    "title": "Independent Count Team",
+                    "description": "Use separate team for physical counting vs posting adjustments",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 95,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Variance Threshold Alerts",
+                    "description": "Auto-flag adjustments exceeding 5% of counted value",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 70,
+                    "recommended": False
+                }
+            ],
+            # Transport + Role/User Admin
+            "transport_admin_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Separate Development from Transport",
+                    "description": "Different teams for role/program development and production transport",
+                    "complexity": ActionComplexity.COMPLEX,
+                    "risk_reduction": 100,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Transport Approval Workflow",
+                    "description": "Require change management board approval before production import",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 85,
+                    "recommended": False
+                }
+            ],
+            # Maintenance Order + Service Entry
+            "maintenance_service_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Separate Work Order from Service Acceptance",
+                    "description": "Requestor of work should not accept completion",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 90,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Service Acceptance Threshold",
+                    "description": "Require manager approval for service entries above $5,000",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 70,
+                    "recommended": False
+                }
+            ],
+            # Debug/Replace + any
+            "debug_replace_sod": [
+                {
+                    "action_type": ActionType.REMOVE_ROLE,
+                    "title": "Remove Debug Replace Authorization",
+                    "description": "Remove S_DEVELOP debug replace from all non-development systems",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 100,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Debug Session Logging",
+                    "description": "Enable security audit log for all debug sessions with alerts",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 50,
+                    "recommended": False
+                }
+            ],
+            # Table Maintenance + critical
+            "table_maint_sod": [
+                {
+                    "action_type": ActionType.REMOVE_ROLE,
+                    "title": "Remove Direct Table Access",
+                    "description": "Replace SE16N/SM30 with controlled maintenance views",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 90,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Table Change Logging",
+                    "description": "Enable table logging (RECCLIENT) for all sensitive tables",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 60,
+                    "recommended": False
+                }
+            ],
+            # Generic SoD fallback
+            "generic_sod": [
+                {
+                    "action_type": ActionType.SPLIT_ROLE,
+                    "title": "Split Conflicting Functions",
+                    "description": "Separate conflicting business functions into distinct roles",
+                    "complexity": ActionComplexity.MODERATE,
+                    "risk_reduction": 90,
+                    "recommended": True
+                },
+                {
+                    "action_type": ActionType.ADD_MITIGATION,
+                    "title": "Add Compensating Control",
+                    "description": "Implement periodic review or approval workflow as mitigating control",
+                    "complexity": ActionComplexity.SIMPLE,
+                    "risk_reduction": 60,
+                    "recommended": False
+                },
+                {
+                    "action_type": ActionType.ACCEPT_RISK,
+                    "title": "Accept Risk with Justification",
+                    "description": "Document business justification and accept risk with time-limited exception",
+                    "complexity": ActionComplexity.TRIVIAL,
+                    "risk_reduction": 0,
+                    "recommended": False
+                }
+            ],
         }
 
     # ==================== Plan Generation ====================
@@ -291,19 +517,58 @@ class RemediationAdvisor:
         )
 
     def _match_risk_pattern(self, risk_type: str, description: str) -> str:
-        """Match risk to known remediation patterns"""
+        """Match risk to known remediation patterns using keyword analysis"""
         desc_lower = description.lower()
+        risk_lower = risk_type.lower()
+        combined = f"{desc_lower} {risk_lower}"
 
-        if "vendor" in desc_lower and "payment" in desc_lower:
-            return "vendor_payment_sod"
-        elif "purchase order" in desc_lower and "goods receipt" in desc_lower:
-            return "po_gr_sod"
-        elif "user admin" in desc_lower and "role" in desc_lower:
-            return "user_role_admin_sod"
-        elif "excessive" in desc_lower or "too many" in desc_lower:
-            return "excessive_access"
+        # Ordered from most specific to most general
+        patterns = [
+            # Finance
+            (["vendor", "payment"], "vendor_payment_sod"),
+            (["invoice", "payment"], "invoice_payment_sod"),
+            (["bank", "payment"], "bank_payment_sod"),
+            (["bank", "master", "pay"], "bank_payment_sod"),
+            # Procurement
+            (["purchase order", "goods receipt"], "po_gr_sod"),
+            (["po", "goods receipt"], "po_gr_sod"),
+            # HR
+            (["personnel", "payroll"], "personnel_payroll_sod"),
+            (["employee", "payroll"], "personnel_payroll_sod"),
+            (["hr", "payroll"], "personnel_payroll_sod"),
+            (["bank data", "payroll"], "personnel_payroll_sod"),
+            # Treasury
+            (["treasury", "bank"], "treasury_bank_sod"),
+            (["wire", "bank"], "treasury_bank_sod"),
+            (["treasury", "payment"], "treasury_bank_sod"),
+            # Assets
+            (["asset", "acqui"], "asset_acquisition_sod"),
+            (["asset", "capital"], "asset_acquisition_sod"),
+            # Inventory/Warehouse
+            (["inventory", "count"], "inventory_count_sod"),
+            (["inventory", "physical"], "inventory_count_sod"),
+            (["adjustment", "count"], "inventory_count_sod"),
+            # Basis/Security
+            (["user admin", "role"], "user_role_admin_sod"),
+            (["user", "role admin"], "user_role_admin_sod"),
+            (["transport"], "transport_admin_sod"),
+            (["debug", "replace"], "debug_replace_sod"),
+            (["table maint"], "table_maint_sod"),
+            (["se16", "sm30"], "table_maint_sod"),
+            # Plant Maintenance
+            (["maintenance order", "service"], "maintenance_service_sod"),
+            (["work order", "service"], "maintenance_service_sod"),
+            # Generic
+            (["excessive", "access"], "excessive_access"),
+            (["too many", "role"], "excessive_access"),
+            (["privilege", "creep"], "excessive_access"),
+        ]
 
-        return "generic"
+        for keywords, pattern_key in patterns:
+            if all(kw in combined for kw in keywords):
+                return pattern_key
+
+        return "generic_sod"
 
     def _create_action_from_pattern(
         self,
@@ -631,7 +896,15 @@ class RemediationAdvisor:
         if not recommended:
             return "Varies by approach selected"
 
-        max_complexity = max(a.complexity for a in recommended)
+        complexity_order = [
+            ActionComplexity.TRIVIAL, ActionComplexity.SIMPLE,
+            ActionComplexity.MODERATE, ActionComplexity.COMPLEX,
+            ActionComplexity.STRATEGIC
+        ]
+        max_complexity = max(
+            (a.complexity for a in recommended),
+            key=lambda c: complexity_order.index(c)
+        )
         effort_map = {
             ActionComplexity.TRIVIAL: "Less than 1 hour",
             ActionComplexity.SIMPLE: "1-4 hours",

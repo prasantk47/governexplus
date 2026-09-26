@@ -8,22 +8,46 @@ Endpoints for the access request portal including:
 - Request tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 from datetime import datetime
+
+from sqlalchemy.orm import Session
 
 from core.access_request import (
     AccessRequestManager, AccessRequest, AccessRequestStatus,
     RequestType, ApprovalAction
 )
 from core.rules import RuleEngine
+from db.database import get_db
 
 router = APIRouter(tags=["Access Requests"])
 
-# Initialize managers
-rule_engine = RuleEngine()
-request_manager = AccessRequestManager(rule_engine=rule_engine)
+DEFAULT_TENANT = "tenant_default"
+
+# Per-tenant rule engine registry
+_rule_engines: Dict[str, RuleEngine] = {}
+
+
+def _get_tenant_id(x_tenant_id: Optional[str] = Header(None)) -> str:
+    """Extract tenant from header or use default."""
+    return x_tenant_id or DEFAULT_TENANT
+
+
+def _get_rule_engine(tenant_id: str = Depends(_get_tenant_id)) -> RuleEngine:
+    """Return a per-tenant RuleEngine instance, creating it on first use."""
+    if tenant_id not in _rule_engines:
+        _rule_engines[tenant_id] = RuleEngine()
+    return _rule_engines[tenant_id]
+
+
+def _get_manager(
+    db: Session = Depends(get_db),
+    rule_engine: RuleEngine = Depends(_get_rule_engine),
+) -> AccessRequestManager:
+    """Create a request manager scoped to the current DB session and tenant engine."""
+    return AccessRequestManager(db=db, rule_engine=rule_engine)
 
 
 # =============================================================================
@@ -60,6 +84,21 @@ class RiskPreviewRequest(BaseModel):
     requested_roles: List[str]
 
 
+class ModifyItemsRequest(BaseModel):
+    """Model for modifying roles on a pending request before approval."""
+    remove_roles: List[str] = Field(default_factory=list, example=["ROLE_A"])
+    add_roles: List[str] = Field(default_factory=list, example=["ROLE_B"])
+    modifier_id: str = Field(..., example="admin")
+    comments: Optional[str] = Field(None, example="Swapped role per manager request")
+
+
+class AssignMitigationRequest(BaseModel):
+    """Model for assigning a mitigation control to a violation during approval."""
+    violation_id: str = Field(..., example="VIO-001")
+    mitigation_control_id: str = Field(..., example="MC-CTRL-001")
+    comments: Optional[str] = Field(None, example="Compensating control applied")
+
+
 # =============================================================================
 # Role Catalog Endpoints
 # =============================================================================
@@ -67,14 +106,15 @@ class RiskPreviewRequest(BaseModel):
 @router.get("/catalog/roles")
 async def get_role_catalog(
     search: Optional[str] = Query(None, description="Search roles"),
-    business_process: Optional[str] = Query(None, description="Filter by process")
+    business_process: Optional[str] = Query(None, description="Filter by process"),
+    mgr: AccessRequestManager = Depends(_get_manager),
 ):
     """
     Get available roles from the catalog.
 
     Returns business-friendly role descriptions for the request portal.
     """
-    roles = request_manager.get_role_catalog(search, business_process)
+    roles = mgr.get_role_catalog(search, business_process)
 
     return {
         "total": len(roles),
@@ -86,9 +126,9 @@ async def get_role_catalog(
 
 
 @router.get("/catalog/roles/{role_id}")
-async def get_role_details(role_id: str):
+async def get_role_details(role_id: str, mgr: AccessRequestManager = Depends(_get_manager)):
     """Get detailed information about a specific role"""
-    roles = request_manager.get_role_catalog()
+    roles = mgr.get_role_catalog()
     role = next((r for r in roles if r["role_id"] == role_id), None)
 
     if not role:
@@ -102,19 +142,16 @@ async def get_role_details(role_id: str):
 # =============================================================================
 
 @router.post("/preview-risk")
-async def preview_risk(request: RiskPreviewRequest):
-    """
-    Preview risk analysis before submitting a request.
-
-    Shows what SoD violations and sensitive access would be introduced.
-    """
-    # Create a temporary request for analysis
+async def preview_risk(
+    request: RiskPreviewRequest,
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
+    """Preview risk analysis before submitting a request."""
     temp_request = AccessRequest(
         target_user_id=request.target_user_id,
         target_user_name=request.target_user_id
     )
 
-    # Add requested items
     from core.access_request.models import RequestedAccess
     for role_id in request.requested_roles:
         temp_request.requested_items.append(RequestedAccess(
@@ -122,9 +159,7 @@ async def preview_risk(request: RiskPreviewRequest):
             access_name=role_id
         ))
 
-    preview = await request_manager.preview_risk(temp_request)
-
-    return preview
+    return await mgr.preview_risk(temp_request)
 
 
 # =============================================================================
@@ -132,14 +167,13 @@ async def preview_risk(request: RiskPreviewRequest):
 # =============================================================================
 
 @router.post("/", status_code=201)
-async def create_access_request(request: CreateRequestModel):
-    """
-    Create a new access request (draft).
-
-    The request is created in DRAFT status. Use /submit to submit for approval.
-    """
+async def create_access_request(
+    request: CreateRequestModel,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Create a new access request (draft), persisted to database."""
     try:
-        # Map request type
         type_map = {
             "new_access": RequestType.NEW_ACCESS,
             "modify_access": RequestType.MODIFY_ACCESS,
@@ -149,7 +183,8 @@ async def create_access_request(request: CreateRequestModel):
         }
         req_type = type_map.get(request.request_type, RequestType.NEW_ACCESS)
 
-        access_request = await request_manager.create_request(
+        access_request = await mgr.create_request(
+            tenant_id=tenant_id,
             requester_user_id=request.requester_user_id,
             requester_name=request.requester_name,
             requester_email=request.requester_email,
@@ -175,14 +210,14 @@ async def create_access_request(request: CreateRequestModel):
 
 
 @router.post("/{request_id}/submit")
-async def submit_request(request_id: str):
-    """
-    Submit a draft request for approval.
-
-    This triggers risk analysis and workflow generation.
-    """
+async def submit_request(
+    request_id: str,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Submit a draft request for approval."""
     try:
-        access_request = await request_manager.submit_request(request_id)
+        access_request = await mgr.submit_request(request_id, tenant_id)
 
         return {
             "request_id": access_request.request_id,
@@ -200,13 +235,15 @@ async def submit_request(request_id: str):
 
 
 @router.get("/{request_id}")
-async def get_request(request_id: str):
+async def get_request(
+    request_id: str,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Get full details of an access request"""
-    access_request = request_manager.get_request(request_id)
-
+    access_request = mgr.get_request(request_id, tenant_id)
     if not access_request:
         raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
-
     return access_request.to_dict()
 
 
@@ -215,33 +252,45 @@ async def list_requests(
     status: Optional[str] = Query(None, description="Filter by status"),
     requester: Optional[str] = Query(None, description="Filter by requester"),
     target: Optional[str] = Query(None, description="Filter by target user"),
-    limit: int = Query(50, le=200)
+    search: Optional[str] = Query(None, description="Full-text search across request ID, role, and user fields"),
+    limit: int = Query(50, le=200),
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
 ):
-    """List access requests with optional filters"""
-    requests = list(request_manager.requests.values())
+    """List access requests with optional filters (DB-backed)"""
+    requests = mgr.get_all_requests(tenant_id=tenant_id, status=status or "", limit=limit)
 
-    # Apply filters
-    if status:
-        requests = [r for r in requests if r.status.value == status]
     if requester:
         requests = [r for r in requests if r.requester_user_id == requester]
     if target:
         requests = [r for r in requests if r.target_user_id == target]
-
-    # Sort by created date
-    requests.sort(key=lambda r: r.created_at, reverse=True)
+    if search:
+        term = search.lower()
+        requests = [
+            r for r in requests
+            if term in r.request_id.lower()
+            or term in (r.requester_user_id or "").lower()
+            or term in (r.requester_name or "").lower()
+            or term in (r.target_user_id or "").lower()
+            or term in (r.target_user_name or "").lower()
+            or any(term in (item.access_name or "").lower() for item in r.requested_items)
+        ]
 
     return {
         "total": len(requests),
-        "requests": [r.to_summary() for r in requests[:limit]]
+        "requests": [r.to_summary() for r in requests]
     }
 
 
 @router.post("/{request_id}/cancel")
-async def cancel_request(request_id: str, user_id: str = Query(...)):
+async def cancel_request(
+    request_id: str,
+    user_id: str = Query(...),
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Cancel a pending request"""
-    access_request = request_manager.get_request(request_id)
-
+    access_request = mgr.get_request(request_id, tenant_id)
     if not access_request:
         raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
 
@@ -252,7 +301,7 @@ async def cancel_request(request_id: str, user_id: str = Query(...)):
         raise HTTPException(status_code=400, detail="Cannot cancel request in current status")
 
     access_request.status = AccessRequestStatus.CANCELLED
-    access_request.last_updated_at = datetime.now()
+    mgr._save_to_db(access_request)
 
     return {
         "request_id": request_id,
@@ -262,17 +311,165 @@ async def cancel_request(request_id: str, user_id: str = Query(...)):
 
 
 # =============================================================================
+# Modify-Before-Approval Endpoint (ARM gap)
+# =============================================================================
+
+@router.put("/{request_id}/modify-items")
+async def modify_request_items(
+    request_id: str,
+    body: ModifyItemsRequest,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Modify the roles on a pending access request before it is approved.
+
+    Only allowed when request status is PENDING_APPROVAL.
+    Re-runs risk analysis after the change and records the modification in the audit trail.
+    """
+    access_request = mgr.get_request(request_id, tenant_id)
+    if not access_request:
+        raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
+
+    if access_request.status != AccessRequestStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Request is not in PENDING_APPROVAL status (current: {access_request.status.value})"
+        )
+
+    from core.access_request.models import RequestedAccess
+
+    # Remove requested roles
+    if body.remove_roles:
+        access_request.requested_items = [
+            item for item in access_request.requested_items
+            if item.access_name not in body.remove_roles
+        ]
+
+    # Add new roles
+    for role_id in body.add_roles:
+        if not any(item.access_name == role_id for item in access_request.requested_items):
+            access_request.requested_items.append(RequestedAccess(
+                access_type="role",
+                access_name=role_id,
+            ))
+
+    # Re-run risk preview
+    try:
+        risk_result = await mgr.preview_risk(access_request)
+    except Exception:
+        risk_result = {}
+
+    # Audit trail entry
+    modification_note = {
+        "modifier_id": body.modifier_id,
+        "modified_at": datetime.utcnow().isoformat(),
+        "removed_roles": body.remove_roles,
+        "added_roles": body.add_roles,
+        "comments": body.comments or "",
+    }
+    if not hasattr(access_request, 'audit_notes') or access_request.audit_notes is None:
+        access_request.audit_notes = []
+    if isinstance(access_request.audit_notes, list):
+        access_request.audit_notes.append(modification_note)
+
+    mgr._save_to_db(access_request)
+
+    return {
+        "request_id": request_id,
+        "status": access_request.status.value,
+        "current_roles": [item.access_name for item in access_request.requested_items],
+        "modification": modification_note,
+        "risk_preview": risk_result,
+        "message": "Request items updated and risk re-assessed",
+    }
+
+
+# =============================================================================
+# Inline Mitigation Assignment Endpoint (ARM gap)
+# =============================================================================
+
+@router.post("/{request_id}/assign-mitigation")
+async def assign_mitigation_to_request(
+    request_id: str,
+    body: AssignMitigationRequest,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+    db: Session = Depends(get_db),
+):
+    """
+    Assign a mitigation control to a violation on a pending access request.
+
+    Links the mitigation control to the violation, updates the request risk
+    assessment to reflect the mitigated state, and allows approval to proceed.
+    """
+    access_request = mgr.get_request(request_id, tenant_id)
+    if not access_request:
+        raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
+
+    # Link mitigation in DB
+    try:
+        from db.models.risk import RiskViolation, MitigationControl
+        violation = db.query(RiskViolation).filter(
+            RiskViolation.violation_id == body.violation_id
+        ).first()
+        if not violation:
+            raise HTTPException(status_code=404, detail=f"Violation {body.violation_id} not found")
+
+        control = db.query(MitigationControl).filter(
+            MitigationControl.control_id == body.mitigation_control_id
+        ).first()
+
+        if violation:
+            violation.mitigation_status = "mitigated"
+            violation.mitigation_control_id = body.mitigation_control_id
+            violation.mitigation_comments = body.comments or ""
+            db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to link mitigation: {str(e)}")
+
+    return {
+        "request_id": request_id,
+        "violation_id": body.violation_id,
+        "mitigation_control_id": body.mitigation_control_id,
+        "comments": body.comments,
+        "message": "Mitigation assigned. Request may now proceed with mitigated risk.",
+    }
+
+
+# =============================================================================
 # Approval Endpoints
 # =============================================================================
 
 @router.get("/approvals/pending")
-async def get_pending_approvals(approver_id: str = Query(..., description="Approver user ID")):
-    """
-    Get all pending approvals for an approver.
+async def get_pending_approvals(
+    approver_id: Optional[str] = Query(None, description="Approver user ID (defaults to current user)"),
+    type: Optional[str] = Query(None, description="Filter by request type (access_request, role_change, etc.)"),
+    priority: Optional[str] = Query(None, description="Filter by priority (normal, high, urgent)"),
+    search: Optional[str] = Query(None, description="Search across requester name, ID, or summary"),
+    mgr: AccessRequestManager = Depends(_get_manager),
+):
+    """Get all pending approvals for an approver."""
+    if not approver_id:
+        from core.tenant import get_current_tenant
+        ctx = get_current_tenant()
+        approver_id = ctx.user_id if ctx else "admin"
+    pending = mgr.get_pending_approvals(approver_id)
 
-    This is the unified approval inbox.
-    """
-    pending = request_manager.get_pending_approvals(approver_id)
+    if type:
+        pending = [p for p in pending if p.get("type") == type]
+    if priority:
+        pending = [p for p in pending if p.get("priority") == priority]
+    if search:
+        term = search.lower()
+        pending = [
+            p for p in pending
+            if term in str(p.get("id", "")).lower()
+            or term in str(p.get("requester", "")).lower()
+            or term in str(p.get("summary", "")).lower()
+        ]
 
     return {
         "approver_id": approver_id,
@@ -285,15 +482,12 @@ async def get_pending_approvals(approver_id: str = Query(..., description="Appro
 async def process_approval(
     request_id: str,
     step_id: str,
-    approval: ApprovalActionModel
+    approval: ApprovalActionModel,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
 ):
-    """
-    Process an approval action on a request.
-
-    Actions: approve, reject, delegate, request_info, escalate
-    """
+    """Process an approval action on a request."""
     try:
-        # Map action string to enum
         action_map = {
             "approve": ApprovalAction.APPROVE,
             "reject": ApprovalAction.REJECT,
@@ -302,17 +496,50 @@ async def process_approval(
             "escalate": ApprovalAction.ESCALATE
         }
         action = action_map.get(approval.action.lower())
-
         if not action:
             raise ValueError(f"Invalid action: {approval.action}")
 
-        access_request = await request_manager.process_approval(
+        # Self-approval prevention
+        the_request = mgr.get_request(request_id, tenant_id)
+        if not the_request:
+            raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
+
+        # Check role prerequisites (warning, not a hard block)
+        if action == ApprovalAction.APPROVE:
+            import logging as _logging
+            _prereq_logger = _logging.getLogger(__name__)
+            for item in (the_request.requested_items or []):
+                role_obj = None
+                try:
+                    from db.models.user import Role
+                    from db.database import get_db as _gdb
+                    # Prerequisites check is best-effort — do not fail approval on DB error
+                    if hasattr(mgr, 'db') and mgr.db:
+                        role_obj = mgr.db.query(Role).filter(Role.role_id == item.access_name).first()
+                except Exception:
+                    pass
+                if role_obj and hasattr(role_obj, 'prerequisites') and role_obj.prerequisites:
+                    for prereq in (role_obj.prerequisites or []):
+                        # Log warning if prerequisites not met (configurable block in future)
+                        _prereq_logger.warning(
+                            "Role %s has prerequisite '%s' — not yet verified for user %s",
+                            item.access_name, prereq, the_request.target_user_id,
+                        )
+
+        if action == ApprovalAction.APPROVE and approval.actor_id == the_request.requester_user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Self-approval is not permitted. A different approver must review this request."
+            )
+
+        access_request = await mgr.process_approval(
             request_id=request_id,
             step_id=step_id,
             action=action,
             actor_id=approval.actor_id,
             comments=approval.comments or "",
-            delegate_to=approval.delegate_to
+            delegate_to=approval.delegate_to,
+            tenant_id=tenant_id,
         )
 
         return {
@@ -334,13 +561,12 @@ async def process_approval(
 async def bulk_approve(
     request_id: str,
     actor_id: str = Query(...),
-    comments: str = Query(default="Bulk approved")
+    comments: str = Query(default="Bulk approved"),
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
 ):
-    """
-    Approve all pending steps (for authorized super-approvers).
-    """
-    access_request = request_manager.get_request(request_id)
-
+    """Approve all pending steps (for authorized super-approvers)."""
+    access_request = mgr.get_request(request_id, tenant_id)
     if not access_request:
         raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
 
@@ -348,12 +574,13 @@ async def bulk_approve(
     for step in access_request.approval_steps:
         if step.status.value == "pending":
             try:
-                await request_manager.process_approval(
+                await mgr.process_approval(
                     request_id=request_id,
                     step_id=step.step_id,
                     action=ApprovalAction.APPROVE,
                     actor_id=actor_id,
-                    comments=comments
+                    comments=comments,
+                    tenant_id=tenant_id,
                 )
                 approved_steps.append(step.step_id)
             except Exception:
@@ -371,10 +598,13 @@ async def bulk_approve(
 # =============================================================================
 
 @router.get("/my-requests")
-async def get_my_requests(user_id: str = Query(...)):
+async def get_my_requests(
+    user_id: str = Query(...),
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Get all requests created by the current user"""
-    requests = request_manager.get_requests_for_user(user_id)
-
+    requests = mgr.get_requests_for_user(user_id, tenant_id)
     return {
         "user_id": user_id,
         "total": len(requests),
@@ -383,15 +613,14 @@ async def get_my_requests(user_id: str = Query(...)):
 
 
 @router.get("/my-access")
-async def get_my_access(user_id: str = Query(...)):
+async def get_my_access(
+    user_id: str = Query(...),
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Get all access granted to a user through requests"""
-    requests = request_manager.get_requests_for_target(user_id)
-
-    # Filter to provisioned/active access
-    active = [
-        r for r in requests
-        if r.status == AccessRequestStatus.PROVISIONED
-    ]
+    requests = mgr.get_requests_for_target(user_id, tenant_id)
+    active = [r for r in requests if r.status == AccessRequestStatus.PROVISIONED]
 
     return {
         "user_id": user_id,
@@ -413,15 +642,21 @@ async def get_my_access(user_id: str = Query(...)):
 # =============================================================================
 
 @router.get("/statistics")
-async def get_request_statistics():
+async def get_request_statistics(
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Get overall request statistics"""
-    return request_manager.get_statistics()
+    return mgr.get_statistics(tenant_id)
 
 
 @router.get("/statistics/sla")
-async def get_sla_statistics():
+async def get_sla_statistics(
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
     """Get SLA compliance statistics"""
-    requests = list(request_manager.requests.values())
+    requests = mgr.get_all_requests(tenant_id=tenant_id, status="pending_approval")
 
     total_pending = sum(1 for r in requests
                        if r.status == AccessRequestStatus.PENDING_APPROVAL)

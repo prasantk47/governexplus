@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -10,7 +11,7 @@ import {
   TableCellsIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import { api, reportsApi } from '../../services/api';
 
 interface ReportExecution {
   id: string;
@@ -21,69 +22,7 @@ interface ReportExecution {
   downloadUrl: string;
 }
 
-const mockReport = {
-  id: 'RPT-001',
-  name: 'SoD Violations Summary',
-  description: 'Overview of all segregation of duties violations by risk level and status',
-  category: 'Risk',
-  format: 'PDF',
-  createdBy: 'System',
-  createdDate: '2023-06-15',
-  lastModified: '2024-01-10',
-  schedule: 'Weekly - Every Monday at 8:00 AM',
-  recipients: ['compliance@company.com', 'risk@company.com'],
-};
-
-const mockExecutions: ReportExecution[] = [
-  {
-    id: 'EXEC-001',
-    date: '2024-01-20 08:00',
-    status: 'completed',
-    duration: '2m 15s',
-    records: 145,
-    downloadUrl: '#',
-  },
-  {
-    id: 'EXEC-002',
-    date: '2024-01-13 08:00',
-    status: 'completed',
-    duration: '2m 08s',
-    records: 142,
-    downloadUrl: '#',
-  },
-  {
-    id: 'EXEC-003',
-    date: '2024-01-06 08:00',
-    status: 'completed',
-    duration: '2m 22s',
-    records: 138,
-    downloadUrl: '#',
-  },
-  {
-    id: 'EXEC-004',
-    date: '2023-12-30 08:00',
-    status: 'failed',
-    duration: '0m 45s',
-    records: 0,
-    downloadUrl: '#',
-  },
-  {
-    id: 'EXEC-005',
-    date: '2023-12-23 08:00',
-    status: 'completed',
-    duration: '2m 10s',
-    records: 135,
-    downloadUrl: '#',
-  },
-];
-
-const mockPreviewData = [
-  { rule: 'Create Vendor / Execute Payment', violations: 12, riskLevel: 'Critical', users: 8 },
-  { rule: 'Create PO / Release PO', violations: 8, riskLevel: 'High', users: 5 },
-  { rule: 'Post GL / Approve GL', violations: 5, riskLevel: 'Critical', users: 3 },
-  { rule: 'Create User / Assign Roles', violations: 2, riskLevel: 'Critical', users: 2 },
-  { rule: 'Deploy Code / Approve Deployment', violations: 3, riskLevel: 'High', users: 2 },
-];
+// Report data is fetched from the API
 
 const statusConfig = {
   completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
@@ -95,14 +34,39 @@ export function ReportViewer() {
   const { reportId } = useParams();
   const [activeTab, setActiveTab] = useState<'preview' | 'history' | 'settings'>('preview');
   const [isRunning, setIsRunning] = useState(false);
-  const report = mockReport;
+
+  const { data: reportData } = useQuery({
+    queryKey: ['report', reportId],
+    queryFn: () => reportsApi.get(reportId!).then((res) => res.data),
+    enabled: !!reportId,
+  });
+
+  const { data: executionsData } = useQuery<ReportExecution[]>({
+    queryKey: ['report-executions', reportId],
+    queryFn: () => reportsApi.execute(reportId!).then((res) => res.data?.executions || res.data || []),
+    enabled: !!reportId,
+  });
+
+  const { data: previewData } = useQuery({
+    queryKey: ['report-preview', reportId],
+    queryFn: () => reportsApi.execute(reportId!, { preview: true }).then((res) => res.data?.data || res.data || []),
+    enabled: !!reportId,
+  });
+
+  const report = reportData || {
+    id: reportId || '', name: '', description: '', category: '', format: '',
+    createdBy: '', createdDate: '', lastModified: '', schedule: '',
+    recipients: [] as string[],
+  };
+  const executions: ReportExecution[] = executionsData || [];
+  const previewRows = previewData || [];
 
   const handleRunNow = async () => {
     if (isRunning) return;
     setIsRunning(true);
     const toastId = toast.loading('Generating report...');
     try {
-      await api.post(`/reports/${reportId || report.id}/run`);
+      await api.post(`/reporting/reports/${reportId || report.id}/execute`);
       toast.success('Report generation started successfully', { id: toastId });
     } catch (error) {
       toast.error('Failed to run report. Please try again.', { id: toastId });
@@ -252,7 +216,7 @@ export function ReportViewer() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {mockPreviewData.map((row, idx) => (
+                {previewRows.map((row: any, idx: any) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.rule}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{row.violations}</td>
@@ -298,7 +262,7 @@ export function ReportViewer() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {mockExecutions.map((execution) => {
+                {executions.map((execution) => {
                   const statusInfo = statusConfig[execution.status];
                   return (
                     <tr key={execution.id} className="hover:bg-gray-50">
@@ -377,7 +341,7 @@ export function ReportViewer() {
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-4">Email Recipients</h3>
               <div className="space-y-2">
-                {report.recipients.map((email, idx) => (
+                {report.recipients.map((email: any, idx: any) => (
                   <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-900">{email}</span>
                     <button className="text-red-600 hover:text-red-700 text-sm">Remove</button>

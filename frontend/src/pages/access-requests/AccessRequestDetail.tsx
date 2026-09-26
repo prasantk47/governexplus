@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -11,7 +12,7 @@ import {
   DocumentTextIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import { api, accessRequestApi } from '../../services/api';
 
 interface ApprovalStep {
   id: string;
@@ -38,50 +39,6 @@ interface RequestDetail {
   sodConflicts: string[];
 }
 
-const mockRequest: RequestDetail = {
-  id: 'REQ-2024-001',
-  requester: 'John Smith',
-  requesterDept: 'Finance',
-  requestDate: '2024-01-15',
-  status: 'pending',
-  roles: [
-    { name: 'SAP_FI_AP_CLERK', system: 'SAP ECC', riskLevel: 'low' },
-    { name: 'SAP_FI_GL_ACCOUNTANT', system: 'SAP ECC', riskLevel: 'high' },
-  ],
-  justification:
-    'Required for month-end closing activities. I need access to post journal entries and process accounts payable invoices for Q1 financial reporting.',
-  duration: 'Permanent',
-  startDate: '2024-01-20',
-  endDate: null,
-  riskScore: 65,
-  sodConflicts: ['Create/Post GL Entry - Potential conflict between AP and GL posting'],
-  approvalSteps: [
-    {
-      id: '1',
-      approver: 'Sarah Manager',
-      role: 'Direct Manager',
-      status: 'approved',
-      date: '2024-01-16',
-      comments: 'Approved - legitimate business need for month-end activities',
-    },
-    {
-      id: '2',
-      approver: 'Risk Committee',
-      role: 'Risk Approval',
-      status: 'pending',
-      date: null,
-      comments: null,
-    },
-    {
-      id: '3',
-      approver: 'IT Security',
-      role: 'Security Review',
-      status: 'waiting',
-      date: null,
-      comments: null,
-    },
-  ],
-};
 
 const statusConfig = {
   pending: { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon },
@@ -102,13 +59,29 @@ export function AccessRequestDetail() {
   const navigate = useNavigate();
   const [approvalComment, setApprovalComment] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const request = mockRequest;
+
+  const { data: requestData } = useQuery({
+    queryKey: ['accessRequest', requestId],
+    queryFn: () => accessRequestApi.get(requestId!),
+    enabled: !!requestId,
+  });
+  const request: RequestDetail = (requestData as any)?.data ?? {} as RequestDetail;
+
+  const pendingStep = request.approvalSteps?.find((s) => s.status === 'pending');
+
+  const daysPending = request.requestDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(request.requestDate).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const slaStatus = daysPending > 5 ? 'Overdue' : daysPending > 3 ? 'At Risk' : 'On Track';
+  const slaColor = daysPending > 5 ? 'text-red-600' : daysPending > 3 ? 'text-yellow-600' : 'text-green-600';
 
   const handleApprove = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
     try {
-      await api.post(`/access-requests/${requestId}/approve`, {
+      const stepId = pendingStep?.id || 'step_1';
+      await api.post(`/access-requests/${requestId}/approve/${stepId}`, {
         comment: approvalComment,
       });
       toast.success(`Request ${requestId} has been approved`);
@@ -128,7 +101,8 @@ export function AccessRequestDetail() {
     }
     setIsProcessing(true);
     try {
-      await api.post(`/access-requests/${requestId}/reject`, {
+      const stepId = pendingStep?.id || 'step_1';
+      await api.post(`/access-requests/${requestId}/reject/${stepId}`, {
         comment: approvalComment,
       });
       toast.success(`Request ${requestId} has been rejected`);
@@ -162,10 +136,10 @@ export function AccessRequestDetail() {
         </div>
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-            statusConfig[request.status].color
+            request.status ? statusConfig[request.status]?.color ?? '' : ''
           }`}
         >
-          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+          {request.status ? request.status.charAt(0).toUpperCase() + request.status.slice(1) : ''}
         </span>
       </div>
 
@@ -211,7 +185,7 @@ export function AccessRequestDetail() {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Requested Roles</h2>
             <div className="space-y-3">
-              {request.roles.map((role, idx) => (
+              {(request.roles ?? []).map((role, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -222,10 +196,10 @@ export function AccessRequestDetail() {
                   </div>
                   <span
                     className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      riskConfig[role.riskLevel].color
+                      role.riskLevel ? riskConfig[role.riskLevel]?.color ?? '' : ''
                     }`}
                   >
-                    {role.riskLevel.charAt(0).toUpperCase() + role.riskLevel.slice(1)} Risk
+                    {role.riskLevel ? role.riskLevel.charAt(0).toUpperCase() + role.riskLevel.slice(1) : ''} Risk
                   </span>
                 </div>
               ))}
@@ -241,7 +215,7 @@ export function AccessRequestDetail() {
           </div>
 
           {/* SoD Conflicts */}
-          {request.sodConflicts.length > 0 && (
+          {(request.sodConflicts?.length ?? 0) > 0 && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
               <div className="flex items-start">
                 <ShieldExclamationIcon className="h-6 w-6 text-orange-600 mt-0.5" />
@@ -250,7 +224,7 @@ export function AccessRequestDetail() {
                     Segregation of Duties Conflicts Detected
                   </h3>
                   <ul className="mt-2 list-disc list-inside space-y-1">
-                    {request.sodConflicts.map((conflict, idx) => (
+                    {(request.sodConflicts ?? []).map((conflict, idx) => (
                       <li key={idx} className="text-sm text-orange-700">
                         {conflict}
                       </li>
@@ -265,8 +239,8 @@ export function AccessRequestDetail() {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Approval Workflow</h2>
             <div className="space-y-4">
-              {request.approvalSteps.map((step, idx) => {
-                const StepIcon = statusConfig[step.status].icon;
+              {(request.approvalSteps ?? []).map((step, idx) => {
+                const StepIcon = step.status ? statusConfig[step.status]?.icon : null;
                 return (
                   <div key={step.id} className="flex items-start">
                     <div
@@ -280,7 +254,7 @@ export function AccessRequestDetail() {
                           : 'bg-gray-100'
                       }`}
                     >
-                      <StepIcon
+                      {StepIcon && <StepIcon
                         className={`h-5 w-5 ${
                           step.status === 'approved'
                             ? 'text-green-600'
@@ -290,7 +264,7 @@ export function AccessRequestDetail() {
                             ? 'text-yellow-600'
                             : 'text-gray-400'
                         }`}
-                      />
+                      />}
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
@@ -300,10 +274,10 @@ export function AccessRequestDetail() {
                         </div>
                         <span
                           className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                            statusConfig[step.status].color
+                            step.status ? statusConfig[step.status]?.color ?? '' : ''
                           }`}
                         >
-                          {step.status.charAt(0).toUpperCase() + step.status.slice(1)}
+                          {step.status ? step.status.charAt(0).toUpperCase() + step.status.slice(1) : ''}
                         </span>
                       </div>
                       {step.comments && (
@@ -315,7 +289,7 @@ export function AccessRequestDetail() {
                         <p className="mt-1 text-xs text-gray-400">{step.date}</p>
                       )}
                     </div>
-                    {idx < request.approvalSteps.length - 1 && (
+                    {idx < (request.approvalSteps?.length ?? 0) - 1 && (
                       <div className="absolute left-4 mt-8 w-0.5 h-8 bg-gray-200" />
                     )}
                   </div>
@@ -413,11 +387,11 @@ export function AccessRequestDetail() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Days Pending</span>
-                <span className="font-medium text-gray-900">2 days</span>
+                <span className="font-medium text-gray-900">{daysPending} day{daysPending !== 1 ? 's' : ''}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">SLA Status</span>
-                <span className="font-medium text-green-600">On Track</span>
+                <span className={`font-medium ${slaColor}`}>{slaStatus}</span>
               </div>
             </div>
           </div>

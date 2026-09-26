@@ -25,6 +25,7 @@ from .models import (
     Entitlement, Permission, ConflictSet, UserAccess,
     RiskViolation, RiskSeverity, RuleType, RiskCategory
 )
+from .sod_ruleset import SoDRulesetLibrary, SoDRule, RiskLevel, BusinessProcess
 
 logger = logging.getLogger(__name__)
 
@@ -330,7 +331,93 @@ class RuleEngine:
             business_justification="Direct table access bypasses all application-level controls and audit trails"
         ))
 
-        logger.info(f"Loaded {len(self.rules)} default SAP GRC rules")
+        # Load the full SoDRulesetLibrary (140+ rules)
+        self._load_sod_ruleset_library()
+
+        logger.info(f"Loaded {len(self.rules)} total rules ({len(self.rules) - 7} from SoDRulesetLibrary + 7 built-in engine rules)")
+
+    def _load_sod_ruleset_library(self):
+        """
+        Import and convert all rules from SoDRulesetLibrary into RiskRule objects
+        and register them in the engine.  Rules whose rule_id already exists (from
+        the 7 hardcoded defaults above) are skipped to avoid clobbering richer
+        ConflictSet / mitigation data.
+        """
+        # Map SoDRulesetLibrary RiskLevel → engine RiskSeverity (names are identical)
+        _SEVERITY_MAP = {
+            RiskLevel.LOW: RiskSeverity.LOW,
+            RiskLevel.MEDIUM: RiskSeverity.MEDIUM,
+            RiskLevel.HIGH: RiskSeverity.HIGH,
+            RiskLevel.CRITICAL: RiskSeverity.CRITICAL,
+        }
+
+        # Map BusinessProcess → RiskCategory
+        _CATEGORY_MAP = {
+            BusinessProcess.FINANCE: RiskCategory.FINANCIAL,
+            BusinessProcess.PROCUREMENT: RiskCategory.PROCUREMENT,
+            BusinessProcess.SALES: RiskCategory.SALES,
+            BusinessProcess.HR: RiskCategory.HR_PAYROLL,
+            BusinessProcess.BASIS: RiskCategory.BASIS,
+            BusinessProcess.TREASURY: RiskCategory.FINANCIAL,    # closest fit
+            BusinessProcess.ASSET: RiskCategory.FINANCIAL,       # asset accounting → financial
+            BusinessProcess.WAREHOUSE: RiskCategory.INVENTORY,
+            BusinessProcess.QUALITY: RiskCategory.CUSTOM,
+            BusinessProcess.PLANT_MAINT: RiskCategory.CUSTOM,
+            BusinessProcess.PROJECT: RiskCategory.CUSTOM,
+            BusinessProcess.GENERAL: RiskCategory.IT_SECURITY,   # cross-process
+        }
+
+        def _func_to_entitlements(bf) -> List[Entitlement]:
+            """Convert a BusinessFunction to a list of Entitlement objects."""
+            entitlements: List[Entitlement] = []
+            # One Entitlement per transaction code
+            for tcode in bf.transaction_codes:
+                entitlements.append(
+                    Entitlement(auth_object="S_TCODE", field="TCD", value=tcode)
+                )
+            # One Entitlement per auth-object/value combination
+            for ao in bf.auth_objects:
+                obj = ao.get("object", "")
+                field = ao.get("field", "")
+                for val in ao.get("values", []):
+                    entitlements.append(
+                        Entitlement(auth_object=obj, field=field, value=str(val))
+                    )
+            return entitlements
+
+        library = SoDRulesetLibrary()
+        added = 0
+        skipped = 0
+        for sod_rule in library.get_all_rules(active_only=True):
+            # Skip if the rule_id is already registered (preserves hand-crafted defaults)
+            if sod_rule.rule_id in self.rules:
+                skipped += 1
+                continue
+
+            conflict = ConflictSet(
+                name=f"{sod_rule.function1.name} vs {sod_rule.function2.name}",
+                description=sod_rule.risk_description or sod_rule.description,
+                function_a_name=sod_rule.function1.name,
+                function_a_entitlements=_func_to_entitlements(sod_rule.function1),
+                function_b_name=sod_rule.function2.name,
+                function_b_entitlements=_func_to_entitlements(sod_rule.function2),
+            )
+
+            risk_rule = RiskRule(
+                rule_id=sod_rule.rule_id,
+                name=sod_rule.name,
+                description=sod_rule.description,
+                rule_type=RuleType.SOD,
+                severity=_SEVERITY_MAP.get(sod_rule.risk_level, RiskSeverity.MEDIUM),
+                risk_category=_CATEGORY_MAP.get(sod_rule.business_process, RiskCategory.CUSTOM),
+                conflicts=[conflict],
+                business_justification=sod_rule.business_impact,
+                recommended_actions=[sod_rule.recommendation] if sod_rule.recommendation else [],
+            )
+            self.add_rule(risk_rule)
+            added += 1
+
+        logger.info(f"SoDRulesetLibrary: {added} rules added, {skipped} skipped (already registered)")
 
     def add_rule(self, rule: RiskRule):
         """Add a rule to the engine with indexing"""

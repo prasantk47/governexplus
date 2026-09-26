@@ -12,6 +12,18 @@ from .template_engine import (
     NotificationPriority
 )
 
+from .delivery import (
+    NotificationDeliveryEngine,
+    DeliveryRecord,
+    DeliveryStatus,
+    DeliveryChannel,
+    NotificationType as DeliveryNotificationType,
+    Notification as DeliveryNotification,
+    EmailPayload,
+    SlackPayload,
+    get_delivery_engine,
+)
+
 __all__ = [
     # Service
     "NotificationService",
@@ -25,5 +37,15 @@ __all__ = [
     "template_engine",
     "NotificationMessage",
     "EventType",
-    "NotificationPriority"
+    "NotificationPriority",
+    # Delivery Engine
+    "NotificationDeliveryEngine",
+    "DeliveryRecord",
+    "DeliveryStatus",
+    "DeliveryChannel",
+    "DeliveryNotificationType",
+    "DeliveryNotification",
+    "EmailPayload",
+    "SlackPayload",
+    "get_delivery_engine",
 ]

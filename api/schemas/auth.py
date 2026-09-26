@@ -25,7 +25,7 @@ class UserRole(str, Enum):
 class LoginRequest(BaseModel):
     """Login request schema"""
     username: str = Field(..., min_length=1, max_length=100)
-    password: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=255)
     tenant_id: Optional[str] = Field(None, max_length=100)
     remember_me: bool = Field(default=False)
 
@@ -124,3 +124,39 @@ class AuthStatusResponse(BaseModel):
     user: Optional[UserInfoResponse] = None
     tenant_id: Optional[str] = None
     session_expires_at: Optional[datetime] = None
+
+
+# =============================================================================
+# MFA Schemas
+# =============================================================================
+
+class MFASetupResponse(BaseModel):
+    """Returned after /auth/mfa/setup — contains secret + QR code for enrollment."""
+    secret: str
+    uri: str
+    qr_code_base64: str
+
+
+class MFAVerifySetupRequest(BaseModel):
+    """Verify a TOTP code and activate MFA for the current user."""
+    secret: str = Field(..., min_length=16, max_length=64)
+    code: str = Field(..., min_length=6, max_length=8)
+
+
+class MFAVerifyRequest(BaseModel):
+    """Verify TOTP during login to exchange for a full JWT."""
+    user_id: int
+    code: str = Field(..., min_length=6, max_length=8)
+    mfa_session: str = Field(..., description="Short-lived MFA session token from /login")
+
+
+class MFADisableRequest(BaseModel):
+    """Disable MFA — must supply current TOTP code to confirm ownership."""
+    code: str = Field(..., min_length=6, max_length=8)
+
+
+class MFAChallengeResponse(BaseModel):
+    """Returned by /login when the user has MFA enabled — no JWT yet."""
+    requires_mfa: bool = True
+    user_id: int
+    mfa_session: str

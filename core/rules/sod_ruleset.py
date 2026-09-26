@@ -28,6 +28,12 @@ class BusinessProcess(Enum):
     SALES = "SD"
     HR = "HR"
     BASIS = "BASIS"
+    TREASURY = "TR"
+    ASSET = "AA"
+    WAREHOUSE = "WM"
+    QUALITY = "QM"
+    PLANT_MAINT = "PM"
+    PROJECT = "PS"
     GENERAL = "GEN"
 
 
@@ -485,8 +491,165 @@ class SoDRulesetLibrary:
             ),
         ]
 
+        # =================================================================
+        # TREASURY FUNCTIONS
+        # =================================================================
+        tr_functions = [
+            BusinessFunction("TR001", "Treasury Payment", "Execute treasury payments and wire transfers",
+                BusinessProcess.TREASURY, ["FF67", "FF68", "F111", "FBZ1"],
+                [{"object": "F_REGU_BUK", "field": "ACTVT", "values": ["01"]}]),
+            BusinessFunction("TR002", "Bank Account Management", "Create and manage bank accounts",
+                BusinessProcess.TREASURY, ["FI12", "FI13", "FBZP"],
+                [{"object": "F_BNKA_MAN", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("TR003", "Investment Management", "Manage financial investments and securities",
+                BusinessProcess.TREASURY, ["TBB1", "TBB2", "TB31"],
+                [{"object": "F_T036", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("TR004", "Cash Position Management", "Monitor and manage cash positions",
+                BusinessProcess.TREASURY, ["FF7A", "FF7B", "FF_5"],
+                [{"object": "F_BNKA_MAN", "field": "ACTVT", "values": ["03"]}]),
+        ]
+
+        # =================================================================
+        # ASSET ACCOUNTING FUNCTIONS
+        # =================================================================
+        aa_functions = [
+            BusinessFunction("AA001", "Asset Master Maintenance", "Create and modify fixed asset records",
+                BusinessProcess.ASSET, ["AS01", "AS02", "AS03", "AS05"],
+                [{"object": "A_S_ANLKL", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("AA002", "Asset Acquisition", "Post asset acquisitions and capitalizations",
+                BusinessProcess.ASSET, ["ABZON", "AB01", "ABNAN"],
+                [{"object": "A_S_ANLKL", "field": "ACTVT", "values": ["01"]}]),
+            BusinessFunction("AA003", "Asset Retirement", "Process asset retirements and disposals",
+                BusinessProcess.ASSET, ["ABAVN", "ABT1N", "ABAON"],
+                [{"object": "A_S_ANLKL", "field": "ACTVT", "values": ["06"]}]),
+            BusinessFunction("AA004", "Asset Transfer", "Transfer assets between cost centers or companies",
+                BusinessProcess.ASSET, ["ABUMN", "ABT1N"],
+                [{"object": "A_S_ANLKL", "field": "ACTVT", "values": ["02"]}]),
+            BusinessFunction("AA005", "Depreciation Run", "Execute periodic depreciation calculations",
+                BusinessProcess.ASSET, ["AFAB", "AFAR", "AFBN"],
+                [{"object": "A_S_ANLKL", "field": "ACTVT", "values": ["70"]}]),
+        ]
+
+        # =================================================================
+        # WAREHOUSE MANAGEMENT FUNCTIONS
+        # =================================================================
+        wm_functions = [
+            BusinessFunction("WM001", "Inventory Adjustment", "Post inventory adjustments and write-offs",
+                BusinessProcess.WAREHOUSE, ["MB1A", "MB1B", "MB1C", "MI07"],
+                [{"object": "M_MSEG_BWA", "field": "BWART", "values": ["201", "202", "561", "562"]}]),
+            BusinessFunction("WM002", "Physical Inventory", "Execute and post physical inventory counts",
+                BusinessProcess.WAREHOUSE, ["MI01", "MI04", "MI07", "MI20"],
+                [{"object": "M_MSEG_WMB", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("WM003", "Stock Transfer", "Process stock transfers between plants and locations",
+                BusinessProcess.WAREHOUSE, ["MB1B", "MIGO", "ME27"],
+                [{"object": "M_MSEG_BWA", "field": "BWART", "values": ["301", "302", "311", "312"]}]),
+        ]
+
+        # =================================================================
+        # QUALITY MANAGEMENT FUNCTIONS
+        # =================================================================
+        qm_functions = [
+            BusinessFunction("QM001", "Quality Inspection", "Record quality inspection results",
+                BusinessProcess.QUALITY, ["QA11", "QA12", "QA32"],
+                [{"object": "Q_QMEL", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("QM002", "Usage Decision", "Make usage decisions for inspected lots",
+                BusinessProcess.QUALITY, ["QA11", "QA12"],
+                [{"object": "Q_QMEL", "field": "ACTVT", "values": ["02"]}]),
+        ]
+
+        # =================================================================
+        # PLANT MAINTENANCE FUNCTIONS
+        # =================================================================
+        pm_functions = [
+            BusinessFunction("PM001", "Maintenance Order", "Create and release maintenance work orders",
+                BusinessProcess.PLANT_MAINT, ["IW31", "IW32", "IW33", "IW38"],
+                [{"object": "I_AUFART", "field": "AUART", "values": ["*"]}]),
+            BusinessFunction("PM002", "Service Entry", "Enter and accept service entry sheets",
+                BusinessProcess.PLANT_MAINT, ["ML81N", "ML85"],
+                [{"object": "M_BEST_WRK", "field": "ACTVT", "values": ["01", "02"]}]),
+        ]
+
+        # =================================================================
+        # PROJECT SYSTEM FUNCTIONS
+        # =================================================================
+        ps_functions = [
+            BusinessFunction("PS001", "Project Definition", "Create and modify project definitions",
+                BusinessProcess.PROJECT, ["CJ01", "CJ02", "CJ03", "CJ20N"],
+                [{"object": "C_PROJ_MAS", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("PS002", "Project Budget", "Set and release project budgets",
+                BusinessProcess.PROJECT, ["CJ30", "CJ32", "CJ36"],
+                [{"object": "C_PROJ_MAS", "field": "ACTVT", "values": ["77"]}]),
+        ]
+
+        # =================================================================
+        # ADDITIONAL FINANCE FUNCTIONS
+        # =================================================================
+        fi_extra = [
+            BusinessFunction("FI011", "Cost Center Maintenance", "Create and modify cost centers",
+                BusinessProcess.FINANCE, ["KS01", "KS02", "KS03"],
+                [{"object": "K_KOSTL", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("FI012", "Internal Order Maintenance", "Create and manage internal orders",
+                BusinessProcess.FINANCE, ["KO01", "KO02", "KO03"],
+                [{"object": "K_ORDER", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("FI013", "Profit Center Maintenance", "Create and modify profit centers",
+                BusinessProcess.FINANCE, ["KE51", "KE52", "KE53"],
+                [{"object": "K_PCA", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("FI014", "Financial Reporting", "Execute financial reports and extracts",
+                BusinessProcess.FINANCE, ["S_ALR_87012284", "F.01", "FAGLB03"],
+                [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["03"]}]),
+            BusinessFunction("FI015", "Tax Configuration", "Maintain tax codes and tax determination",
+                BusinessProcess.FINANCE, ["FTXP", "OBCL", "OBCD"],
+                [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("FI016", "Tolerance Group Maintenance", "Maintain payment and posting tolerances",
+                BusinessProcess.FINANCE, ["OBA4", "OBAZ"],
+                [{"object": "S_TABU_DIS", "field": "ACTVT", "values": ["02"]}]),
+        ]
+
+        # =================================================================
+        # ADDITIONAL PROCUREMENT FUNCTIONS
+        # =================================================================
+        mm_extra = [
+            BusinessFunction("MM008", "Contract Management", "Create and manage purchasing contracts",
+                BusinessProcess.PROCUREMENT, ["ME31K", "ME32K", "ME33K", "ME35K"],
+                [{"object": "M_RAHM_WRK", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("MM009", "Purchasing Info Record", "Maintain purchasing info records",
+                BusinessProcess.PROCUREMENT, ["ME11", "ME12", "ME13"],
+                [{"object": "M_BEST_WRK", "field": "ACTVT", "values": ["01", "02"]}]),
+            BusinessFunction("MM010", "Release Strategy Config", "Configure PO release strategies",
+                BusinessProcess.PROCUREMENT, ["SPRO", "ME28"],
+                [{"object": "S_TABU_DIS", "field": "ACTVT", "values": ["02"]}]),
+        ]
+
+        # =================================================================
+        # ADDITIONAL BASIS/SECURITY FUNCTIONS
+        # =================================================================
+        ba_extra = [
+            BusinessFunction("BA006", "Audit Log Config", "Configure security audit log",
+                BusinessProcess.BASIS, ["SM19", "SM20", "SM21"],
+                [{"object": "S_C_FUNCT", "field": "ACTVT", "values": ["01", "16"]}]),
+            BusinessFunction("BA007", "Background Job Admin", "Schedule and manage background jobs",
+                BusinessProcess.BASIS, ["SM36", "SM37", "SM62"],
+                [{"object": "S_BTCH_ADM", "field": "BTCADMIN", "values": ["Y"]}]),
+            BusinessFunction("BA008", "System Configuration", "Maintain system parameters and profile",
+                BusinessProcess.BASIS, ["RZ10", "RZ11", "TU02"],
+                [{"object": "S_RZL_ADM", "field": "ACTVT", "values": ["01"]}]),
+            BusinessFunction("BA009", "Debug/Replace", "Debug programs with replace capability",
+                BusinessProcess.BASIS, ["SE38", "SE80"],
+                [{"object": "S_DEVELOP", "field": "ACTVT", "values": ["02"]},
+                 {"object": "S_PROGRAM", "field": "P_ACTION", "values": ["DEBUG"]}]),
+            BusinessFunction("BA010", "RFC Destination Admin", "Maintain RFC connections",
+                BusinessProcess.BASIS, ["SM59"],
+                [{"object": "S_RFC_ADM", "field": "ACTVT", "values": ["01", "02"]}]),
+        ]
+
         # Store all functions
-        for func_list in [fi_functions, mm_functions, sd_functions, hr_functions, basis_functions]:
+        all_func_lists = [
+            fi_functions, mm_functions, sd_functions, hr_functions, basis_functions,
+            tr_functions, aa_functions, wm_functions, qm_functions,
+            pm_functions, ps_functions,
+            fi_extra, mm_extra, ba_extra,
+        ]
+        for func_list in all_func_lists:
             for func in func_list:
                 self.functions[func.function_id] = func
 
@@ -867,6 +1030,457 @@ class SoDRulesetLibrary:
                 recommendation="Limit direct data access capabilities"
             ),
         ]
+
+        # =================================================================
+        # EXPANDED FINANCE RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-FI-008", "Vendor Master vs Credit Memo", "Maintain vendor AND create credit memos",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI001"], self.functions["FI010"],
+                "Can create vendor and issue credit memos", "Fictitious credit fraud",
+                "Separate vendor maintenance from credit memo processing", sox_relevant=True),
+            SoDRule("SOD-FI-009", "GL Journal Entry vs Bank Master", "Post JE AND maintain bank data",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI007"], self.functions["FI009"],
+                "Can post entries to manipulated bank accounts", "Misappropriation of funds",
+                "Separate journal entry from bank maintenance", sox_relevant=True),
+            SoDRule("SOD-FI-010", "AP Invoice vs Bank Master", "Enter invoices AND maintain bank data",
+                RiskLevel.CRITICAL, BusinessProcess.FINANCE, self.functions["FI002"], self.functions["FI009"],
+                "Can redirect invoice payments", "Payment redirection fraud",
+                "Separate invoice entry from bank maintenance", sox_relevant=True),
+            SoDRule("SOD-FI-011", "Vendor Master vs GL Journal", "Maintain vendor AND post journal entries",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI001"], self.functions["FI007"],
+                "Can create vendor and post offsetting entries", "Concealment of fraudulent vendor payments",
+                "Separate vendor master from GL posting", sox_relevant=True),
+            SoDRule("SOD-FI-012", "Customer Master vs Billing", "Maintain customer AND create billing docs",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI004"], self.functions["SD003"],
+                "Can create customer and bill them", "Revenue manipulation",
+                "Separate customer maintenance from billing", sox_relevant=True),
+            SoDRule("SOD-FI-013", "Cost Center vs GL Journal", "Maintain cost centers AND post journal entries",
+                RiskLevel.MEDIUM, BusinessProcess.FINANCE, self.functions["FI011"], self.functions["FI007"],
+                "Can create cost centers and post charges", "Misallocation of expenses",
+                "Separate cost center maintenance from JE posting"),
+            SoDRule("SOD-FI-014", "Profit Center vs Financial Report", "Maintain profit centers AND run reports",
+                RiskLevel.MEDIUM, BusinessProcess.FINANCE, self.functions["FI013"], self.functions["FI014"],
+                "Can manipulate reporting structure", "Misleading financial reports",
+                "Separate profit center config from financial reporting"),
+            SoDRule("SOD-FI-015", "Tax Config vs AP Invoice", "Maintain tax codes AND enter invoices",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI015"], self.functions["FI002"],
+                "Can manipulate tax calculations on invoices", "Tax evasion or overstatement",
+                "Separate tax configuration from invoice processing", sox_relevant=True),
+            SoDRule("SOD-FI-016", "Tolerance Group vs AP Payment", "Maintain tolerances AND process payments",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI016"], self.functions["FI003"],
+                "Can raise tolerance to approve large payments", "Bypass of payment approval thresholds",
+                "Separate tolerance config from payment processing", sox_relevant=True),
+            SoDRule("SOD-FI-017", "Internal Order vs GL Journal", "Maintain internal orders AND post JE",
+                RiskLevel.MEDIUM, BusinessProcess.FINANCE, self.functions["FI012"], self.functions["FI007"],
+                "Can create orders and charge expenses to them", "Hidden cost accumulation",
+                "Separate internal order maintenance from posting"),
+            SoDRule("SOD-FI-018", "Period Close vs Financial Report", "Execute period close AND run reports",
+                RiskLevel.MEDIUM, BusinessProcess.FINANCE, self.functions["FI008"], self.functions["FI014"],
+                "Can close period and generate final reports without review", "Unreviewed financial statements",
+                "Require independent review of close and reports", sox_relevant=True),
+            SoDRule("SOD-FI-019", "Credit Memo vs Customer Master", "Create credit memos AND maintain customers",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI010"], self.functions["FI004"],
+                "Can create customer and issue credits", "Revenue loss via fictitious credits",
+                "Separate credit memo from customer maintenance", sox_relevant=True),
+            SoDRule("SOD-FI-020", "Bank Master vs Credit Memo", "Maintain bank data AND create credit memos",
+                RiskLevel.HIGH, BusinessProcess.FINANCE, self.functions["FI009"], self.functions["FI010"],
+                "Can redirect credit refunds via bank changes", "Credit refund fraud",
+                "Separate bank maintenance from credit processing", sox_relevant=True),
+        ])
+
+        # =================================================================
+        # EXPANDED PROCUREMENT RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-MM-008", "PR Creation vs Goods Receipt", "Create requisitions AND post GR",
+                RiskLevel.HIGH, BusinessProcess.PROCUREMENT, self.functions["MM001"], self.functions["MM003"],
+                "Can request and confirm receipt without PO", "Circumvention of purchasing process",
+                "Ensure PR-to-PO-to-GR separation", sox_relevant=True),
+            SoDRule("SOD-MM-009", "PR Creation vs Invoice Verification", "Create PR AND verify invoices",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM001"], self.functions["MM004"],
+                "Can request and approve payment", "Self-approval of procurement",
+                "Separate requisition from invoice verification"),
+            SoDRule("SOD-MM-010", "Contract Mgmt vs PO Creation", "Manage contracts AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM008"], self.functions["MM002"],
+                "Can set contract terms and create call-offs", "Favorable contract exploitation",
+                "Separate contract management from PO creation"),
+            SoDRule("SOD-MM-011", "Contract Mgmt vs Invoice Verification", "Manage contracts AND verify invoices",
+                RiskLevel.HIGH, BusinessProcess.PROCUREMENT, self.functions["MM008"], self.functions["MM004"],
+                "Can set contract prices and approve invoices", "Price manipulation in contracts",
+                "Separate contract management from invoice processing", sox_relevant=True),
+            SoDRule("SOD-MM-012", "Info Record vs PO Creation", "Maintain info records AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM009"], self.functions["MM002"],
+                "Can set purchasing prices and place orders", "Price manipulation",
+                "Separate info record maintenance from purchasing"),
+            SoDRule("SOD-MM-013", "Release Strategy vs PO Creation", "Configure release AND create POs",
+                RiskLevel.CRITICAL, BusinessProcess.PROCUREMENT, self.functions["MM010"], self.functions["MM002"],
+                "Can change release requirements and approve own POs", "Complete bypass of approval controls",
+                "Separate release strategy config from purchasing", sox_relevant=True),
+            SoDRule("SOD-MM-014", "Vendor Master vs Goods Receipt", "Maintain vendor AND post GR",
+                RiskLevel.HIGH, BusinessProcess.PROCUREMENT, self.functions["FI001"], self.functions["MM003"],
+                "Can create vendor and confirm delivery", "Fictitious vendor and goods receipt",
+                "Separate vendor maintenance from warehouse", sox_relevant=True),
+            SoDRule("SOD-MM-015", "Vendor Master vs Invoice Verification", "Maintain vendor AND verify invoices",
+                RiskLevel.CRITICAL, BusinessProcess.PROCUREMENT, self.functions["FI001"], self.functions["MM004"],
+                "Can create vendor and approve their invoices", "Fictitious vendor invoice fraud",
+                "Separate vendor maintenance from invoice verification", sox_relevant=True),
+            SoDRule("SOD-MM-016", "Material Master vs PO Creation", "Maintain materials AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM005"], self.functions["MM002"],
+                "Can create material and purchase it", "Unauthorized procurement",
+                "Separate material master from purchasing"),
+            SoDRule("SOD-MM-017", "Material Master vs Invoice Verification", "Maintain materials AND verify invoices",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM005"], self.functions["MM004"],
+                "Can manipulate material prices and approve invoices", "Price variance manipulation",
+                "Separate material master from invoice processing"),
+            SoDRule("SOD-MM-018", "Vendor Evaluation vs PO Creation", "Evaluate vendors AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PROCUREMENT, self.functions["MM006"], self.functions["MM002"],
+                "Can score vendors favorably and award contracts", "Vendor favoritism",
+                "Separate vendor evaluation from purchasing"),
+            SoDRule("SOD-MM-019", "Source List vs Vendor Master", "Maintain source lists AND vendor master",
+                RiskLevel.HIGH, BusinessProcess.PROCUREMENT, self.functions["MM007"], self.functions["FI001"],
+                "Can create preferred vendor and lock out competition", "Anti-competitive procurement",
+                "Separate source list from vendor maintenance"),
+            SoDRule("SOD-MM-020", "PO Creation vs AP Payment", "Create POs AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.PROCUREMENT, self.functions["MM002"], self.functions["FI003"],
+                "Can create PO and pay without verification", "Complete P2P fraud cycle",
+                "Separate purchasing from payment execution", sox_relevant=True),
+        ])
+
+        # =================================================================
+        # EXPANDED SALES RULES (O2C)
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-SD-007", "Delivery vs Billing", "Process deliveries AND create billing",
+                RiskLevel.MEDIUM, BusinessProcess.SALES, self.functions["SD002"], self.functions["SD003"],
+                "Can ship and invoice without review", "Unauthorized billing",
+                "Separate delivery from billing"),
+            SoDRule("SOD-SD-008", "Pricing vs Billing", "Maintain pricing AND create billing",
+                RiskLevel.HIGH, BusinessProcess.SALES, self.functions["SD004"], self.functions["SD003"],
+                "Can set prices and generate invoices", "Revenue manipulation via pricing",
+                "Separate pricing maintenance from billing", sox_relevant=True),
+            SoDRule("SOD-SD-009", "Credit Mgmt vs Billing", "Manage credit AND create billing",
+                RiskLevel.HIGH, BusinessProcess.SALES, self.functions["SD005"], self.functions["SD003"],
+                "Can extend credit and generate invoices", "Bad debt exposure",
+                "Separate credit management from billing"),
+            SoDRule("SOD-SD-010", "Returns vs Billing", "Process returns AND create billing",
+                RiskLevel.HIGH, BusinessProcess.SALES, self.functions["SD006"], self.functions["SD003"],
+                "Can process return credits and new invoices", "Return-rebilling fraud",
+                "Separate returns from billing"),
+            SoDRule("SOD-SD-011", "Sales Order vs Credit Mgmt", "Create orders AND manage credit",
+                RiskLevel.HIGH, BusinessProcess.SALES, self.functions["SD001"], self.functions["SD005"],
+                "Can release own credit blocks", "Ship to blocked customers",
+                "Separate order entry from credit management", sox_relevant=True),
+            SoDRule("SOD-SD-012", "Pricing vs Credit Mgmt", "Maintain pricing AND manage credit",
+                RiskLevel.MEDIUM, BusinessProcess.SALES, self.functions["SD004"], self.functions["SD005"],
+                "Can inflate prices to stay within credit limit", "Credit limit circumvention",
+                "Separate pricing from credit management"),
+            SoDRule("SOD-SD-013", "Customer Master vs Billing", "Maintain customer AND create billing",
+                RiskLevel.HIGH, BusinessProcess.SALES, self.functions["FI004"], self.functions["SD003"],
+                "Can create customer and bill them", "Fictitious revenue",
+                "Separate customer maintenance from billing", sox_relevant=True),
+            SoDRule("SOD-SD-014", "Customer Master vs Delivery", "Maintain customer AND process deliveries",
+                RiskLevel.MEDIUM, BusinessProcess.SALES, self.functions["FI004"], self.functions["SD002"],
+                "Can create ship-to addresses and deliver", "Unauthorized shipment diversion",
+                "Separate customer maintenance from delivery"),
+            SoDRule("SOD-SD-015", "Returns vs Customer Master", "Process returns AND maintain customer",
+                RiskLevel.MEDIUM, BusinessProcess.SALES, self.functions["SD006"], self.functions["FI004"],
+                "Can process returns for fictitious customers", "Return fraud",
+                "Separate returns from customer maintenance"),
+        ])
+
+        # =================================================================
+        # EXPANDED HR RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-HR-005", "Personnel Master vs Bank Data", "Maintain employee AND bank data",
+                RiskLevel.CRITICAL, BusinessProcess.HR, self.functions["HR001"], self.functions["HR005"],
+                "Can create employee and set bank details", "Ghost employee payroll fraud",
+                "Separate personnel admin from bank data", gdpr_relevant=True, sox_relevant=True),
+            SoDRule("SOD-HR-006", "Time Management vs Personnel Master", "Maintain time AND employee data",
+                RiskLevel.MEDIUM, BusinessProcess.HR, self.functions["HR003"], self.functions["HR001"],
+                "Can create employee and record time", "Fictitious time and attendance",
+                "Separate time entry from personnel admin"),
+            SoDRule("SOD-HR-007", "Org Structure vs Payroll", "Maintain org AND process payroll",
+                RiskLevel.HIGH, BusinessProcess.HR, self.functions["HR004"], self.functions["HR002"],
+                "Can change reporting lines to bypass approval", "Unauthorized payroll changes",
+                "Separate org maintenance from payroll"),
+            SoDRule("SOD-HR-008", "Personnel Master vs AP Payment", "Maintain employees AND process payments",
+                RiskLevel.HIGH, BusinessProcess.HR, self.functions["HR001"], self.functions["FI003"],
+                "Can create employee-vendor and pay them", "Employee-vendor collusion",
+                "Separate HR from finance payments", sox_relevant=True),
+            SoDRule("SOD-HR-009", "Bank Data vs AP Payment", "Maintain HR bank data AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.HR, self.functions["HR005"], self.functions["FI003"],
+                "Can redirect payments via bank changes", "Payment redirection fraud",
+                "Separate HR bank data from AP payments", gdpr_relevant=True, sox_relevant=True),
+            SoDRule("SOD-HR-010", "Personnel Master vs User Admin", "Maintain employees AND create users",
+                RiskLevel.HIGH, BusinessProcess.HR, self.functions["HR001"], self.functions["BA001"],
+                "Can create employee and system user simultaneously", "Unauthorized system access",
+                "Separate HR from IT user provisioning"),
+        ])
+
+        # =================================================================
+        # EXPANDED BASIS/SECURITY RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-BA-005", "User Admin vs Transport", "Administer users AND manage transports",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA001"], self.functions["BA005"],
+                "Can create users and transport changes to production", "Unauthorized production access",
+                "Separate user admin from transport management"),
+            SoDRule("SOD-BA-006", "Role Admin vs Table Maint", "Administer roles AND maintain tables",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA002"], self.functions["BA003"],
+                "Can modify roles and directly change auth tables", "Complete security bypass",
+                "Separate role admin from table maintenance"),
+            SoDRule("SOD-BA-007", "User Admin vs Audit Log", "Administer users AND configure audit log",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA001"], self.functions["BA006"],
+                "Can create users and disable their audit trail", "Forensic evidence tampering",
+                "Separate user admin from audit log configuration"),
+            SoDRule("SOD-BA-008", "Role Admin vs Audit Log", "Administer roles AND configure audit log",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA002"], self.functions["BA006"],
+                "Can assign roles and suppress audit", "Undetectable privilege escalation",
+                "Separate role admin from audit configuration"),
+            SoDRule("SOD-BA-009", "User Admin vs Background Jobs", "Administer users AND manage batch jobs",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA001"], self.functions["BA007"],
+                "Can create users and schedule privileged jobs", "Backdoor job execution",
+                "Separate user admin from job scheduling"),
+            SoDRule("SOD-BA-010", "Table Maint vs Transport", "Maintain tables AND manage transports",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA003"], self.functions["BA005"],
+                "Can modify data and transport changes", "Uncontrolled data modifications in production",
+                "Separate table maintenance from transport management"),
+            SoDRule("SOD-BA-011", "Debug/Replace vs Transport", "Debug with replace AND manage transports",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA009"], self.functions["BA005"],
+                "Can modify code in debug and transport", "Unauthorized code changes in production",
+                "Separate development from transport management"),
+            SoDRule("SOD-BA-012", "System Config vs User Admin", "Configure system AND administer users",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA008"], self.functions["BA001"],
+                "Can change system params and create privileged users", "System-level compromise",
+                "Separate system config from user admin"),
+            SoDRule("SOD-BA-013", "RFC Admin vs User Admin", "Manage RFC AND administer users",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA010"], self.functions["BA001"],
+                "Can create RFC destinations and users for remote access", "Unauthorized remote access",
+                "Separate RFC admin from user admin"),
+            SoDRule("SOD-BA-014", "Program Execution vs Transport", "Execute programs AND manage transports",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA004"], self.functions["BA005"],
+                "Can run programs and transport results", "Unauthorized program execution in production",
+                "Separate program execution from transport management"),
+            SoDRule("SOD-BA-015", "Debug/Replace vs Table Maint", "Debug with replace AND maintain tables",
+                RiskLevel.CRITICAL, BusinessProcess.BASIS, self.functions["BA009"], self.functions["BA003"],
+                "Can modify code and data simultaneously", "Complete data integrity compromise",
+                "Never combine debug replace with table maintenance"),
+            SoDRule("SOD-BA-016", "Background Jobs vs Table Maint", "Manage jobs AND maintain tables",
+                RiskLevel.HIGH, BusinessProcess.BASIS, self.functions["BA007"], self.functions["BA003"],
+                "Can schedule jobs that modify tables directly", "Automated data manipulation",
+                "Separate job scheduling from table maintenance"),
+        ])
+
+        # =================================================================
+        # TREASURY SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-TR-001", "Treasury Payment vs Bank Account", "Execute payments AND manage bank accounts",
+                RiskLevel.CRITICAL, BusinessProcess.TREASURY, self.functions["TR001"], self.functions["TR002"],
+                "Can redirect treasury payments via bank changes", "Treasury payment fraud",
+                "Separate payment execution from bank account management", sox_relevant=True),
+            SoDRule("SOD-TR-002", "Investment Mgmt vs Treasury Payment", "Manage investments AND execute payments",
+                RiskLevel.CRITICAL, BusinessProcess.TREASURY, self.functions["TR003"], self.functions["TR001"],
+                "Can create investment positions and divert funds", "Investment fraud",
+                "Separate investment management from payment execution", sox_relevant=True),
+            SoDRule("SOD-TR-003", "Cash Position vs Treasury Payment", "Manage cash AND execute payments",
+                RiskLevel.HIGH, BusinessProcess.TREASURY, self.functions["TR004"], self.functions["TR001"],
+                "Can manipulate cash position and process payments", "Cash management fraud",
+                "Separate cash monitoring from payment execution", sox_relevant=True),
+            SoDRule("SOD-TR-004", "Bank Account vs Vendor Master", "Manage bank accounts AND vendor master",
+                RiskLevel.CRITICAL, BusinessProcess.TREASURY, self.functions["TR002"], self.functions["FI001"],
+                "Can create vendor bank details and modify house bank", "Payment routing fraud",
+                "Separate bank account management from vendor maintenance", sox_relevant=True),
+            SoDRule("SOD-TR-005", "Investment Mgmt vs Bank Account", "Manage investments AND bank accounts",
+                RiskLevel.HIGH, BusinessProcess.TREASURY, self.functions["TR003"], self.functions["TR002"],
+                "Can create investments and link to unauthorized banks", "Unauthorized investment placement",
+                "Separate investment from bank account management", sox_relevant=True),
+        ])
+
+        # =================================================================
+        # ASSET ACCOUNTING SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-AA-001", "Asset Master vs Acquisition", "Maintain assets AND post acquisitions",
+                RiskLevel.HIGH, BusinessProcess.ASSET, self.functions["AA001"], self.functions["AA002"],
+                "Can create fictitious assets and capitalize", "Asset overstatement",
+                "Separate asset master from acquisition posting", sox_relevant=True),
+            SoDRule("SOD-AA-002", "Asset Master vs Retirement", "Maintain assets AND process retirements",
+                RiskLevel.HIGH, BusinessProcess.ASSET, self.functions["AA001"], self.functions["AA003"],
+                "Can retire assets and manipulate records", "Asset theft concealment",
+                "Separate asset master from retirement processing", sox_relevant=True),
+            SoDRule("SOD-AA-003", "Asset Transfer vs Retirement", "Transfer assets AND retire assets",
+                RiskLevel.MEDIUM, BusinessProcess.ASSET, self.functions["AA004"], self.functions["AA003"],
+                "Can transfer and retire without oversight", "Asset misappropriation",
+                "Separate asset transfers from retirements"),
+            SoDRule("SOD-AA-004", "Depreciation vs Asset Master", "Run depreciation AND maintain assets",
+                RiskLevel.MEDIUM, BusinessProcess.ASSET, self.functions["AA005"], self.functions["AA001"],
+                "Can change useful life and run depreciation", "Depreciation manipulation",
+                "Separate depreciation run from asset master maintenance", sox_relevant=True),
+            SoDRule("SOD-AA-005", "Asset Acquisition vs AP Payment", "Post acquisitions AND process payments",
+                RiskLevel.HIGH, BusinessProcess.ASSET, self.functions["AA002"], self.functions["FI003"],
+                "Can capitalize and pay for fictitious assets", "Fictitious asset procurement",
+                "Separate asset acquisition from payment", sox_relevant=True),
+        ])
+
+        # =================================================================
+        # WAREHOUSE/INVENTORY SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-WM-001", "Inventory Adjustment vs Physical Inventory", "Adjust inventory AND count inventory",
+                RiskLevel.HIGH, BusinessProcess.WAREHOUSE, self.functions["WM001"], self.functions["WM002"],
+                "Can count and adjust without verification", "Inventory manipulation",
+                "Separate counting from adjustment posting", sox_relevant=True),
+            SoDRule("SOD-WM-002", "Inventory Adjustment vs Goods Receipt", "Adjust inventory AND post GR",
+                RiskLevel.HIGH, BusinessProcess.WAREHOUSE, self.functions["WM001"], self.functions["MM003"],
+                "Can receive goods and make adjustments", "Concealment of theft or shortages",
+                "Separate inventory adjustments from goods receipt"),
+            SoDRule("SOD-WM-003", "Stock Transfer vs Physical Inventory", "Transfer stock AND count inventory",
+                RiskLevel.MEDIUM, BusinessProcess.WAREHOUSE, self.functions["WM003"], self.functions["WM002"],
+                "Can transfer stock and manipulate counts", "Inter-location theft concealment",
+                "Separate stock transfers from inventory counting"),
+            SoDRule("SOD-WM-004", "Inventory Adjustment vs PO Creation", "Adjust inventory AND create POs",
+                RiskLevel.HIGH, BusinessProcess.WAREHOUSE, self.functions["WM001"], self.functions["MM002"],
+                "Can write off inventory and re-order", "Inventory write-off fraud",
+                "Separate adjustments from purchasing"),
+            SoDRule("SOD-WM-005", "Goods Receipt vs Physical Inventory", "Post GR AND count inventory",
+                RiskLevel.MEDIUM, BusinessProcess.WAREHOUSE, self.functions["MM003"], self.functions["WM002"],
+                "Can receive goods and manipulate counts", "Inventory discrepancy concealment",
+                "Separate goods receipt from physical inventory"),
+        ])
+
+        # =================================================================
+        # QUALITY MANAGEMENT SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-QM-001", "Quality Inspection vs Usage Decision", "Inspect AND make usage decision",
+                RiskLevel.MEDIUM, BusinessProcess.QUALITY, self.functions["QM001"], self.functions["QM002"],
+                "Can inspect and approve own inspection", "Quality control bypass",
+                "Separate inspection from usage decision"),
+            SoDRule("SOD-QM-002", "Quality Inspection vs Goods Receipt", "Inspect AND post goods receipt",
+                RiskLevel.HIGH, BusinessProcess.QUALITY, self.functions["QM001"], self.functions["MM003"],
+                "Can approve quality and confirm receipt", "Acceptance of substandard goods",
+                "Separate quality inspection from GR posting"),
+            SoDRule("SOD-QM-003", "Usage Decision vs Vendor Evaluation", "Make usage decisions AND evaluate vendors",
+                RiskLevel.MEDIUM, BusinessProcess.QUALITY, self.functions["QM002"], self.functions["MM006"],
+                "Can approve quality and rate vendor favorably", "Biased vendor evaluation",
+                "Separate usage decisions from vendor evaluation"),
+        ])
+
+        # =================================================================
+        # PLANT MAINTENANCE SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-PM-001", "Maintenance Order vs Service Entry", "Create MO AND accept services",
+                RiskLevel.HIGH, BusinessProcess.PLANT_MAINT, self.functions["PM001"], self.functions["PM002"],
+                "Can create work orders and accept own services", "Fictitious service acceptance",
+                "Separate work order creation from service acceptance", sox_relevant=True),
+            SoDRule("SOD-PM-002", "Maintenance Order vs PO Creation", "Create MO AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PLANT_MAINT, self.functions["PM001"], self.functions["MM002"],
+                "Can create work and purchase without separation", "Self-procurement for maintenance",
+                "Separate work order from procurement"),
+            SoDRule("SOD-PM-003", "Service Entry vs Invoice Verification", "Accept services AND verify invoices",
+                RiskLevel.HIGH, BusinessProcess.PLANT_MAINT, self.functions["PM002"], self.functions["MM004"],
+                "Can accept services and approve payment", "Fictitious service billing",
+                "Separate service acceptance from invoice verification", sox_relevant=True),
+            SoDRule("SOD-PM-004", "Service Entry vs AP Payment", "Accept services AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.PLANT_MAINT, self.functions["PM002"], self.functions["FI003"],
+                "Can accept services and pay directly", "Service fraud",
+                "Separate service entry from payment processing", sox_relevant=True),
+        ])
+
+        # =================================================================
+        # PROJECT SYSTEM SOD RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-PS-001", "Project Definition vs Project Budget", "Define projects AND set budgets",
+                RiskLevel.HIGH, BusinessProcess.PROJECT, self.functions["PS001"], self.functions["PS002"],
+                "Can create projects and fund them without approval", "Unauthorized project spending",
+                "Separate project definition from budget allocation", sox_relevant=True),
+            SoDRule("SOD-PS-002", "Project Budget vs PO Creation", "Set budgets AND create POs",
+                RiskLevel.HIGH, BusinessProcess.PROJECT, self.functions["PS002"], self.functions["MM002"],
+                "Can allocate budget and spend it", "Self-approval of project procurement",
+                "Separate budget management from purchasing", sox_relevant=True),
+            SoDRule("SOD-PS-003", "Project Definition vs PO Creation", "Define projects AND create POs",
+                RiskLevel.MEDIUM, BusinessProcess.PROJECT, self.functions["PS001"], self.functions["MM002"],
+                "Can create project and procure for it", "Uncontrolled project spending",
+                "Separate project management from procurement"),
+        ])
+
+        # =================================================================
+        # CROSS-PROCESS CRITICAL RULES
+        # =================================================================
+        sod_rules.extend([
+            SoDRule("SOD-XP-001", "User Admin vs AP Payment", "Administer users AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA001"], self.functions["FI003"],
+                "Can create user accounts and process payments", "Fraud via unauthorized accounts",
+                "Never combine user admin with financial transactions", sox_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-002", "User Admin vs GL Journal", "Administer users AND post journal entries",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA001"], self.functions["FI007"],
+                "Can create users and post GL entries", "Complete financial fraud capability",
+                "Separate user admin from financial posting", sox_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-003", "Table Maint vs AP Payment", "Maintain tables AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA003"], self.functions["FI003"],
+                "Can modify payment tables and process payments", "Payment fraud via data manipulation",
+                "Never combine table maintenance with payment processing", sox_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-004", "Role Admin vs AP Invoice", "Administer roles AND enter invoices",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["BA002"], self.functions["FI002"],
+                "Can assign invoice access and enter invoices", "Self-service privilege escalation",
+                "Separate role admin from business transactions", is_cross_system=True),
+            SoDRule("SOD-XP-005", "User Admin vs Vendor Master", "Administer users AND maintain vendors",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["BA001"], self.functions["FI001"],
+                "Can create user accounts for fictitious vendors", "Identity-vendor linkage fraud",
+                "Separate user admin from vendor maintenance", is_cross_system=True),
+            SoDRule("SOD-XP-006", "Table Maint vs HR Payroll", "Maintain tables AND process payroll",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA003"], self.functions["HR002"],
+                "Can modify payroll tables and run payroll", "Payroll data manipulation",
+                "Never combine table maintenance with payroll", sox_relevant=True, gdpr_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-007", "Debug/Replace vs AP Payment", "Debug with replace AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA009"], self.functions["FI003"],
+                "Can modify payment program logic in runtime", "Runtime payment manipulation",
+                "Never combine debug/replace with financial transactions", sox_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-008", "Background Jobs vs AP Payment", "Schedule jobs AND process payments",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["BA007"], self.functions["FI003"],
+                "Can schedule automated payment runs", "Automated payment fraud",
+                "Separate batch administration from payment processing", is_cross_system=True),
+            SoDRule("SOD-XP-009", "RFC Admin vs AP Payment", "Manage RFC AND process payments",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["BA010"], self.functions["FI003"],
+                "Can create RFC destinations for remote payment execution", "Remote payment fraud",
+                "Separate RFC admin from financial transactions", is_cross_system=True),
+            SoDRule("SOD-XP-010", "Vendor Master vs Treasury Payment", "Maintain vendors AND execute treasury payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["FI001"], self.functions["TR001"],
+                "Can create vendor and execute wire transfers", "Wire transfer fraud",
+                "Separate vendor maintenance from treasury operations", sox_relevant=True,
+                is_cross_system=True),
+            SoDRule("SOD-XP-011", "HR Personnel vs Vendor Master", "Maintain employees AND vendors",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["HR001"], self.functions["FI001"],
+                "Can create employee-vendor relationships", "Employee-vendor collusion",
+                "Separate HR from vendor management", is_cross_system=True),
+            SoDRule("SOD-XP-012", "Asset Master vs Vendor Master", "Maintain assets AND vendors",
+                RiskLevel.MEDIUM, BusinessProcess.GENERAL, self.functions["AA001"], self.functions["FI001"],
+                "Can link fictitious assets to fictitious vendors", "Asset-vendor fraud",
+                "Separate asset management from vendor maintenance", is_cross_system=True),
+            SoDRule("SOD-XP-013", "Inventory Adjust vs AP Payment", "Adjust inventory AND process payments",
+                RiskLevel.HIGH, BusinessProcess.GENERAL, self.functions["WM001"], self.functions["FI003"],
+                "Can write off inventory and process payment for same", "Inventory-payment fraud",
+                "Separate inventory adjustments from payment processing", is_cross_system=True),
+            SoDRule("SOD-XP-014", "User Admin vs Treasury Payment", "Administer users AND execute treasury payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA001"], self.functions["TR001"],
+                "Can create accounts and execute wire transfers", "Maximum fraud risk",
+                "Never combine user admin with treasury", sox_relevant=True, is_cross_system=True),
+            SoDRule("SOD-XP-015", "System Config vs AP Payment", "Configure system AND process payments",
+                RiskLevel.CRITICAL, BusinessProcess.GENERAL, self.functions["BA008"], self.functions["FI003"],
+                "Can change system behavior and process payments", "System-level payment fraud",
+                "Separate system config from financial transactions", sox_relevant=True,
+                is_cross_system=True),
+        ])
 
         # Store all rules
         for rule in sod_rules:

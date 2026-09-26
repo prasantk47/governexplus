@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { api } from '../../services/api';
 import {
   ArrowLeftIcon,
   PlusIcon,
@@ -13,7 +14,6 @@ import {
   SparklesIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
-  ChartBarIcon,
   UserGroupIcon,
   AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
@@ -235,22 +235,14 @@ export function RoleDesigner() {
   const fetchMLSuggestions = async () => {
     setIsLoadingML(true);
     try {
-      const response = await fetch('/api/ml/role-design/suggest-permissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_function: selectedJobFunction,
-          current_permissions: selectedPermissions.map(p => p.name),
-          system: roleSystem || 'SAP ECC'
-        })
+      const response = await api.post('/ml/role-design/suggest-permissions', {
+        job_function: selectedJobFunction,
+        current_permissions: selectedPermissions.map(p => p.name),
+        system: roleSystem || 'SAP ECC'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setMlSuggestions(data.suggestions || []);
-      }
-    } catch (error) {
-      // Use mock data on error
-      setMlSuggestions(getMockSuggestions(selectedJobFunction));
+      setMlSuggestions(response.data?.suggestions || []);
+    } catch {
+      setMlSuggestions([]);
     }
     setIsLoadingML(false);
   };
@@ -259,89 +251,28 @@ export function RoleDesigner() {
     if (selectedPermissions.length === 0) return;
     try {
       const perms = selectedPermissions.map(p => p.name).join(',');
-      const response = await fetch(`/api/ml/role-design/similar-roles?permissions=${perms}&limit=5`);
-      if (response.ok) {
-        const data = await response.json();
-        setSimilarRoles(data.similar_roles || []);
-      }
-    } catch (error) {
-      // Use mock data on error
-      setSimilarRoles(getMockSimilarRoles(selectedPermissions));
+      const response = await api.get('/ml/role-design/similar-roles', {
+        params: { permissions: perms, limit: 5 }
+      });
+      setSimilarRoles(response.data?.similar_roles || []);
+    } catch {
+      setSimilarRoles([]);
     }
   };
 
   const fetchRiskPrediction = async () => {
     if (selectedPermissions.length === 0) return;
     try {
-      const response = await fetch('/api/ml/role-design/predict-risk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role_name: roleName || 'NEW_ROLE',
-          permissions: selectedPermissions.map(p => p.name),
-          system: roleSystem || 'SAP ECC'
-        })
+      const response = await api.post('/ml/role-design/predict-risk', {
+        role_name: roleName || 'NEW_ROLE',
+        permissions: selectedPermissions.map(p => p.name),
+        system: roleSystem || 'SAP ECC'
       });
-      if (response.ok) {
-        const data = await response.json();
-        setMlRiskPrediction(data);
-      }
+      setMlRiskPrediction(response.data);
     } catch (error) {
       // Use calculated risk on error
       setMlRiskPrediction(null);
     }
-  };
-
-  // Mock data generators for offline/development
-  const getMockSuggestions = (jobFunc: string): MLSuggestion[] => {
-    const suggestions: Record<string, MLSuggestion[]> = {
-      'Buyer': [
-        { permission: 'ME21N', description: 'Create Purchase Order', risk_level: 'medium', confidence: 0.95, reason: 'Core permission for Buyer', recommendation_type: 'core' },
-        { permission: 'ME22N', description: 'Change Purchase Order', risk_level: 'medium', confidence: 0.93, reason: 'Core permission for Buyer', recommendation_type: 'core' },
-        { permission: 'ME23N', description: 'Display Purchase Order', risk_level: 'low', confidence: 0.91, reason: 'Core permission for Buyer', recommendation_type: 'core' },
-        { permission: 'ME29N', description: 'Release Purchase Order', risk_level: 'high', confidence: 0.88, reason: 'Core permission for Buyer', recommendation_type: 'core' },
-        { permission: 'MIGO', description: 'Goods Movement', risk_level: 'medium', confidence: 0.78, reason: 'Commonly used by Buyers', recommendation_type: 'recommended' },
-      ],
-      'AP Clerk': [
-        { permission: 'FB01', description: 'Post Document', risk_level: 'medium', confidence: 0.96, reason: 'Core permission for AP Clerk', recommendation_type: 'core' },
-        { permission: 'FB02', description: 'Change Document', risk_level: 'medium', confidence: 0.94, reason: 'Core permission for AP Clerk', recommendation_type: 'core' },
-        { permission: 'MIRO', description: 'Enter Invoice', risk_level: 'high', confidence: 0.92, reason: 'Core permission for AP Clerk', recommendation_type: 'core' },
-        { permission: 'F110', description: 'Payment Run', risk_level: 'critical', confidence: 0.89, reason: 'Core permission for AP Clerk', recommendation_type: 'core' },
-      ],
-      'Sales Representative': [
-        { permission: 'VA01', description: 'Create Sales Order', risk_level: 'medium', confidence: 0.97, reason: 'Core permission for Sales', recommendation_type: 'core' },
-        { permission: 'VA02', description: 'Change Sales Order', risk_level: 'medium', confidence: 0.95, reason: 'Core permission for Sales', recommendation_type: 'core' },
-        { permission: 'VF01', description: 'Create Billing', risk_level: 'high', confidence: 0.82, reason: 'Commonly used by Sales', recommendation_type: 'recommended' },
-      ],
-    };
-    return suggestions[jobFunc] || [];
-  };
-
-  const getMockSimilarRoles = (perms: Permission[]): SimilarRole[] => {
-    const permNames = perms.map(p => p.name);
-    const roles: SimilarRole[] = [];
-
-    if (permNames.some(p => ['ME21N', 'ME22N', 'ME29N'].includes(p))) {
-      roles.push({
-        role_name: 'SAP_MM_BUYER',
-        similarity_score: 0.85,
-        overlap_percentage: 80,
-        common_permissions: permNames.filter(p => ['ME21N', 'ME22N', 'ME23N', 'ME29N'].includes(p)),
-        current_users: 62,
-        recommendation: 'Consider consolidating'
-      });
-    }
-    if (permNames.some(p => ['FB01', 'FB02', 'F110'].includes(p))) {
-      roles.push({
-        role_name: 'SAP_FI_AP_CLERK',
-        similarity_score: 0.72,
-        overlap_percentage: 65,
-        common_permissions: permNames.filter(p => ['FB01', 'FB02', 'F110', 'MIRO'].includes(p)),
-        current_users: 45,
-        recommendation: 'Reference for design'
-      });
-    }
-    return roles;
   };
 
   return (

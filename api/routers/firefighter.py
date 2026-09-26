@@ -10,7 +10,7 @@ Implements the complete Firefighter workflow:
 - Audit Evidence Export
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
@@ -27,23 +27,61 @@ from core.firefighter import (
     SessionStatus,
     ReviewStatus
 )
-from connectors.sap.mock_connector import SAPMockConnector
-from connectors.base import ConnectionConfig, ConnectionType
+from connectors.base import ConnectionConfig, ConnectionType, ConnectorFactory
+import os
 
 router = APIRouter(tags=["Firefighter"])
 
-# Initialize mock SAP connector
-mock_config = ConnectionConfig(
-    name="SAP_DEV",
-    connection_type=ConnectionType.RFC,
-    host="mock.sap.local",
-    sap_client="100"
-)
-sap_connector = SAPMockConnector(mock_config)
-sap_connector.connect()
+DEFAULT_TENANT = "tenant_default"
 
-# Initialize firefighter manager
-ff_manager = FirefighterManager(sap_connector=sap_connector)
+# Connector is configured via environment.
+# SAP_CONNECTOR_TYPE=sap_mock (default for dev), sap_rfc (production)
+_IS_PRODUCTION = os.getenv("APP_ENV", "").lower() == "production"
+_connector_type = os.getenv("SAP_CONNECTOR_TYPE", "sap_mock")
+
+_sap_host = os.getenv("SAP_HOST", "")
+if not _sap_host:
+    if _IS_PRODUCTION:
+        raise RuntimeError(
+            "SAP_HOST environment variable is not set. "
+            "Configure SAP_HOST to point to the SAP application server before "
+            "starting in production. Set APP_ENV != 'production' for simulation mode."
+        )
+    # Dev/test: fall back to localhost with a clear warning.
+    import logging as _log
+    _log.getLogger(__name__).warning(
+        "firefighter: SAP_HOST is not set — defaulting to localhost for SIMULATION mode. "
+        "Set APP_ENV=production to enforce real SAP connectivity."
+    )
+    _sap_host = "localhost"
+
+_connector_config = ConnectionConfig(
+    name=os.getenv("SAP_SYSTEM_NAME", "SAP_DEV"),
+    connection_type=ConnectionType.RFC,
+    host=_sap_host,
+    sap_client=os.getenv("SAP_CLIENT", "100"),
+)
+
+# Import mock connector to ensure it's registered with the factory
+from connectors.sap.mock_connector import SAPMockConnector  # noqa: F401
+
+_sap_connector = ConnectorFactory.create(_connector_type, _connector_config)
+_sap_connector.connect()
+
+# Cache managers per tenant to avoid re-loading from DB on every request
+_managers: Dict[str, FirefighterManager] = {}
+
+
+def _get_tenant_id(x_tenant_id: Optional[str] = Header(None)) -> str:
+    return x_tenant_id or DEFAULT_TENANT
+
+
+def _get_manager(tenant_id: str = Depends(_get_tenant_id)) -> FirefighterManager:
+    if tenant_id not in _managers:
+        _managers[tenant_id] = FirefighterManager(
+            sap_connector=_sap_connector, tenant_id=tenant_id
+        )
+    return _managers[tenant_id]
 
 
 # =============================================================================
@@ -164,7 +202,7 @@ async def get_reason_code(code: str):
 # =============================================================================
 
 @router.post("/requests", status_code=201)
-async def create_firefighter_request(request: FirefighterRequestCreate):
+async def create_firefighter_request(request: FirefighterRequestCreate, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Submit a new firefighter access request with structured reason code.
 
@@ -197,7 +235,7 @@ async def create_firefighter_request(request: FirefighterRequestCreate):
             }
             priority = priority_map.get(request.priority.lower())
 
-        ff_request = await ff_manager.submit_request(
+        ff_request = await mgr.submit_request(
             requester_user_id=request.requester_user_id,
             requester_name=request.requester_name,
             requester_email=request.requester_email,
@@ -234,14 +272,15 @@ async def create_firefighter_request(request: FirefighterRequestCreate):
 @router.get("/requests")
 async def list_requests(
     status: Optional[str] = Query(None, description="Filter by status"),
-    requester: Optional[str] = Query(None, description="Filter by requester")
+    requester: Optional[str] = Query(None, description="Filter by requester"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     List firefighter requests.
     """
     requests = []
 
-    for req in ff_manager.requests.values():
+    for req in mgr.requests.values():
         if status and req.status.value != status:
             continue
         if requester and req.requester_user_id != requester:
@@ -255,21 +294,21 @@ async def list_requests(
 
 
 @router.get("/requests/pending")
-async def get_pending_requests():
+async def get_pending_requests(mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get all requests pending approval.
     """
     return {
-        'pending_requests': ff_manager.get_pending_requests()
+        'pending_requests': mgr.get_pending_requests()
     }
 
 
 @router.get("/requests/{request_id}")
-async def get_request(request_id: str):
+async def get_request(request_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get details of a specific firefighter request.
     """
-    request = ff_manager.get_request(request_id)
+    request = mgr.get_request(request_id)
     if not request:
         raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
 
@@ -277,7 +316,7 @@ async def get_request(request_id: str):
 
 
 @router.post("/requests/{request_id}/approve")
-async def approve_request(request_id: str, approval: FirefighterApproval):
+async def approve_request(request_id: str, approval: FirefighterApproval, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Approve a firefighter request.
 
@@ -285,7 +324,7 @@ async def approve_request(request_id: str, approval: FirefighterApproval):
     can retrieve credentials.
     """
     try:
-        session = await ff_manager.approve_request(
+        session = await mgr.approve_request(
             request_id=request_id,
             approver_id=approval.approver_id,
             comments=approval.comments
@@ -306,12 +345,12 @@ async def approve_request(request_id: str, approval: FirefighterApproval):
 
 
 @router.post("/requests/{request_id}/reject")
-async def reject_request(request_id: str, rejection: FirefighterRejection):
+async def reject_request(request_id: str, rejection: FirefighterRejection, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Reject a firefighter request.
     """
     try:
-        request = await ff_manager.reject_request(
+        request = await mgr.reject_request(
             request_id=request_id,
             approver_id=rejection.approver_id,
             reason=rejection.reason
@@ -337,14 +376,15 @@ async def reject_request(request_id: str, rejection: FirefighterRejection):
 @router.get("/sessions")
 async def list_sessions(
     status: Optional[str] = Query(None, description="Filter by status"),
-    user_id: Optional[str] = Query(None, description="Filter by user")
+    user_id: Optional[str] = Query(None, description="Filter by user"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     List firefighter sessions.
     """
     sessions = []
 
-    for session in ff_manager.sessions.values():
+    for session in mgr.sessions.values():
         if status and session.status.value != status:
             continue
         if user_id and session.requester_user_id != user_id:
@@ -358,21 +398,21 @@ async def list_sessions(
 
 
 @router.get("/sessions/active")
-async def get_active_sessions():
+async def get_active_sessions(mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get all currently active firefighter sessions.
     """
     return {
-        'active_sessions': ff_manager.get_active_sessions()
+        'active_sessions': mgr.get_active_sessions()
     }
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get details of a specific firefighter session.
     """
-    session = ff_manager.get_session(session_id)
+    session = mgr.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
@@ -382,7 +422,8 @@ async def get_session(session_id: str):
 @router.get("/sessions/{session_id}/credentials")
 async def get_session_credentials(
     session_id: str,
-    user_id: str = Query(..., description="Requester user ID for verification")
+    user_id: str = Query(..., description="Requester user ID for verification"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Get credentials for an active firefighter session.
@@ -390,7 +431,7 @@ async def get_session_credentials(
     Only the original requester can retrieve the credentials.
     """
     try:
-        credentials = await ff_manager.get_session_credentials(session_id, user_id)
+        credentials = await mgr.get_session_credentials(session_id, user_id)
         return credentials
 
     except ValueError as e:
@@ -400,14 +441,14 @@ async def get_session_credentials(
 
 
 @router.post("/sessions/{session_id}/activity")
-async def log_session_activity(session_id: str, activity: ActivityLogEntry):
+async def log_session_activity(session_id: str, activity: ActivityLogEntry, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Log an activity performed during a firefighter session.
 
     This should be called for each significant action performed.
     """
     try:
-        log = await ff_manager.log_activity(
+        log = await mgr.log_activity(
             session_id=session_id,
             action_type=activity.action_type,
             action_details={
@@ -429,12 +470,12 @@ async def log_session_activity(session_id: str, activity: ActivityLogEntry):
 
 
 @router.get("/sessions/{session_id}/activities")
-async def get_session_activities(session_id: str):
+async def get_session_activities(session_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get all logged activities for a firefighter session.
     """
     try:
-        activities = await ff_manager.get_session_activities(session_id)
+        activities = await mgr.get_session_activities(session_id)
         return {
             'session_id': session_id,
             'activity_count': len(activities),
@@ -448,7 +489,8 @@ async def get_session_activities(session_id: str):
 @router.post("/sessions/{session_id}/end")
 async def end_session(
     session_id: str,
-    user_id: str = Query(..., description="User ending the session")
+    user_id: str = Query(..., description="User ending the session"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     End an active firefighter session.
@@ -456,7 +498,7 @@ async def end_session(
     This will lock the firefighter ID and trigger the review workflow.
     """
     try:
-        session = await ff_manager.end_session(
+        session = await mgr.end_session(
             session_id=session_id,
             ended_by=user_id,
             reason="Normal completion"
@@ -478,7 +520,8 @@ async def end_session(
 async def revoke_session(
     session_id: str,
     revoked_by: str = Query(..., description="User revoking the session"),
-    reason: str = Query(..., description="Reason for revocation")
+    reason: str = Query(..., description="Reason for revocation"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Forcefully revoke/terminate a firefighter session.
@@ -486,7 +529,7 @@ async def revoke_session(
     This is used for emergency situations or policy violations.
     """
     try:
-        session = await ff_manager.revoke_session(
+        session = await mgr.revoke_session(
             session_id=session_id,
             revoked_by=revoked_by,
             reason=reason
@@ -509,12 +552,13 @@ async def revoke_session(
 
 @router.get("/reviews/pending")
 async def get_pending_reviews(
-    reviewer_id: str = Query(..., description="Reviewer user ID")
+    reviewer_id: str = Query(..., description="Reviewer user ID"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Get sessions pending review for a reviewer.
     """
-    reviews = await ff_manager.get_pending_reviews(reviewer_id)
+    reviews = await mgr.get_pending_reviews(reviewer_id)
     return {
         'pending_count': len(reviews),
         'sessions': reviews
@@ -522,12 +566,12 @@ async def get_pending_reviews(
 
 
 @router.post("/sessions/{session_id}/review")
-async def submit_review(session_id: str, review: SessionReview):
+async def submit_review(session_id: str, review: SessionReview, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Submit a review for a completed firefighter session.
     """
     try:
-        session = await ff_manager.submit_review(
+        session = await mgr.submit_review(
             session_id=session_id,
             reviewer_id=review.reviewer_id,
             approved=review.approved,
@@ -549,7 +593,7 @@ async def submit_review(session_id: str, review: SessionReview):
 # =============================================================================
 
 @router.get("/firefighters")
-async def list_firefighter_ids():
+async def list_firefighter_ids(mgr: FirefighterManager = Depends(_get_manager)):
     """
     List available firefighter IDs and their status.
     """
@@ -558,7 +602,7 @@ async def list_firefighter_ids():
 
     results = []
     for ff_id in firefighter_ids:
-        status = sap_connector.check_firefighter_availability(ff_id)
+        status = _sap_connector.check_firefighter_availability(ff_id)
         results.append({
             'firefighter_id': ff_id,
             **status
@@ -570,11 +614,11 @@ async def list_firefighter_ids():
 
 
 @router.get("/firefighters/{firefighter_id}/status")
-async def check_firefighter_status(firefighter_id: str):
+async def check_firefighter_status(firefighter_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Check the availability status of a firefighter ID.
     """
-    status = sap_connector.check_firefighter_availability(firefighter_id)
+    status = _sap_connector.check_firefighter_availability(firefighter_id)
     return status
 
 
@@ -583,7 +627,7 @@ async def check_firefighter_status(firefighter_id: str):
 # =============================================================================
 
 @router.post("/sessions/{session_id}/extend")
-async def extend_session(session_id: str, extension: SessionExtensionRequest):
+async def extend_session(session_id: str, extension: SessionExtensionRequest, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Extend an active firefighter session.
 
@@ -591,7 +635,7 @@ async def extend_session(session_id: str, extension: SessionExtensionRequest):
     Each extension is logged and tracked for audit purposes.
     """
     try:
-        session = await ff_manager.extend_session(
+        session = await mgr.extend_session(
             session_id=session_id,
             requested_by=extension.requested_by,
             extension_minutes=extension.extension_minutes,
@@ -617,14 +661,14 @@ async def extend_session(session_id: str, extension: SessionExtensionRequest):
 # =============================================================================
 
 @router.post("/sessions/{session_id}/controller-review/start")
-async def start_controller_review(session_id: str, data: ControllerReviewStart):
+async def start_controller_review(session_id: str, data: ControllerReviewStart, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Mark a controller review as in progress.
 
     Called when the controller begins reviewing the session activities.
     """
     try:
-        review = await ff_manager.start_controller_review(
+        review = await mgr.start_controller_review(
             session_id=session_id,
             controller_id=data.controller_id
         )
@@ -644,7 +688,7 @@ async def start_controller_review(session_id: str, data: ControllerReviewStart):
 
 
 @router.post("/sessions/{session_id}/controller-review/complete")
-async def complete_controller_review(session_id: str, data: ControllerReviewComplete):
+async def complete_controller_review(session_id: str, data: ControllerReviewComplete, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Complete controller review for a session.
 
@@ -652,7 +696,7 @@ async def complete_controller_review(session_id: str, data: ControllerReviewComp
     Flagged sessions are escalated to security.
     """
     try:
-        review = await ff_manager.complete_controller_review(
+        review = await mgr.complete_controller_review(
             session_id=session_id,
             controller_id=data.controller_id,
             approved=data.approved,
@@ -678,11 +722,11 @@ async def complete_controller_review(session_id: str, data: ControllerReviewComp
 
 
 @router.get("/sessions/{session_id}/controller-review")
-async def get_controller_review(session_id: str):
+async def get_controller_review(session_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get controller review status and details for a session.
     """
-    session = ff_manager.get_session(session_id)
+    session = mgr.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
@@ -705,7 +749,7 @@ async def get_controller_review(session_id: str):
 # =============================================================================
 
 @router.get("/sessions/{session_id}/audit-evidence")
-async def get_audit_evidence(session_id: str):
+async def get_audit_evidence(session_id: str, mgr: FirefighterManager = Depends(_get_manager)):
     """
     Generate comprehensive audit evidence package for a session.
 
@@ -717,7 +761,7 @@ async def get_audit_evidence(session_id: str):
     - Integrity hash for evidence verification
     """
     try:
-        evidence = await ff_manager.generate_audit_evidence(session_id)
+        evidence = await mgr.generate_audit_evidence(session_id)
         return evidence
 
     except ValueError as e:
@@ -727,7 +771,8 @@ async def get_audit_evidence(session_id: str):
 @router.get("/sessions/{session_id}/audit-evidence/export")
 async def export_audit_evidence(
     session_id: str,
-    format: str = Query(default="json", description="Export format: json, csv, pdf_data")
+    format: str = Query(default="json", description="Export format: json, csv, pdf_data"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Export audit evidence in specified format.
@@ -738,7 +783,7 @@ async def export_audit_evidence(
     - pdf_data: Structured data for PDF generation
     """
     try:
-        export = await ff_manager.export_audit_evidence(session_id, format)
+        export = await mgr.export_audit_evidence(session_id, format)
 
         if format == 'csv':
             # Return as downloadable CSV
@@ -770,7 +815,8 @@ async def get_sessions_for_audit(
     start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
     end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
     status: Optional[str] = Query(None, description="Filter by status"),
-    firefighter_id: Optional[str] = Query(None, description="Filter by firefighter ID")
+    firefighter_id: Optional[str] = Query(None, description="Filter by firefighter ID"),
+    mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Get sessions matching audit criteria.
@@ -787,7 +833,7 @@ async def get_sessions_for_audit(
         if status:
             session_status = SessionStatus(status)
 
-        sessions = await ff_manager.get_sessions_for_audit(
+        sessions = await mgr.get_sessions_for_audit(
             start_date=start,
             end_date=end,
             status=session_status,
@@ -814,8 +860,8 @@ async def get_sessions_for_audit(
 # =============================================================================
 
 @router.get("/statistics")
-async def get_firefighter_statistics():
+async def get_firefighter_statistics(mgr: FirefighterManager = Depends(_get_manager)):
     """
     Get firefighter system statistics.
     """
-    return ff_manager.get_statistics()
+    return mgr.get_statistics()

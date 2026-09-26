@@ -168,11 +168,38 @@ class MitigationControl(Base, TimestampMixin):
     last_tested_at = Column(DateTime, nullable=True)
     test_result = Column(String(50), nullable=True)  # passed, failed, partial
 
+    # XL-C: Unified Mitigation Register — link to a PC process control so this
+    # AC mitigation gets testing, sign-off, and framework coverage from the PC module.
+    process_control_id = Column(String(100), nullable=True)  # FK to process_controls.control_id
+
     # Relationships
     violations = relationship("RiskViolation", back_populates="mitigation")
 
     def __repr__(self):
         return f"<MitigationControl(id='{self.control_id}', name='{self.control_name}')>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'control_id': self.control_id,
+            'control_name': self.control_name,
+            'description': self.description,
+            'control_type': self.control_type,
+            'monitoring_frequency': self.monitoring_frequency,
+            'applicable_rule_ids': self.applicable_rule_ids,
+            'owner_user_id': self.owner_user_id,
+            'owner_name': self.owner_name,
+            'owner_email': self.owner_email,
+            'approved_by': self.approved_by,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'valid_from': self.valid_from.isoformat() if self.valid_from else None,
+            'valid_to': self.valid_to.isoformat() if self.valid_to else None,
+            'is_active': self.is_active,
+            'last_tested_at': self.last_tested_at.isoformat() if self.last_tested_at else None,
+            'test_result': self.test_result,
+            'process_control_id': self.process_control_id,
+            'tenant_id': self.tenant_id,
+        }
 
 
 class RiskRuleModel(Base, TimestampMixin):
@@ -226,5 +253,27 @@ class RiskRuleModel(Base, TimestampMixin):
     violation_count = Column(Integer, default=0)
     last_triggered_at = Column(DateTime, nullable=True)
 
+    # Source tracking
+    source = Column(String(20), default='custom')  # 'builtin', 'custom', 'cloned', 'imported'
+    cloned_from = Column(String(50), nullable=True)  # Original rule_id if cloned
+
     def __repr__(self):
-        return f"<RiskRuleModel(id='{self.rule_id}', name='{self.name}')>"
+        return f"<RiskRuleModel(id='{self.rule_id}', name='{self.name}', source='{self.source}')>"
+
+
+class TenantRulePreference(Base, TimestampMixin):
+    """
+    Tracks which built-in rules a tenant has enabled/disabled.
+    By default all built-in rules are active. Tenants can:
+    - Disable specific built-in rules
+    - Clone a built-in rule to customize it (disables original, creates custom copy)
+    """
+    __tablename__ = 'tenant_rule_preferences'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(100), nullable=False, index=True)
+    builtin_rule_id = Column(String(50), nullable=False)  # e.g. SOD-FI-001
+    is_enabled = Column(Boolean, default=True)
+    custom_override_id = Column(Integer, nullable=True)  # FK to risk_rules.id if cloned
+    disabled_by = Column(String(50), nullable=True)
+    disabled_reason = Column(Text, nullable=True)

@@ -125,9 +125,10 @@ class ApproverDeterminationEngine:
     - Full explainability
     """
 
-    def __init__(self, rule_engine: Optional[RuleEngine] = None):
+    def __init__(self, rule_engine: Optional[RuleEngine] = None, tenant_id: str = "tenant_default"):
         """Initialize engine."""
         self.rule_engine = rule_engine or RuleEngine()
+        self._tenant_id = tenant_id
 
         # Load built-in rules if no rules provided
         if not self.rule_engine.ruleset.rules:
@@ -136,6 +137,7 @@ class ApproverDeterminationEngine:
 
         # Approver registry (maps types to actual approvers)
         self._approver_registry: Dict[str, Approver] = {}
+        self._loaded_from_db: bool = False
 
         # Configuration
         self._config = {
@@ -144,6 +146,16 @@ class ApproverDeterminationEngine:
             "enable_ai_optimization": True,
             "default_sla_hours": 24,
         }
+
+    def _ensure_loaded(self):
+        """Load approvers from DB on first access if registry is empty."""
+        if not self._loaded_from_db and not self._approver_registry:
+            try:
+                self.load_from_db()
+                self._loaded_from_db = True
+            except Exception as e:
+                logger.warning(f"Could not load approvers from DB: {e}")
+                self._loaded_from_db = True  # Don't retry on failure
 
     def register_approver(
         self,
@@ -154,7 +166,7 @@ class ApproverDeterminationEngine:
         system_scope: Optional[List[str]] = None,
         email: str = ""
     ) -> Approver:
-        """Register an approver in the system."""
+        """Register an approver in the system and persist to database."""
         approver = Approver(
             approver_id=approver_id,
             approver_name=approver_name,
@@ -164,7 +176,104 @@ class ApproverDeterminationEngine:
             email=email,
         )
         self._approver_registry[approver_id] = approver
+
+        # Persist to database
+        try:
+            from db.database import db_manager
+            with db_manager.session_scope() as session:
+                from db.models.approver import ApproverModel
+                existing = session.query(ApproverModel).filter_by(
+                    tenant_id=self._tenant_id, approver_id=approver_id
+                ).first()
+                if not existing:
+                    record = ApproverModel(
+                        tenant_id=self._tenant_id,
+                        approver_id=approver_id,
+                        name=approver_name,
+                        email=email,
+                        approver_type=approver_type.value,
+                        process_scope=process_scope or [],
+                        system_scope=system_scope or [],
+                        is_active=True,
+                        is_available=True,
+                        status='active',
+                    )
+                    session.add(record)
+                else:
+                    # Update existing record
+                    existing.name = approver_name
+                    existing.email = email
+                    existing.approver_type = approver_type.value
+                    existing.process_scope = process_scope or []
+                    existing.system_scope = system_scope or []
+                    existing.is_active = True
+                    existing.status = 'active'
+        except Exception as e:
+            logger.warning(f"Could not persist approver to DB: {e}")
+
         return approver
+
+    def load_from_db(self, db_session=None, tenant_id: str = None) -> int:
+        """
+        Populate _approver_registry from database.
+
+        Loads all active approvers for the tenant and converts them
+        to in-memory Approver objects used by the determination engine.
+
+        Args:
+            db_session: SQLAlchemy Session (optional, uses db_manager if not provided)
+            tenant_id: Tenant identifier (optional, uses self._tenant_id if not provided)
+
+        Returns:
+            Number of approvers loaded
+        """
+        tenant_id = tenant_id or self._tenant_id
+
+        if db_session is not None:
+            return self._load_approvers_from_session(db_session, tenant_id)
+
+        from db.database import db_manager
+        with db_manager.session_scope() as session:
+            return self._load_approvers_from_session(session, tenant_id)
+
+    def _load_approvers_from_session(self, db_session, tenant_id: str) -> int:
+        """Internal: load approvers using a provided session."""
+        from db.models.approver import ApproverModel
+
+        approvers = db_session.query(ApproverModel).filter(
+            ApproverModel.tenant_id == tenant_id,
+            ApproverModel.status == 'active',
+            ApproverModel.is_active == True
+        ).all()
+
+        self._approver_registry.clear()
+
+        for a in approvers:
+            try:
+                approver_type = ApproverType(a.approver_type)
+            except ValueError:
+                logger.warning(f"Unknown approver type '{a.approver_type}' for {a.approver_id}, skipping")
+                continue
+
+            approver = Approver(
+                approver_id=a.approver_id,
+                approver_name=a.name,
+                approver_type=approver_type,
+                email=a.email or "",
+                process_scope=a.process_scope or [],
+                system_scope=a.system_scope or [],
+                is_available=a.is_available,
+                is_ooo=a.is_ooo,
+                ooo_until=a.ooo_until,
+                delegate_id=a.delegate_id,
+                avg_response_hours=a.avg_response_hours or 0.0,
+                approval_rate=a.approval_rate or 0.0,
+                current_queue_size=a.current_queue_size or 0,
+            )
+            self._approver_registry[a.approver_id] = approver
+
+        logger.info(f"Loaded {len(self._approver_registry)} approvers from database for tenant {tenant_id}")
+        return len(self._approver_registry)
 
     def determine(
         self,
@@ -175,6 +284,7 @@ class ApproverDeterminationEngine:
 
         Main entry point for approver determination.
         """
+        self._ensure_loaded()
         result = DeterminationResult(
             request_id=request.request_id,
         )

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -23,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { REQUEST_TYPES, RequestType } from '../../config/roles';
 import { provisioningApi, ConnectorStatus } from '../../services/provisioningApi';
+import { usersApi, rolesApi, api } from '../../services/api';
 
 interface RequestTypeOption {
   id: RequestType;
@@ -120,159 +122,34 @@ interface UserProfile {
   location: string;
 }
 
-// Mock users for source user search (Copy User)
-const mockUsers = [
-  { id: 'john.doe', name: 'John Doe', department: 'Finance', title: 'Senior Accountant' },
-  { id: 'jane.smith', name: 'Jane Smith', department: 'Sales', title: 'Sales Manager' },
-  { id: 'mike.wilson', name: 'Mike Wilson', department: 'IT', title: 'Developer' },
-  { id: 'sarah.johnson', name: 'Sarah Johnson', department: 'HR', title: 'HR Specialist' },
-  { id: 'david.brown', name: 'David Brown', department: 'Operations', title: 'Operations Lead' },
-];
 
-// Mock existing roles for the current user
-const existingUserRoles: Record<string, ExistingUserRole[]> = {
-  'john.doe': [
-    {
-      id: 'EUR-001',
-      roleId: 'ROLE-001',
-      roleName: 'SAP_MM_BUYER',
-      system: 'SAP ECC',
-      riskLevel: 'medium',
-      assignedDate: '2024-01-15',
-      validFrom: '2024-01-15',
-      validTo: '2025-01-15',
-      status: 'expiring_soon',
-      lastUsed: '2025-01-10',
-    },
-    {
-      id: 'EUR-002',
-      roleId: 'ROLE-002',
-      roleName: 'SAP_FI_AP_CLERK',
-      system: 'SAP ECC',
-      riskLevel: 'low',
-      assignedDate: '2023-06-01',
-      validFrom: '2023-06-01',
-      validTo: null,
-      status: 'active',
-      lastUsed: '2025-01-12',
-    },
-    {
-      id: 'EUR-003',
-      roleId: 'ROLE-004',
-      roleName: 'AWS_DEVELOPER',
-      system: 'AWS',
-      riskLevel: 'medium',
-      assignedDate: '2024-03-20',
-      validFrom: '2024-03-20',
-      validTo: '2024-09-20',
-      status: 'expired',
-      lastUsed: '2024-09-15',
-    },
-  ],
-  'jane.smith': [
-    {
-      id: 'EUR-004',
-      roleId: 'ROLE-005',
-      roleName: 'SALESFORCE_ADMIN',
-      system: 'Salesforce',
-      riskLevel: 'high',
-      assignedDate: '2024-02-01',
-      validFrom: '2024-02-01',
-      validTo: null,
-      status: 'active',
-      lastUsed: '2025-01-14',
-    },
-    {
-      id: 'EUR-005',
-      roleId: 'ROLE-006',
-      roleName: 'HR_EMPLOYEE_VIEWER',
-      system: 'Workday',
-      riskLevel: 'low',
-      assignedDate: '2023-11-01',
-      validFrom: '2023-11-01',
-      validTo: '2025-11-01',
-      status: 'active',
-      lastUsed: '2025-01-08',
-    },
-  ],
-  'current_user': [
-    {
-      id: 'EUR-006',
-      roleId: 'ROLE-002',
-      roleName: 'SAP_FI_AP_CLERK',
-      system: 'SAP ECC',
-      riskLevel: 'low',
-      assignedDate: '2024-05-01',
-      validFrom: '2024-05-01',
-      validTo: null,
-      status: 'active',
-      lastUsed: '2025-01-15',
-    },
-    {
-      id: 'EUR-007',
-      roleId: 'ROLE-006',
-      roleName: 'HR_EMPLOYEE_VIEWER',
-      system: 'Workday',
-      riskLevel: 'low',
-      assignedDate: '2024-08-01',
-      validFrom: '2024-08-01',
-      validTo: '2025-08-01',
-      status: 'active',
-      lastUsed: '2025-01-10',
-    },
-  ],
-};
+// Helper to map backend role catalog entries to the Role interface
+function mapCatalogRole(entry: any): Role {
+  return {
+    id: entry.id ?? entry.role_id ?? '',
+    name: entry.name ?? entry.role_name ?? '',
+    description: entry.description ?? '',
+    system: entry.system ?? entry.system_type ?? '',
+    riskLevel: entry.risk_level ?? entry.riskLevel ?? 'low',
+    sodConflicts: entry.sod_conflicts ?? entry.sodConflicts ?? [],
+  };
+}
 
-const availableRoles: Role[] = [
-  {
-    id: 'ROLE-001',
-    name: 'SAP_MM_BUYER',
-    description: 'Procurement buyer role with purchase order creation',
-    system: 'SAP ECC',
-    riskLevel: 'medium',
-    sodConflicts: [],
-  },
-  {
-    id: 'ROLE-002',
-    name: 'SAP_FI_AP_CLERK',
-    description: 'Accounts payable processing clerk',
-    system: 'SAP ECC',
-    riskLevel: 'low',
-    sodConflicts: [],
-  },
-  {
-    id: 'ROLE-003',
-    name: 'SAP_FI_GL_ACCOUNTANT',
-    description: 'General ledger accounting and posting',
-    system: 'SAP ECC',
-    riskLevel: 'high',
-    sodConflicts: ['Conflicts with SAP_FI_AP_CLERK - Create/Post GL Entry'],
-  },
-  {
-    id: 'ROLE-004',
-    name: 'AWS_DEVELOPER',
-    description: 'AWS development access for cloud resources',
-    system: 'AWS',
-    riskLevel: 'medium',
-    sodConflicts: [],
-  },
-  {
-    id: 'ROLE-005',
-    name: 'SALESFORCE_ADMIN',
-    description: 'Salesforce administrator access',
-    system: 'Salesforce',
-    riskLevel: 'high',
-    sodConflicts: [],
-  },
-  {
-    id: 'ROLE-006',
-    name: 'HR_EMPLOYEE_VIEWER',
-    description: 'View employee records in Workday',
-    system: 'Workday',
-    riskLevel: 'low',
-    sodConflicts: [],
-  },
-];
+// Helper to map backend user role entries to the ExistingUserRole interface
+function mapUserRole(entry: any, idx: number): ExistingUserRole {
+  return {
+    id: entry.id ?? `EUR-${idx}`,
+    roleId: entry.role_id ?? entry.roleId ?? entry.id ?? '',
+    roleName: entry.role_name ?? entry.roleName ?? entry.name ?? '',
+    system: entry.system ?? entry.system_type ?? '',
+    riskLevel: entry.risk_level ?? entry.riskLevel ?? 'low',
+    assignedDate: entry.assigned_date ?? entry.assignedDate ?? '',
+    validFrom: entry.valid_from ?? entry.validFrom ?? '',
+    validTo: entry.valid_to ?? entry.validTo ?? null,
+    status: entry.status ?? 'active',
+    lastUsed: entry.last_used ?? entry.lastUsed,
+  };
+}
 
 const riskConfig = {
   low: { color: 'bg-green-100 text-green-800', label: 'Low Risk' },
@@ -280,15 +157,6 @@ const riskConfig = {
   high: { color: 'bg-orange-100 text-orange-800', label: 'High Risk' },
   critical: { color: 'bg-red-100 text-red-800', label: 'Critical Risk' },
 };
-
-// Mock target systems
-const defaultTargetSystems: TargetSystem[] = [
-  { id: 'sap_ecc', name: 'SAP ECC', type: 'sap', connected: true },
-  { id: 'aws_iam', name: 'AWS IAM', type: 'cloud', connected: true },
-  { id: 'azure_ad', name: 'Azure AD', type: 'identity', connected: true },
-  { id: 'workday', name: 'Workday', type: 'hr', connected: false },
-  { id: 'salesforce', name: 'Salesforce', type: 'crm', connected: true },
-];
 
 export function NewAccessRequest() {
   const navigate = useNavigate();
@@ -324,13 +192,53 @@ export function NewAccessRequest() {
   const [sourceUser, setSourceUser] = useState('');
   const [sourceUserSearch, setSourceUserSearch] = useState('');
   const [showSourceUserDropdown, setShowSourceUserDropdown] = useState(false);
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => usersApi.list(),
+  });
+  const allUsers: { id: string; name: string; department: string; title: string }[] =
+    (usersData as any)?.data?.items ?? [];
   const [sourceUserRoles, setSourceUserRoles] = useState<ExistingUserRole[]>([]);
   const [selectedSystemsToCopy, setSelectedSystemsToCopy] = useState<string[]>([]);
 
+  // Fetch available roles from role catalog API
+  const { data: catalogData } = useQuery({
+    queryKey: ['role-catalog'],
+    queryFn: () => rolesApi.getCatalog().then((r) => r.data),
+  });
+  const availableRoles: Role[] = useMemo(() => {
+    if (!catalogData) return [];
+    const items = Array.isArray(catalogData) ? catalogData : catalogData?.roles ?? catalogData?.items ?? [];
+    return items.map(mapCatalogRole);
+  }, [catalogData]);
+
+  // Fetch target systems from integrations API
+  const { data: systemsData } = useQuery({
+    queryKey: ['integration-systems'],
+    queryFn: () => api.get('/integrations/connectors').then((r) => r.data),
+  });
+
   // Target systems for provisioning
-  const [targetSystems, setTargetSystems] = useState<TargetSystem[]>(defaultTargetSystems);
+  const [targetSystems, setTargetSystems] = useState<TargetSystem[]>([]);
   const [selectedTargetSystems, setSelectedTargetSystems] = useState<string[]>([]);
-  const [connectors, setConnectors] = useState<ConnectorStatus[]>([]);
+  const [, setConnectors] = useState<ConnectorStatus[]>([]);
+
+  // Populate target systems from API response
+  useEffect(() => {
+    if (systemsData) {
+      const items = Array.isArray(systemsData) ? systemsData : systemsData?.connectors ?? [];
+      if (items.length > 0) {
+        const systems: TargetSystem[] = items.map((c: any) => ({
+          id: c.connector_id ?? c.id ?? '',
+          name: c.name ?? '',
+          type: c.system_type ?? c.type ?? '',
+          connected: c.is_connected ?? c.connected ?? false,
+        }));
+        setTargetSystems(systems);
+      }
+    }
+  }, [systemsData]);
 
   // Lock/Unlock specific
   const [lockReason, setLockReason] = useState('');
@@ -340,7 +248,6 @@ export function NewAccessRequest() {
   const [removeAction, setRemoveAction] = useState<'lock' | 'disable' | 'delete'>('lock');
 
   const selectedRequestType = requestTypeOptions.find((r) => r.id === requestType);
-  const needsRoleSelection = requestType === REQUEST_TYPES.NEW_ACCOUNT || requestType === REQUEST_TYPES.CHANGE_ACCOUNT;
   const isCopyUser = requestType === REQUEST_TYPES.COPY_USER;
   const isNewAccount = requestType === REQUEST_TYPES.NEW_ACCOUNT;
   const isChangeAccount = requestType === REQUEST_TYPES.CHANGE_ACCOUNT;
@@ -358,39 +265,48 @@ export function NewAccessRequest() {
 
   const totalSteps = getTotalSteps();
 
-  // Load connectors from API
+  // Load connectors from provisioning API (supplements systems data)
   useEffect(() => {
     const loadConnectors = async () => {
       try {
         const response = await provisioningApi.listConnectors();
         if (response.connectors && response.connectors.length > 0) {
           setConnectors(response.connectors);
-          // Map connectors to target systems
-          const systems: TargetSystem[] = response.connectors.map((c) => ({
-            id: c.connector_id,
-            name: c.name,
-            type: c.system_type,
-            connected: c.is_connected,
-          }));
-          setTargetSystems(systems);
+          // If integrations query didn't populate systems, use provisioning connectors
+          if (targetSystems.length === 0) {
+            const systems: TargetSystem[] = response.connectors.map((c) => ({
+              id: c.connector_id,
+              name: c.name,
+              type: c.system_type,
+              connected: c.is_connected,
+            }));
+            setTargetSystems(systems);
+          }
         }
       } catch (error) {
-        console.log('Using default target systems');
+        // Connector loading deferred to integrations API
       }
     };
     loadConnectors();
-  }, []);
+  }, [targetSystems.length]);
 
-  // Get existing roles for the user
-  const userRolesKey = requestForOther ? targetUser.toLowerCase().replace(/\s+/g, '.') : 'current_user';
-  const currentUserRoles = useMemo(() => {
-    return existingUserRoles[userRolesKey] || existingUserRoles['current_user'] || [];
-  }, [userRolesKey]);
+  // Get existing roles for the user from API
+  const userRolesKey = requestForOther ? targetUser.toLowerCase().replace(/\s+/g, '.') : 'me';
+  const { data: userRolesData } = useQuery({
+    queryKey: ['user-roles', userRolesKey],
+    queryFn: () => usersApi.getRoles(userRolesKey).then((r) => r.data),
+    enabled: !!userRolesKey,
+  });
+  const currentUserRoles: ExistingUserRole[] = useMemo(() => {
+    if (!userRolesData) return [];
+    const items = Array.isArray(userRolesData) ? userRolesData : userRolesData?.roles ?? [];
+    return items.map((entry: any, idx: number) => mapUserRole(entry, idx));
+  }, [userRolesData]);
 
   // Source user search filter
   const filteredUsers = useMemo(() => {
-    if (!sourceUserSearch) return mockUsers;
-    return mockUsers.filter(
+    if (!sourceUserSearch) return allUsers;
+    return allUsers.filter(
       (u) =>
         u.name.toLowerCase().includes(sourceUserSearch.toLowerCase()) ||
         u.id.toLowerCase().includes(sourceUserSearch.toLowerCase()) ||
@@ -398,14 +314,23 @@ export function NewAccessRequest() {
     );
   }, [sourceUserSearch]);
 
-  // Load source user roles when selected
+  // Load source user roles from API when selected
   useEffect(() => {
     if (sourceUser) {
-      const roles = existingUserRoles[sourceUser] || [];
-      setSourceUserRoles(roles);
-      // Get unique systems from source user roles
-      const systems = [...new Set(roles.map((r) => r.system))];
-      setSelectedSystemsToCopy(systems);
+      usersApi
+        .getRoles(sourceUser)
+        .then((res) => {
+          const data = res.data;
+          const items = Array.isArray(data) ? data : data?.roles ?? [];
+          const roles = items.map((entry: any, idx: number) => mapUserRole(entry, idx));
+          setSourceUserRoles(roles);
+          const systemSet = new Set<string>(roles.map((r: ExistingUserRole) => r.system));
+          setSelectedSystemsToCopy(Array.from(systemSet));
+        })
+        .catch(() => {
+          setSourceUserRoles([]);
+          setSelectedSystemsToCopy([]);
+        });
     }
   }, [sourceUser]);
 

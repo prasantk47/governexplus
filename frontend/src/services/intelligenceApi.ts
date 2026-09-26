@@ -15,15 +15,18 @@ api.interceptors.request.use((cfg) => {
 
 export interface HealthScore {
   overall: number;
-  trend: number;
-  trend_label: string;
-  components: {
+  overall_score?: number;
+  trend: number | string;
+  trend_label?: string;
+  components?: {
     access: number;
     controls: number;
     risk: number;
     audit: number;
   };
-  narrative: string;
+  pillars?: Record<string, { score: number; label: string; [k: string]: unknown }>;
+  narrative?: string;
+  computed_at?: string;
 }
 
 export interface AttentionItem {

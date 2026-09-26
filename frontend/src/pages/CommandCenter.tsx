@@ -594,7 +594,7 @@ export function CommandCenter() {
             <p className="text-indigo-200 text-sm font-medium mb-1">{greeting},</p>
             <h1 className="text-3xl font-bold text-white tracking-tight">{displayName}</h1>
             <p className="mt-2 text-indigo-200 text-sm max-w-md leading-relaxed">
-              {health.narrative}
+              {health.narrative || 'Your organization\'s GRC health is being monitored continuously.'}
             </p>
 
             {/* Alert summary pills */}
@@ -642,7 +642,7 @@ export function CommandCenter() {
               <span className={health.trend >= 0 ? 'text-emerald-300 font-semibold' : 'text-red-300 font-semibold'}>
                 {health.trend >= 0 ? '+' : ''}{health.trend}%
               </span>
-              <span className="text-indigo-300 text-xs">{health.trend_label}</span>
+              <span className="text-indigo-300 text-xs">{health.trend_label || 'from last assessment'}</span>
             </div>
 
             {/* Component bars */}

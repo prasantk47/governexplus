@@ -509,7 +509,9 @@ export function CommandCenter() {
   const rawHealth = healthScore || MOCK_HEALTH;
   const health = {
     overall: rawHealth.overall ?? rawHealth.overall_score ?? MOCK_HEALTH.overall,
-    trend: rawHealth.trend ?? MOCK_HEALTH.trend,
+    trend: (typeof rawHealth.trend === 'number' ? rawHealth.trend : MOCK_HEALTH.trend) as number,
+    trend_label: (rawHealth as any).trend_label || 'from last assessment',
+    narrative: (rawHealth as any).narrative || 'Your organization\'s GRC health is being monitored continuously.',
     components: rawHealth.components ?? {
       access: rawHealth.pillars?.access_control?.score ?? 78,
       controls: rawHealth.pillars?.process_control?.score ?? 91,
@@ -903,7 +905,7 @@ export function CommandCenter() {
                       <div className="h-3 bg-gray-100 dark:bg-slate-700/50 rounded w-5/6" />
                     </div>
                   ))
-                : allInsights.slice(0, 3).map((insight) => {
+                : allInsights.slice(0, 3).map((insight: any) => {
                     const severityColors: Record<string, string> = {
                       critical: 'border-red-400',
                       high: 'border-orange-400',

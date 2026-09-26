@@ -291,6 +291,28 @@ async def analyze_role(
 
 
 # =============================================================================
+# Violation List — used by Dashboard and Risk pages
+# =============================================================================
+
+@router.get("/violations", summary="List all risk violations")
+async def list_violations(
+    limit: int = Query(50, ge=1, le=500),
+    status: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """List risk violations from the database."""
+    from db.models.risk import RiskViolation
+    q = db.query(RiskViolation)
+    if status:
+        q = q.filter(RiskViolation.status == status)
+    if severity:
+        q = q.filter(RiskViolation.severity == severity)
+    violations = q.order_by(RiskViolation.created_at.desc()).limit(limit).all()
+    return [v.to_dict() for v in violations]
+
+
+# =============================================================================
 # AC-16: Org-Level Risk Ranking
 # =============================================================================
 

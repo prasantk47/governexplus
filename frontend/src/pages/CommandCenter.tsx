@@ -505,7 +505,18 @@ export function CommandCenter() {
     },
   });
 
-  const health = healthScore || MOCK_HEALTH;
+  // Map API response shape to component's expected shape
+  const rawHealth = healthScore || MOCK_HEALTH;
+  const health = {
+    overall: rawHealth.overall ?? rawHealth.overall_score ?? MOCK_HEALTH.overall,
+    trend: rawHealth.trend ?? MOCK_HEALTH.trend,
+    components: rawHealth.components ?? {
+      access: rawHealth.pillars?.access_control?.score ?? 78,
+      controls: rawHealth.pillars?.process_control?.score ?? 91,
+      risk: rawHealth.pillars?.risk_management?.score ?? 82,
+      audit: rawHealth.pillars?.audit_management?.score ?? 88,
+    },
+  };
   const items: AttentionItem[] = attentionItems || MOCK_ATTENTION;
   const allInsights = insights || MOCK_INSIGHTS;
 

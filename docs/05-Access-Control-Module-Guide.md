@@ -1838,7 +1838,7 @@ POST /roles/mine
 }
 ```
 
-### 8.3 Business Role Management
+### 8.3 Role Design Studio — Business Role Management
 
 GovernexPlus supports the SAP role hierarchy:
 

@@ -624,7 +624,7 @@ Engagement: AP Process Review Q3 2026
 |---|---|---|
 | Narrative | Descriptive text document | Process descriptions, understanding documentation, meeting notes |
 | Schedule | Structured data table/spreadsheet | Sample populations, exception listings, comparative analysis |
-| Extract | System-generated data export | SAP reports, ARA exports, database queries |
+| Extract | System-generated data export | SAP reports, Risk Intelligence Engine exports, database queries |
 | Screenshot | Image capture | System configuration evidence, error messages, approval screens |
 | Correspondence | Email or letter | Management responses, auditee communications, confirmations |
 

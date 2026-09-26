@@ -1089,7 +1089,7 @@ For each proposed role:
 - Create the role in the Role Designer (with automatic SoD check)
 - Propose a role assignment transition plan
 
-### 8.3 Business Role Management
+### 8.3 Role Design Studio — Business Role Management
 
 Business roles abstract the technical complexity of SAP authorization from business users:
 
@@ -1104,7 +1104,7 @@ SoD checks: Verified clean — no conflicts
 
 **Creating a business role:**
 
-1. Navigate to **Roles → Business Role Management → New Business Role**
+1. Navigate to **Roles → Role Design Studio → New Business Role**
 2. Define:
    - Business role name and description
    - Target user population (department + job code rules)

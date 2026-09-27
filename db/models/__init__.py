@@ -62,7 +62,7 @@ from .grc_foundation import (
     FrameworkRequirement,
 )
 
-# Risk Management Module (RM-01 through RM-31 + SAP GRC gaps)
+# Risk Management Module (RM-01 through RM-31 + GovernexPlus gaps)
 from .risk_management import (
     EnterpriseRisk,
     RiskCategory,
@@ -80,7 +80,7 @@ from .risk_management import (
     RiskIncident,
     IncidentSeverity,
     IncidentStatus,
-    # SAP GRC gap models
+    # GovernexPlus gap models
     BusinessObjective,
     ObjectiveCategory,
     ObjectiveStatus,
@@ -95,7 +95,7 @@ from .risk_management import (
     OpportunityStatus,
 )
 
-# Process Control Module (PC-01 through PC-32 + SAP GRC gaps)
+# Process Control Module (PC-01 through PC-32 + GovernexPlus gaps)
 from .process_control import (
     ProcessControl,
     ControlType,
@@ -118,7 +118,7 @@ from .process_control import (
     EvidenceStatus,
     SignOffCertification,
     SignOffStatus,
-    # SAP GRC gap models
+    # GovernexPlus gap models
     ControlObjective,
     ObjectiveStatus as PCObjectiveStatus,
     SubProcess,
@@ -133,7 +133,7 @@ from .process_control import (
     ResponseStatus as PCResponseStatus,
 )
 
-# Audit Management Module (AM-01 through AM-32 + SAP GRC gaps)
+# Audit Management Module (AM-01 through AM-32 + GovernexPlus gaps)
 from .audit_management import (
     AuditableEntity,
     AuditableEntityType,
@@ -156,7 +156,7 @@ from .audit_management import (
     ActionStatus,
     AuditorTimeEntry,
     AuditorResource,
-    # SAP GRC gap models
+    # GovernexPlus gap models
     AuditDimension,
     DimensionType,
     AuditAnnouncement,
@@ -249,7 +249,7 @@ __all__ = [
     "RiskIncident",
     "IncidentSeverity",
     "IncidentStatus",
-    # Risk Management — SAP GRC gaps
+    # Risk Management — GovernexPlus gaps
     "BusinessObjective",
     "ObjectiveCategory",
     "ObjectiveStatus",
@@ -284,7 +284,7 @@ __all__ = [
     "EvidenceStatus",
     "SignOffCertification",
     "SignOffStatus",
-    # Process Control — SAP GRC gaps
+    # Process Control — GovernexPlus gaps
     "ControlObjective",
     "PCObjectiveStatus",
     "SubProcess",
@@ -319,7 +319,7 @@ __all__ = [
     "ActionStatus",
     "AuditorTimeEntry",
     "AuditorResource",
-    # Audit Management — SAP GRC gaps
+    # Audit Management — GovernexPlus gaps
     "AuditDimension",
     "DimensionType",
     "AuditAnnouncement",

@@ -1,5 +1,5 @@
 # Risk Analytics Module
-# Advanced analytics for GOVERNEX+ ARA
+# Advanced analytics for GOVERNEX+ Risk Intelligence
 
 """
 Risk Analytics for Access Risk Analysis.
@@ -12,7 +12,7 @@ Provides:
 - High-risk entity leaderboards
 - Risk concentration metrics
 
-SAP GRC: Basic reporting
+legacy GRC: Basic reporting
 GOVERNEX+: Intelligent analytics with economic impact quantification
 """
 

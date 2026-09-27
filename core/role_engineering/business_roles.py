@@ -1090,7 +1090,7 @@ class RoleMethodologyOrchestrator:
         # Stage-specific validation
         if next_stage == "analyze" and self.db:
             # Should run SoD check before proceeding
-            pass  # ARA integration point
+            pass  # Risk Intelligence integration point
         if next_stage == "approve":
             if not validation_data or not validation_data.get("risk_analysis_completed"):
                 return {"error": "Risk analysis must be completed before approval"}

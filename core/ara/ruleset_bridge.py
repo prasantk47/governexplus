@@ -1,6 +1,6 @@
 # core/ara/ruleset_bridge.py
 # Loads the full delivered SoD library (core/rules/sod_ruleset.py, 121 rules)
-# into ARA's runtime RuleEngine, converting library SoDRule -> RuleDefinition.
+# into Risk Intelligence's runtime RuleEngine, converting library SoDRule -> RuleDefinition.
 # Idempotent; existing rule_ids (defaults, tenant customs) are not overwritten.
 
 import logging

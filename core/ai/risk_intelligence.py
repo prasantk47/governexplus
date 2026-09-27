@@ -83,7 +83,7 @@ class RiskIntelligenceEngine:
     """
     AI-Powered Risk Intelligence Engine
 
-    Key advantages over traditional SAP GRC:
+    Key advantages over traditional legacy GRC:
 
     1. CONTEXTUAL SCORING: Doesn't just detect SoD - understands context
        - Same access might be high-risk for one user, low for another

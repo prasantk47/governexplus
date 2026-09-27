@@ -1,7 +1,7 @@
 """
 Firefighter API Router
 
-Endpoints for emergency access management (Firefighter/EAM functionality).
+Endpoints for Privileged Access Governor — emergency elevated access management.
 Implements the complete Firefighter workflow:
 - Request with Reason Codes
 - Multi-level Approval with SLAs

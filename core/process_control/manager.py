@@ -1332,7 +1332,7 @@ class ProcessControlManager:
         """
         SOD_BRIDGE: evaluate a pre-computed SoD violation count against a
         threshold.  Violation counts are supplied in rule_definition to avoid
-        a circular dependency on the ARA engine at execution time.
+        a circular dependency on the Risk Intelligence engine at execution time.
 
         rule_definition keys: violation_count (int), threshold (int), details (list).
         """
@@ -1460,10 +1460,10 @@ class ProcessControlManager:
         details: dict,
     ) -> dict:
         """
-        XI-02 SoD bridge — create a CCM deficiency directly from an ARA
+        XI-02 SoD bridge — create a CCM deficiency directly from an Risk Intelligence
         SoD violation count breach without requiring a CCMRule record.
 
-        Intended to be called from the ARA router after a risk analysis run
+        Intended to be called from the Risk Intelligence router after a risk analysis run
         when aggregate violation counts exceed the configured threshold.
 
         Parameters
@@ -1525,7 +1525,7 @@ class ProcessControlManager:
                 f"(threshold: {threshold})"
             ),
             "description": (
-                f"The ARA engine detected {violation_count} SoD violations exceeding "
+                f"The Risk Intelligence engine detected {violation_count} SoD violations exceeding "
                 f"the configured threshold of {threshold}."
             ),
             "severity": "significant_deficiency" if violation_count > threshold * 2 else "observation",

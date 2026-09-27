@@ -1,4 +1,4 @@
-# ARA Real-Time Risk Evaluation Pipeline
+# Risk Intelligence Real-Time Risk Evaluation Pipeline
 # Orchestrates streaming risk analysis
 
 """
@@ -10,7 +10,7 @@ Orchestrates:
 - Result publishing
 - Audit trail generation
 
-This is the core integration that makes GOVERNEX+ superior to SAP GRC:
+This is the core integration that makes GOVERNEX+ superior to legacy GRC:
 - Sub-second risk evaluation
 - ML-assisted anomaly detection
 - Context-aware scoring
@@ -35,7 +35,7 @@ from .events import (
 from .consumer import ARAKafkaConsumer, ConsumerConfig, create_consumer
 from .producer import ARAKafkaProducer, ProducerConfig, create_producer
 
-# Import ARA engine components
+# Import Risk Intelligence engine components
 from ..engine import AccessRiskEngine
 from ..models import RiskContext, UserContext
 from ..ml.features import FeatureExtractor, BehaviorFeatureVector, extract_session_features
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PipelineConfig:
-    """Configuration for the ARA real-time pipeline."""
+    """Configuration for the Risk Intelligence real-time pipeline."""
     # Kafka settings
     bootstrap_servers: List[str]
     consumer_group: str = "ara-engine"
@@ -80,7 +80,7 @@ class ARARealTimePipeline:
 
     Integrates:
     - Kafka consumer/producer
-    - ARA rule engine
+    - Risk Intelligence rule engine
     - ML anomaly scorer
     - Audit logging
 
@@ -89,7 +89,7 @@ class ARARealTimePipeline:
 
     def __init__(self, config: PipelineConfig):
         """
-        Initialize the ARA pipeline.
+        Initialize the Risk Intelligence pipeline.
 
         Args:
             config: Pipeline configuration
@@ -148,7 +148,7 @@ class ARARealTimePipeline:
             blocking: Block current thread if True
             mock: Use mock Kafka for testing
         """
-        logger.info("Starting ARA real-time pipeline...")
+        logger.info("Starting Risk Intelligence real-time pipeline...")
         self.running = True
         self._metrics["start_time"] = datetime.now()
 
@@ -163,7 +163,7 @@ class ARARealTimePipeline:
 
     def stop(self):
         """Stop the pipeline gracefully."""
-        logger.info("Stopping ARA pipeline...")
+        logger.info("Stopping Risk Intelligence pipeline...")
         self.running = False
 
         if self.consumer:
@@ -174,7 +174,7 @@ class ARARealTimePipeline:
             self.producer.close()
 
         self.executor.shutdown(wait=True)
-        logger.info("ARA pipeline stopped")
+        logger.info("Risk Intelligence pipeline stopped")
 
     def _init_kafka(self, mock: bool = False):
         """Initialize Kafka consumer and producer."""
@@ -247,7 +247,7 @@ class ARARealTimePipeline:
             context = self._build_context(event)
             access_map = self._build_access_map(event)
 
-            # Run ARA analysis
+            # Run Risk Intelligence analysis
             result = self.ara_engine.analyze_user(
                 user_id=event.user_id,
                 access=access_map,
@@ -591,7 +591,7 @@ def create_pipeline(
     **kwargs
 ) -> ARARealTimePipeline:
     """
-    Factory function to create ARA pipeline.
+    Factory function to create Risk Intelligence pipeline.
 
     Args:
         bootstrap_servers: Kafka broker addresses

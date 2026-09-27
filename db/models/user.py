@@ -169,7 +169,7 @@ class Role(Base, TimestampMixin):
     user_count = Column(Integer, default=0)
     transaction_count = Column(Integer, default=0)
 
-    # SAP GRC role engineering gap fields
+    # GovernexPlus role engineering gap fields
     prerequisites = Column(JSON, nullable=True)             # list of prerequisite descriptions
     reaffirmation_days = Column(Integer, nullable=True)     # days until reaffirmation required
     methodology_stage = Column(String(50), nullable=True)   # define/authorize/derive/analyze/test/approve/generate/provision

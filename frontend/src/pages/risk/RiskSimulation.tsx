@@ -54,7 +54,7 @@ export function RiskSimulation() {
 
   const { data: catalogData } = useQuery({
     queryKey: ['roleCatalog'],
-    queryFn: () => api.get('/role-engineering/catalog').then(r => r.data),
+    queryFn: () => api.get('/role-studio/catalog').then(r => r.data),
   });
 
   const [selectedUser, setSelectedUser] = useState<string>('');

@@ -12,7 +12,7 @@ from core.notifications import (
     NotificationChannel, NotificationPriority
 )
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter(tags=["Notifications"])
 
 # Global service instance
 notification_service = NotificationService()

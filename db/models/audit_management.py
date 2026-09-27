@@ -936,7 +936,7 @@ class AuditorResource(Base, TimestampMixin):
     title = Column(String(255), nullable=True)
 
     # Competencies
-    skills = Column(JSON, nullable=True)           # ["SAP GRC", "IFRS", "IT Audit", ...]
+    skills = Column(JSON, nullable=True)           # ["GovernexPlus", "IFRS", "IT Audit", ...]
     certifications = Column(JSON, nullable=True)   # ["CIA", "CISA", "CPA", "CISM", ...]
 
     # Capacity
@@ -1034,7 +1034,7 @@ class AuditAnnouncement(Base, TimestampMixin):
 
     Records the announcement communication (subject + body), the recipient
     list with acknowledgment timestamps, and the sending auditor.  This
-    closes the SAP GRC AM gap for formal engagement kick-off notifications
+    closes the GovernexPlus AM gap for formal engagement kick-off notifications
     (AM-SAP-GAP-12).
     """
     __tablename__ = 'audit_announcements'

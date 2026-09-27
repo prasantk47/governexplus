@@ -66,7 +66,7 @@ class NLPPolicyEngine:
     - "What would happen if I gave John the AP_CLERK role?"
     - "Show me high-risk users trending up"
 
-    Key advantages over traditional SAP GRC:
+    Key advantages over traditional legacy GRC:
     1. Zero training required - just type naturally
     2. Context-aware - understands "my", "my team", etc.
     3. Actionable results - directly links to remediation

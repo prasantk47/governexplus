@@ -1,7 +1,7 @@
 """
 Advanced Report Builder
 
-SAP GRC-equivalent report generation with custom report builder,
+legacy GRC-equivalent report generation with custom report builder,
 templates, scheduling, and multi-format export.
 """
 

@@ -4,7 +4,7 @@
 """
 SoD Reports for GOVERNEX+.
 
-SAP Equivalent: SAP GRC Access Control Risk Analysis Reports
+SAP Equivalent: legacy GRC Access Control Risk Analysis Reports
 
 SEGREGATION OF DUTIES is the heart of access control auditing.
 These reports answer: "Who can do conflicting things?"

@@ -190,7 +190,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.SOD,
         report_class="SoDConflictReport",
         is_critical=True,
-        sap_equivalent="SAP GRC Access Control - Risk Analysis",
+        sap_equivalent="legacy GRC Access Control - Risk Analysis",
         typical_use_case="SOX compliance, internal audit, access certification",
     ),
     "SOD_RISK_MATRIX": ReportDefinition(
@@ -200,7 +200,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.SOD,
         report_class="SoDRiskMatrix",
         is_critical=False,
-        sap_equivalent="SAP GRC Dashboards",
+        sap_equivalent="legacy GRC Dashboards",
         typical_use_case="Executive reporting, risk assessment",
     ),
     "SOD_MITIGATIONS": ReportDefinition(
@@ -210,7 +210,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.SOD,
         report_class="SoDMitigationReport",
         is_critical=True,
-        sap_equivalent="SAP GRC - Mitigating Control Report",
+        sap_equivalent="legacy GRC - Mitigating Control Report",
         typical_use_case="Control effectiveness, audit evidence",
     ),
 
@@ -222,7 +222,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.FIREFIGHTER,
         report_class="FirefighterUsageReport",
         is_critical=True,
-        sap_equivalent="SAP GRC EAM - FF Log Report",
+        sap_equivalent="legacy GRC Privileged Access - FF Log Report",
         typical_use_case="Emergency access review, audit evidence",
     ),
     "FF_LOG": ReportDefinition(
@@ -232,7 +232,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.FIREFIGHTER,
         report_class="FirefighterLogReport",
         is_critical=True,
-        sap_equivalent="SAP GRC EAM - Transaction Log",
+        sap_equivalent="legacy GRC Privileged Access - Transaction Log",
         typical_use_case="Post-incident review, audit evidence",
     ),
     "PRIVILEGED_ACCESS": ReportDefinition(
@@ -318,7 +318,7 @@ STANDARD_REPORTS: Dict[str, ReportDefinition] = {
         category=ReportCategory.COMPLIANCE,
         report_class="ComplianceScorecard",
         is_critical=True,
-        sap_equivalent="SAP GRC Dashboards",
+        sap_equivalent="legacy GRC Dashboards",
         typical_use_case="Executive reporting, board updates",
     ),
 }

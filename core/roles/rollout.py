@@ -511,7 +511,7 @@ class RolloutTimelineTracker:
             ),
             PhaseTask(
                 task_id="P4-T2",
-                name="Enable real-time ARA",
+                name="Enable real-time Risk Intelligence",
                 description="Kafka-based processing",
                 phase=Phase.GO_LIVE,
                 ai_checkpoints=["AI-P4-1"],

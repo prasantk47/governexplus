@@ -6,7 +6,7 @@
  * C = Consulted (Provides input)
  * I = Informed (Kept in the loop)
  *
- * Key difference from SAP GRC:
+ * Key difference from legacy GRC:
  * - Platform takes over risk + evidence generation
  * - Fewer human dependencies
  * - Faster, cleaner ownership

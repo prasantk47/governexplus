@@ -1,8 +1,8 @@
-# Kafka Producer for ARA Risk Results
+# Kafka Producer for Risk Intelligence Risk Results
 # Publishing risk evaluation outcomes
 
 """
-Kafka Producer for ARA streaming pipeline.
+Kafka Producer for Risk Intelligence streaming pipeline.
 
 Publishes:
 - Risk evaluation results
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ProducerConfig:
-    """Configuration for ARA Kafka producer."""
+    """Configuration for Risk Intelligence Kafka producer."""
     bootstrap_servers: List[str]
 
     # Producer settings
@@ -71,7 +71,7 @@ class ProducerConfig:
 
 class ARAKafkaProducer:
     """
-    Kafka producer for ARA risk results.
+    Kafka producer for Risk Intelligence risk results.
 
     Features:
     - Async publishing with callbacks
@@ -87,7 +87,7 @@ class ARAKafkaProducer:
 
     def __init__(self, config: ProducerConfig):
         """
-        Initialize ARA Kafka producer.
+        Initialize Risk Intelligence Kafka producer.
 
         Args:
             config: Producer configuration
@@ -140,7 +140,7 @@ class ARAKafkaProducer:
             producer_config["ssl_keyfile"] = self.config.ssl_keyfile
 
         self.producer = KafkaProducerLib(**producer_config)
-        logger.info("ARA producer initialized")
+        logger.info("Risk Intelligence producer initialized")
 
     def register_callback(
         self,
@@ -272,7 +272,7 @@ class ARAKafkaProducer:
         if self.producer and HAS_KAFKA:
             self.producer.flush()
             self.producer.close()
-            logger.info("ARA producer closed")
+            logger.info("Risk Intelligence producer closed")
 
     def get_metrics(self) -> Dict[str, Any]:
         """Get producer metrics."""
@@ -330,7 +330,7 @@ def create_producer(
     **kwargs
 ) -> ARAKafkaProducer:
     """
-    Factory function to create ARA Kafka producer.
+    Factory function to create Risk Intelligence Kafka producer.
 
     Args:
         bootstrap_servers: Kafka broker addresses
@@ -338,7 +338,7 @@ def create_producer(
         **kwargs: Additional configuration
 
     Returns:
-        Configured ARA Kafka producer
+        Configured Risk Intelligence Kafka producer
     """
     config = ProducerConfig(
         bootstrap_servers=bootstrap_servers,

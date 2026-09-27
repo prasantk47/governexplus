@@ -4,7 +4,7 @@
 """
 Approval System for GOVERNEX+.
 
-SAP GRC (BRF+): "Route to whoever is configured."
+legacy GRC (BRF+): "Route to whoever is configured."
 GOVERNEX+: "Route to the right person, for the right reason,
             at the right risk level — and explain why."
 

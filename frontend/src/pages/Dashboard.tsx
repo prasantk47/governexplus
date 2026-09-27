@@ -142,13 +142,23 @@ export function Dashboard() {
     queryFn: () =>
       accessRequestApi
         .getPendingApprovals()
-        .then((res) => res.data?.approvals || res.data || []),
+        .then((res) => {
+          const d = res.data;
+          if (Array.isArray(d)) return d;
+          if (d?.approvals && Array.isArray(d.approvals)) return d.approvals;
+          return [];
+        }),
   });
 
   const { isLoading: activityLoading, isError: activityError } = useQuery({
     queryKey: ['recent-activity', 5],
     queryFn: () =>
-      auditApi.getLogs({ limit: 5 }).then((res) => res.data?.logs || res.data || []),
+      auditApi.getLogs({ limit: 5 }).then((res) => {
+          const d = res.data;
+          if (Array.isArray(d)) return d;
+          if (d?.logs && Array.isArray(d.logs)) return d.logs;
+          return [];
+        }),
   });
 
   const displayStats: DashboardStats = stats || {
@@ -417,7 +427,7 @@ export function Dashboard() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
             { to: '/access-requests/new', icon: UserGroupIcon, label: 'Request Access', bg: 'linear-gradient(135deg,#e0e7ff,#c7d2fe)', color: '#4338ca' },
-            { to: '/firefighter/request', icon: FireIcon, label: 'Emergency Access', bg: 'linear-gradient(135deg,#fed7aa,#fdba74)', color: '#c2410c' },
+            { to: '/privileged-access/request', icon: FireIcon, label: 'Emergency Access', bg: 'linear-gradient(135deg,#fed7aa,#fdba74)', color: '#c2410c' },
             { to: '/risk/violations', icon: ExclamationTriangleIcon, label: 'View Violations', bg: 'linear-gradient(135deg,#fecaca,#fca5a5)', color: '#b91c1c' },
             { to: '/reports', icon: DocumentCheckIcon, label: 'Run Reports', bg: 'linear-gradient(135deg,#a7f3d0,#6ee7b7)', color: '#047857' },
           ].map((action) => (

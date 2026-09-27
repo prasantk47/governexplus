@@ -4,7 +4,7 @@
 """
 Role Design for GOVERNEX+
 
-SAP GRC: "Here is a role. Please manage it."
+legacy GRC: "Here is a role. Please manage it."
 GOVERNEX+: "Here is the safest role design, why it works,
             and how it stays clean automatically."
 

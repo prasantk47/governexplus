@@ -1,7 +1,7 @@
 """
 Access Request Management (ARM) — Shopping Cart Engine
 
-SAP GRC-style access request workflow:
+legacy GRC-style access request workflow:
 - Browse a catalog of available roles/entitlements
 - Add items to a shopping cart with justification
 - Real-time SoD conflict checking against existing user access

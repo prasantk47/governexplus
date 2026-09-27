@@ -62,7 +62,7 @@ from api.routers import (
     auth,
     # Approver Management
     approver_management,
-    # Advanced Risk Analysis (ARA)
+    # Risk Intelligence Engine
     ara,
     # GovernEx+ Differentiators
     governex_plus,
@@ -342,7 +342,7 @@ app.include_router(
     dependencies=_require_auth,
 )
 app.include_router(
-    firefighter.router, prefix="/firefighter", tags=["Privileged Access Governor"],
+    firefighter.router, prefix="/privileged-access", tags=["Privileged Access Governor"],
     dependencies=_require_auth,
 )
 app.include_router(
@@ -364,13 +364,13 @@ app.include_router(
 
 
 app.include_router(
-    firefighter_monitoring.router, prefix="/firefighter/monitoring",
+    firefighter_monitoring.router, prefix="/privileged-access/monitoring",
     tags=["Privileged Access Governor - Monitoring"], dependencies=_require_auth,
 )
 
 
 app.include_router(
-    role_engineering.router, prefix="/role-engineering", tags=["Role Design Studio"],
+    role_engineering.router, prefix="/role-studio", tags=["Role Design Studio"],
     dependencies=_require_auth,
 )
 app.include_router(
@@ -408,7 +408,7 @@ app.include_router(
     dependencies=_require_auth,
 )
 app.include_router(
-    sod_rules.router, prefix="/sod-rules", tags=["SoD Rules"],
+    sod_rules.router, prefix="/risk-rules", tags=["Risk Rules"],
     dependencies=_require_auth,
 )
 app.include_router(
@@ -472,7 +472,7 @@ app.include_router(
     tags=["Approver Management"], dependencies=_require_auth,
 )
 app.include_router(
-    ara.router, prefix="/ara", tags=["Risk Intelligence Engine"],
+    ara.router, prefix="/risk-intelligence", tags=["Risk Intelligence Engine"],
     dependencies=_require_auth,
 )
 app.include_router(
@@ -480,7 +480,7 @@ app.include_router(
     dependencies=_require_auth,
 )
 app.include_router(
-    arm.router, tags=["Access Lifecycle Manager - Cart"],
+    arm.router, prefix="/access-lifecycle", tags=["Access Lifecycle Manager - Cart"],
     dependencies=_require_auth,
 )
 app.include_router(
@@ -552,8 +552,8 @@ app.include_router(
     dependencies=_require_auth,
 )
 app.include_router(
-    mitigation_monitoring.router, prefix="/mitigation-monitoring",
-    tags=["Mitigation Monitoring"], dependencies=_require_auth,
+    mitigation_monitoring.router, prefix="/controls-monitoring",
+    tags=["Controls Monitoring"], dependencies=_require_auth,
 )
 app.include_router(
     ai_grc.router,
@@ -670,12 +670,12 @@ async def root():
         "modules": {
             "risk_intelligence_engine": "/risk",
             "users": "/users",
-            "privileged_access_governor": "/firefighter",
-            "privileged_access_governor_monitoring": "/firefighter/monitoring",
+            "privileged_access_governor": "/privileged-access",
+            "privileged_access_governor_monitoring": "/privileged-access/monitoring",
             "access_lifecycle_manager": "/access-requests",
             "certification": "/certification",
             "dashboard": "/dashboard",
-            "role_design_studio": "/role-engineering",
+            "role_design_studio": "/role-studio",
             "mitigation": "/mitigation",
             "cross_system": "/cross-system",
             "reporting": "/reporting",
@@ -685,11 +685,11 @@ async def root():
             "setup": "/setup",
             "notifications": "/notifications",
             "workflows": "/workflows",
-            "sod_rules": "/sod-rules",
+            "sod_rules": "/risk-rules",
             "ai": "/ai",
             "security_controls": "/security-controls",
             "admin": "/admin",
-            "ara": "/ara",
+            "ara": "/risk-intelligence",
             "governex_plus": "/governex",
             "enterprise_risk_engine": "/risk-management",
             "control_intelligence": "/process-control",

@@ -1,7 +1,7 @@
 """
 Multi-Stage Multi-Path (MSMP) Workflow Engine
 
-Implements SAP GRC-style MSMP workflow with:
+Implements legacy GRC-style MSMP workflow with:
 - Parallel approval paths
 - Dynamic agent (approver) determination
 - BRF+ style rule engine
@@ -335,7 +335,7 @@ class WorkflowPath:
 class MSMPEngine:
     """
     Multi-Stage Multi-Path Workflow Engine.
-    Provides SAP GRC-equivalent workflow capabilities with zero-training UX.
+    Provides legacy GRC-equivalent workflow capabilities with zero-training UX.
     """
 
     def __init__(self):

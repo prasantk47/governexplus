@@ -242,7 +242,7 @@ class PTSSimulator:
     Features:
     - Virtual role assignment testing
     - What-if scenario analysis
-    - SoD conflict detection via the ARA RuleEngine (no random fabrication)
+    - SoD conflict detection via the Risk Intelligence RuleEngine (no random fabrication)
     - Sensitive access validation
     - Compliance impact assessment
     - Automated test execution
@@ -259,7 +259,7 @@ class PTSSimulator:
             "changes_tested": 0
         }
 
-        # Optional ARA RuleEngine for real SoD conflict detection.
+        # Optional Risk Intelligence RuleEngine for real SoD conflict detection.
         # When None the engine is unavailable and conflict detection returns
         # empty results with engine_available=False rather than fabricated data.
         self._ara_engine = ara_engine
@@ -425,7 +425,7 @@ class PTSSimulator:
     def _analyze_change(self, change: AccessChange, scenario: SimulationScenario) -> ImpactAnalysis:
         """Analyze the impact of a single change.
 
-        SoD conflict detection is performed via the ARA RuleEngine when it is
+        SoD conflict detection is performed via the Risk Intelligence RuleEngine when it is
         available.  When the engine is not wired in, the result carries
         engine_available=False in each conflict entry and no fabricated
         conflicts are returned.  All other checks (privilege escalation,
@@ -449,7 +449,7 @@ class PTSSimulator:
                 change_tcodes.append(tcode.upper())
 
         # ------------------------------------------------------------------
-        # SoD conflict detection via ARA engine
+        # SoD conflict detection via Risk Intelligence engine
         # ------------------------------------------------------------------
         if scenario.include_sod_check and change.change_type in [
             ChangeType.ADD_ROLE, ChangeType.ADD_PERMISSION
@@ -480,9 +480,9 @@ class PTSSimulator:
                     # Engine call failed — report the error, return no conflicts
                     warnings.append(f"SoD check failed: {exc}")
             else:
-                # ARA engine not wired — do not fabricate conflicts
+                # Risk Intelligence engine not wired — do not fabricate conflicts
                 warnings.append(
-                    "SoD check skipped: ARA engine not available for this simulation"
+                    "SoD check skipped: Risk Intelligence engine not available for this simulation"
                 )
 
         # ------------------------------------------------------------------
@@ -586,7 +586,7 @@ class PTSSimulator:
         Real execution requires a live sandbox connector which is not yet wired.
         Rather than producing random pass/fail results that would mislead users,
         the test is marked as not_executed with an explanation.  Callers can
-        inspect the ARA-derived impact analyses for real conflict information.
+        inspect the Risk Intelligence-derived impact analyses for real conflict information.
         """
         start = datetime.now()
 
@@ -645,7 +645,7 @@ class PTSSimulator:
         }
 
 
-# Global simulator instance — wire in the ARA engine so SoD conflict
+# Global simulator instance — wire in the Risk Intelligence engine so SoD conflict
 # detection uses real rules rather than fabricated random data.
 def _make_pts_simulator() -> PTSSimulator:
     try:
@@ -655,7 +655,7 @@ def _make_pts_simulator() -> PTSSimulator:
         load_ruleset_into_engine(engine)
         return PTSSimulator(ara_engine=engine)
     except Exception:
-        # If the ARA engine cannot be loaded (e.g. import error during startup),
+        # If the Risk Intelligence engine cannot be loaded (e.g. import error during startup),
         # fall back to a simulator with no engine; it will return
         # engine_available=False instead of random data.
         return PTSSimulator(ara_engine=None)

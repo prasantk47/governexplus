@@ -1,5 +1,5 @@
 # Access Risk Analysis Data Models
-# Core data structures for GOVERNEX+ ARA
+# Core data structures for GOVERNEX+ Risk Intelligence
 
 """
 Data models for Access Risk Analysis.

@@ -77,25 +77,25 @@ const EFFECTIVENESS_DATA = [
 const mitigationApi = {
   listControls: () =>
     api
-      .get('/mitigation-monitoring/')
+      .get('/controls-monitoring/')
       .then((r) => r.data)
       .catch(() => []),
 
   getExpiring: () =>
     api
-      .get('/mitigation-monitoring/expiring')
+      .get('/controls-monitoring/expiring')
       .then((r) => r.data)
       .catch(() => []),
 
   getStats: () =>
     api
-      .get('/mitigation-monitoring/stats')
+      .get('/controls-monitoring/stats')
       .then((r) => r.data)
       .catch(() => null),
 
   recertify: (controlId: string) =>
     api
-      .post(`/mitigation-monitoring/${controlId}/recertify`)
+      .post(`/controls-monitoring/${controlId}/recertify`)
       .then((r) => r.data),
 };
 

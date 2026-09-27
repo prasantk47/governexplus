@@ -1,5 +1,5 @@
 # ARM (Access Request Management) — Shopping Cart API
-# SAP GRC-style role request workflow with SoD conflict checking
+# GovernexPlus role request workflow with SoD conflict checking
 
 from fastapi import APIRouter, HTTPException, Query, Header, Depends
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ from core.arm.shopping_cart import (
 from db.database import get_db
 from db.models.operations import ShoppingCartModel
 
-router = APIRouter(prefix="/arm", tags=["ARM - Shopping Cart"])
+router = APIRouter(tags=["ARM - Shopping Cart"])
 
 # ---------------------------------------------------------------------------
 # Module-level singletons

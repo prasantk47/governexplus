@@ -112,7 +112,7 @@ class AIRoleOptimizer:
     """
     AI-Powered Role Mining & Optimization
 
-    Key advantages over traditional SAP GRC:
+    Key advantages over traditional legacy GRC:
 
     1. PATTERN DISCOVERY: Finds natural access patterns from usage
        - Clusters similar usage into logical roles

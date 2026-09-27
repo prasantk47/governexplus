@@ -4,7 +4,7 @@
 """
 Graph-Based SoD Detection for GOVERNEX+
 
-SAP GRC limitation: Pairwise conflicts only, static SoD rules
+legacy GRC limitation: Pairwise conflicts only, static SoD rules
 GOVERNEX+ advantage: Detects multi-step, transitive conflicts
 
 Key capabilities:

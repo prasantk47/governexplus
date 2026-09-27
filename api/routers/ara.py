@@ -1,5 +1,5 @@
 """
-Access Risk Analysis (ARA) API Router
+Risk Intelligence Engine API Router
 
 GOVERNEX+ Advanced Risk Intelligence endpoints.
 
@@ -12,7 +12,7 @@ Provides comprehensive access risk analysis capabilities:
 - Mitigation control management
 - Risk analytics and trends
 
-SAP GRC: "Is there a risk?"
+Traditional GRC: "Is there a risk?"
 GOVERNEX+: "How risky is it, why, right now, and what should we do?"
 """
 
@@ -68,10 +68,10 @@ from db.models.risk import RiskSeverityLevel
 from db.models.user import User
 from repositories.risk_repository import RiskViolationRepository
 
-router = APIRouter(prefix="/ara", tags=["Access Risk Analysis"])
+router = APIRouter(tags=["Access Risk Analysis"])
 
 # =============================================================================
-# Initialize ARA Components (Singleton pattern)
+# Initialize Risk Intelligence Components (Singleton pattern)
 # =============================================================================
 
 _ara_engine: Optional[AccessRiskEngine] = None
@@ -81,7 +81,7 @@ _behavioral_analyzer: Optional[BehavioralAnalyzer] = None
 
 
 def get_ara_engine() -> AccessRiskEngine:
-    """Get or create ARA engine singleton."""
+    """Get or create Risk Intelligence engine singleton."""
     global _ara_engine
     if _ara_engine is None:
         _ara_engine = AccessRiskEngine()
@@ -126,7 +126,7 @@ _SEVERITY_MAP = {
 
 def _persist_risks(risks, user_external_id: str, tenant_id: str = "tenant_default") -> None:
     """
-    Best-effort persistence of ARA Risk objects to the risk_violations table.
+    Best-effort persistence of Risk Intelligence objects to the risk_violations table.
 
     Looks up the user's integer PK by external ID. If the user is not found
     in the DB the violation is skipped (the analysis result is still returned).
@@ -152,7 +152,7 @@ def _persist_risks(risks, user_external_id: str, tenant_id: str = "tenant_defaul
                 severity_level = _SEVERITY_MAP.get(severity_str, RiskSeverityLevel.MEDIUM)
 
                 violation_data = {
-                    "violation_id": f"ARA-{risk.risk_id}",
+                    "violation_id": f"RI-{risk.risk_id}",
                     "rule_id": risk.rule_id or risk.risk_type.value,
                     "rule_name": risk.title or risk.description or risk.risk_type.value,
                     "rule_type": risk.risk_type.value,

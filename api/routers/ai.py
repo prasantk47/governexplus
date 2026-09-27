@@ -15,7 +15,7 @@ from core.ai import (
     GRCAssistant, AssistantResponse
 )
 
-router = APIRouter(prefix="/ai", tags=["AI Intelligence"])
+router = APIRouter(tags=["AI Intelligence"])
 
 # Initialize AI engines
 risk_engine = RiskIntelligenceEngine()

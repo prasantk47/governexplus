@@ -12,7 +12,7 @@ Control Types:
 - Corrective: Auto-revoke unused access
 - Compensating: Dual approval
 
-SAP GRC mostly stops at periodic review.
+legacy GRC mostly stops at periodic review.
 GOVERNEX+ runs controls as code, continuously.
 """
 

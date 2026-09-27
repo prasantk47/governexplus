@@ -95,7 +95,7 @@ class RemediationAdvisor:
     """
     AI-Powered Remediation Advisor
 
-    Key advantages over traditional SAP GRC:
+    Key advantages over traditional legacy GRC:
 
     1. INTELLIGENT RECOMMENDATIONS: Doesn't just flag - suggests fixes
        - Multiple options with trade-offs explained

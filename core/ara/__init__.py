@@ -1,11 +1,11 @@
-# Access Risk Analysis (ARA) Module
+# Access Risk Analysis (Risk Intelligence) Module
 # GOVERNEX+ Advanced Risk Intelligence Engine
 
 """
-Access Risk Analysis (ARA) for GOVERNEX+
+Access Risk Analysis (Risk Intelligence) for GOVERNEX+
 
 This module provides comprehensive access risk analysis capabilities
-that exceed SAP GRC functionality:
+that exceed legacy GRC functionality:
 
 Core Capabilities:
 - Segregation of Duties (SoD) analysis
@@ -57,7 +57,7 @@ Continuous Control Monitoring:
 - Control health scores
 - Audit evidence generation
 
-SAP GRC answers: "Is there a risk?"
+legacy GRC answers: "Is there a risk?"
 GOVERNEX+ answers: "How risky is it, why, right now, and what should we do?"
 """
 

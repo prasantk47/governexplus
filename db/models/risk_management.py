@@ -240,7 +240,7 @@ class EnterpriseRisk(Base, TimestampMixin):
     system_indicated_residual = Column(Float, nullable=True)
     coverage_computed_at = Column(DateTime, nullable=True)
 
-    # SAP GRC gap: velocity and business objective linkage
+    # GovernexPlus gap: velocity and business objective linkage
     velocity = Column(String(50), nullable=True)            # sudden/rapid/moderate/gradual
     business_objective_id = Column(String(100), nullable=True)  # links to business_objectives.objective_id
 
@@ -291,7 +291,7 @@ class EnterpriseRisk(Base, TimestampMixin):
             'control_coverage': self.control_coverage,
             'system_indicated_residual': self.system_indicated_residual,
             'coverage_computed_at': self.coverage_computed_at.isoformat() if self.coverage_computed_at else None,
-            # SAP GRC gap fields
+            # GovernexPlus gap fields
             'velocity': self.velocity,
             'business_objective_id': self.business_objective_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -750,7 +750,7 @@ class BusinessObjective(Base, TimestampMixin):
     Business objective entity linking risks to strategic/operational goals.
 
     Enables risk-to-objective traceability so the board can see which
-    objectives are threatened by which risks, closing the RM SAP GRC gap
+    objectives are threatened by which risks, closing the RM GovernexPlus gap
     for objective-based risk mapping (RM-SAP-GAP-01).
     """
     __tablename__ = 'business_objectives'

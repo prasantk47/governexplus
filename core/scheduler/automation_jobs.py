@@ -108,9 +108,9 @@ class AutomationScheduler:
             ("sync_ad_groups", "Sync AD group memberships to SAP roles", 120),
             # AC-12: Full-landscape SoD analysis with delta processing
             ("batch_risk_analysis", "Full-landscape risk/SoD analysis; delta re-analysis by role change", 720),
-            # EAM: Daily check for completed FF sessions with overdue reviews
+            # Privileged Access: Daily check for completed FF sessions with overdue reviews
             ("ff_pending_review_check", "Escalate firefighter sessions with overdue post-session reviews", 1440),
-            # BRM: Daily check for roles needing periodic reaffirmation
+            # Role Design: Daily check for roles needing periodic reaffirmation
             ("role_reaffirmation_check", "Identify roles past their reaffirmation due date and notify owners", 1440),
         ]
         for name, description, interval in defaults:
@@ -556,7 +556,7 @@ class AutomationScheduler:
 
         return await job_func(**kwargs)
 
-    # ---- Job 7: FF Pending Review Check (EAM) ----
+    # ---- Job 7: FF Pending Review Check (Privileged Access) ----
 
     async def ff_pending_review_check(self, overdue_hours: int = 48) -> JobResult:
         """
@@ -646,7 +646,7 @@ class AutomationScheduler:
         """
         Full-landscape risk analysis run on schedule (AC-12).
 
-        Queries all active users, runs ARA/SoD analysis via RuleEngine,
+        Queries all active users, runs Risk Intelligence/SoD analysis via RuleEngine,
         persists new violations to RiskViolationRepository.
 
         Delta processing: when delta_only=True, only re-analyses users whose
@@ -852,7 +852,7 @@ class AutomationScheduler:
         self._finalize_job("batch_risk_analysis", result)
         return result
 
-    # ---- Job 9: Role Reaffirmation Check (BRM) ----
+    # ---- Job 9: Role Reaffirmation Check (Role Design) ----
 
     async def role_reaffirmation_check(self) -> JobResult:
         """

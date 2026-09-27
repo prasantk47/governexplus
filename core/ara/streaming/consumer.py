@@ -1,8 +1,8 @@
-# Kafka Consumer for ARA Real-Time Risk Evaluation
+# Kafka Consumer for Risk Intelligence Real-Time Risk Evaluation
 # Event-driven risk analysis
 
 """
-Kafka Consumer for ARA streaming pipeline.
+Kafka Consumer for Risk Intelligence streaming pipeline.
 
 Consumes:
 - Access events (requests, changes)
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ConsumerConfig:
-    """Configuration for ARA Kafka consumer."""
+    """Configuration for Risk Intelligence Kafka consumer."""
     bootstrap_servers: List[str]
     group_id: str = "ara-engine"
     topics: List[str] = None
@@ -77,7 +77,7 @@ class ConsumerConfig:
 
 class ARAKafkaConsumer:
     """
-    Kafka consumer for ARA real-time risk evaluation.
+    Kafka consumer for Risk Intelligence real-time risk evaluation.
 
     Features:
     - Event type routing
@@ -88,7 +88,7 @@ class ARAKafkaConsumer:
 
     def __init__(self, config: ConsumerConfig):
         """
-        Initialize ARA Kafka consumer.
+        Initialize Risk Intelligence Kafka consumer.
 
         Args:
             config: Consumer configuration
@@ -139,7 +139,7 @@ class ARAKafkaConsumer:
 
         self.consumer = KafkaConsumerLib(**consumer_config)
         self.consumer.subscribe(self.config.topics)
-        logger.info(f"ARA consumer initialized, subscribed to: {self.config.topics}")
+        logger.info(f"Risk Intelligence consumer initialized, subscribed to: {self.config.topics}")
 
     def register_handler(
         self,
@@ -177,17 +177,17 @@ class ARAKafkaConsumer:
         else:
             thread = threading.Thread(target=self._consume_loop, daemon=True)
             thread.start()
-            logger.info("ARA consumer started in background")
+            logger.info("Risk Intelligence consumer started in background")
 
     def stop(self):
         """Stop the consumer gracefully."""
-        logger.info("Stopping ARA consumer...")
+        logger.info("Stopping Risk Intelligence consumer...")
         self.running = False
         self._shutdown_event.set()
 
         if self.consumer and HAS_KAFKA:
             self.consumer.close()
-            logger.info("ARA consumer stopped")
+            logger.info("Risk Intelligence consumer stopped")
 
     def _consume_loop(self):
         """Main consumption loop."""
@@ -197,7 +197,7 @@ class ARAKafkaConsumer:
                 self._shutdown_event.wait(timeout=1)
             return
 
-        logger.info("ARA consumer loop started")
+        logger.info("Risk Intelligence consumer loop started")
 
         try:
             while self.running and not self._shutdown_event.is_set():
@@ -222,7 +222,7 @@ class ARAKafkaConsumer:
             logger.error(f"Consumer loop error: {e}")
             raise
         finally:
-            logger.info("ARA consumer loop ended")
+            logger.info("Risk Intelligence consumer loop ended")
 
     def _process_message(self, record):
         """Process a single Kafka message."""
@@ -339,7 +339,7 @@ def create_consumer(
     **kwargs
 ) -> ARAKafkaConsumer:
     """
-    Factory function to create ARA Kafka consumer.
+    Factory function to create Risk Intelligence Kafka consumer.
 
     Args:
         bootstrap_servers: Kafka broker addresses
@@ -349,7 +349,7 @@ def create_consumer(
         **kwargs: Additional configuration
 
     Returns:
-        Configured ARA Kafka consumer
+        Configured Risk Intelligence Kafka consumer
     """
     config = ConsumerConfig(
         bootstrap_servers=bootstrap_servers,

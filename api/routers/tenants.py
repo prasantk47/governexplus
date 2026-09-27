@@ -14,7 +14,7 @@ from core.tenant import (
     get_current_tenant, TenantContext
 )
 
-router = APIRouter(prefix="/tenants", tags=["Tenants"])
+router = APIRouter(tags=["Tenants"])
 
 # Initialize services
 tenant_manager = TenantManager()

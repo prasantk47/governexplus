@@ -12,7 +12,7 @@ from core.setup import (
     QuickStartTemplate, TemplateType
 )
 
-router = APIRouter(prefix="/setup", tags=["Setup Wizard"])
+router = APIRouter(tags=["Setup Wizard"])
 
 # Global wizard instance (would be per-tenant in production)
 wizard = SetupWizard()

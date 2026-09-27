@@ -2,7 +2,7 @@
 GRC Rules Engine - Core Rule Processing
 
 This module provides the main rule engine for evaluating Segregation of Duties (SoD)
-and other access control rules. Similar to SAP GRC Access Control's Risk Analysis
+and other access control rules. Similar to legacy GRC Access Control's Risk Analysis
 and Remediation (RAR) component.
 """
 
@@ -35,7 +35,7 @@ class RiskRule:
     """
     Represents a complete risk rule definition.
 
-    Equivalent to SAP GRC rule IDs like P001-P200 for financial risks.
+    Equivalent to legacy GRC rule IDs like P001-P200 for financial risks.
     """
     rule_id: str
     name: str
@@ -141,7 +141,7 @@ class RuleEngine:
             self.load_rules_from_file(rules_path)
 
     def _load_default_sap_rules(self):
-        """Load standard SAP GRC-like rules"""
+        """Load standard legacy GRC-like rules"""
 
         # Financial SoD Rules
         self.add_rule(RiskRule(

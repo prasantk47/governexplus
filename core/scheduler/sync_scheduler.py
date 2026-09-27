@@ -2,7 +2,7 @@
 SAP Sync Scheduler
 
 Automated synchronization of users, roles, and entitlements from connected systems.
-Provides SAP GRC-equivalent background job scheduling.
+Provides legacy GRC-equivalent background job scheduling.
 """
 
 from dataclasses import dataclass, field

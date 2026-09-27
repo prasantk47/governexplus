@@ -484,7 +484,7 @@ class ExecutiveNarrativeGenerator:
         comparison_period: Optional[Any] = None
     ) -> ExecutiveNarrative:
         """
-        Generate narrative from ARA analysis result.
+        Generate narrative from Risk Intelligence analysis result.
 
         Args:
             risk_analysis_result: Result from AccessRiskEngine

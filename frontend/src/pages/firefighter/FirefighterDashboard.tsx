@@ -160,7 +160,7 @@ export function FirefighterDashboard() {
       className: 'text-right',
       render: (s: RecentSession) => (
         <button
-          onClick={() => navigate(`/firefighter/sessions?highlight=${s.id}`)}
+          onClick={() => navigate(`/privileged-access/sessions?highlight=${s.id}`)}
           className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
         >
           View Log
@@ -240,7 +240,7 @@ export function FirefighterDashboard() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => navigate('/firefighter/monitor')}
+                      onClick={() => navigate('/privileged-access/monitor')}
                     >
                       Monitor
                     </Button>

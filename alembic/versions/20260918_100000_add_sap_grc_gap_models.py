@@ -1,10 +1,10 @@
-"""Add SAP GRC feature-gap models (24-gap closure)
+"""Add GovernexPlus feature-gap models (24-gap closure)
 
 Revision ID: 20260918_100000
 Revises: 20260904_150000
 Create Date: 2026-09-18
 
-Closes 24 SAP GRC feature gaps by:
+Closes 24 GovernexPlus feature gaps by:
 
 New tables in Risk Management:
   - business_objectives      : link risks to strategic/operational goals (RM-SAP-GAP-01)

@@ -8,7 +8,7 @@ A toxic role is a single role (or minimal role set) that enables
 multiple forbidden business actions through direct or indirect
 privilege paths.
 
-SAP GRC limitation: detects role pairs.
+legacy GRC limitation: detects role pairs.
 GOVERNEX+: detects role-centric risk concentration.
 
 This enables:
@@ -131,7 +131,7 @@ class ToxicRoleDetector:
     - One or more complete risk patterns
     - Excessive privilege concentration
 
-    This goes beyond SAP GRC which only detects role pairs.
+    This goes beyond legacy GRC which only detects role pairs.
     """
 
     # Thresholds

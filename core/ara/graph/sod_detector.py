@@ -4,7 +4,7 @@
 """
 Graph-Based SoD Detection.
 
-What SAP GRC detects:
+What legacy GRC detects:
     User has Role A AND Role B -> SoD conflict
 
 What GOVERNEX+ detects:
@@ -116,7 +116,7 @@ class GraphSoDDetector:
         User → Role A → FK01 → CREATE_VENDOR
         User → Role B → F-53 → EXECUTE_PAYMENT
 
-        SAP GRC sees: two roles
+        legacy GRC sees: two roles
         GOVERNEX+ sees: one fraud path
     """
 

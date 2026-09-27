@@ -2,7 +2,7 @@
 Cross-System SoD Engine
 
 Enterprise-wide Segregation of Duties analysis across multiple systems.
-Provides SAP GRC-equivalent cross-system risk analysis with enhancements.
+Provides legacy GRC-equivalent cross-system risk analysis with enhancements.
 """
 
 from dataclasses import dataclass, field

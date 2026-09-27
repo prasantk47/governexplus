@@ -14,7 +14,7 @@ This orchestrator brings together:
 - Audit Engine (complete audit trail)
 
 ONE ORCHESTRATOR TO RULE THEM ALL:
-Instead of separate flows for each process type (like SAP GRC),
+Instead of separate flows for each process type (like legacy GRC),
 GOVERNEX+ uses ONE unified orchestrator that adapts to ANY process.
 """
 

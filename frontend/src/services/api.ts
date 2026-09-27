@@ -125,76 +125,76 @@ export const certificationApi = {
 // ==================== Firefighter API ====================
 export const firefighterApi = {
   // Reason Codes
-  getReasonCodes: () => api.get('/firefighter/reason-codes'),
-  getReasonCode: (code: string) => api.get(`/firefighter/reason-codes/${code}`),
+  getReasonCodes: () => api.get('/privileged-access/reason-codes'),
+  getReasonCode: (code: string) => api.get(`/privileged-access/reason-codes/${code}`),
 
   // Firefighter IDs
-  listFirefighters: () => api.get('/firefighter/firefighters'),
-  getFirefighterStatus: (id: string) => api.get(`/firefighter/firefighters/${id}/status`),
+  listFirefighters: () => api.get('/privileged-access/firefighters'),
+  getFirefighterStatus: (id: string) => api.get(`/privileged-access/firefighters/${id}/status`),
 
   // Requests
-  requestAccess: (data: any) => api.post('/firefighter/requests', data),
-  listRequests: (params?: any) => api.get('/firefighter/requests', { params }),
-  getRequest: (id: string) => api.get(`/firefighter/requests/${id}`),
-  getPendingRequests: () => api.get('/firefighter/requests/pending'),
+  requestAccess: (data: any) => api.post('/privileged-access/requests', data),
+  listRequests: (params?: any) => api.get('/privileged-access/requests', { params }),
+  getRequest: (id: string) => api.get(`/privileged-access/requests/${id}`),
+  getPendingRequests: () => api.get('/privileged-access/requests/pending'),
   approveRequest: (id: string, data?: any) =>
-    api.post(`/firefighter/requests/${id}/approve`, data),
+    api.post(`/privileged-access/requests/${id}/approve`, data),
   rejectRequest: (id: string, data: any) =>
-    api.post(`/firefighter/requests/${id}/reject`, data),
+    api.post(`/privileged-access/requests/${id}/reject`, data),
 
   // Sessions
-  listSessions: (params?: any) => api.get('/firefighter/sessions', { params }),
-  getActiveSessions: () => api.get('/firefighter/sessions/active'),
-  getSession: (id: string) => api.get(`/firefighter/sessions/${id}`),
+  listSessions: (params?: any) => api.get('/privileged-access/sessions', { params }),
+  getActiveSessions: () => api.get('/privileged-access/sessions/active'),
+  getSession: (id: string) => api.get(`/privileged-access/sessions/${id}`),
   getSessionCredentials: (id: string, userId: string) =>
-    api.get(`/firefighter/sessions/${id}/credentials`, { params: { user_id: userId } }),
+    api.get(`/privileged-access/sessions/${id}/credentials`, { params: { user_id: userId } }),
   endSession: (id: string, userId: string) =>
-    api.post(`/firefighter/sessions/${id}/end`, null, { params: { user_id: userId } }),
+    api.post(`/privileged-access/sessions/${id}/end`, null, { params: { user_id: userId } }),
   revokeSession: (id: string, revokedBy: string, reason: string) =>
-    api.post(`/firefighter/sessions/${id}/revoke`, null, { params: { revoked_by: revokedBy, reason } }),
+    api.post(`/privileged-access/sessions/${id}/revoke`, null, { params: { revoked_by: revokedBy, reason } }),
 
   // Session Extension
   extendSession: (id: string, data: { requested_by: string; extension_minutes: number; reason: string; approved_by?: string }) =>
-    api.post(`/firefighter/sessions/${id}/extend`, data),
+    api.post(`/privileged-access/sessions/${id}/extend`, data),
 
   // Activity Logging
   logActivity: (sessionId: string, data: any) =>
-    api.post(`/firefighter/sessions/${sessionId}/activity`, data),
+    api.post(`/privileged-access/sessions/${sessionId}/activity`, data),
   getSessionActivities: (sessionId: string) =>
-    api.get(`/firefighter/sessions/${sessionId}/activities`),
+    api.get(`/privileged-access/sessions/${sessionId}/activities`),
 
   // Controller Review
   getControllerReview: (sessionId: string) =>
-    api.get(`/firefighter/sessions/${sessionId}/controller-review`),
+    api.get(`/privileged-access/sessions/${sessionId}/controller-review`),
   startControllerReview: (sessionId: string, controllerId: string) =>
-    api.post(`/firefighter/sessions/${sessionId}/controller-review/start`, { controller_id: controllerId }),
+    api.post(`/privileged-access/sessions/${sessionId}/controller-review/start`, { controller_id: controllerId }),
   completeControllerReview: (sessionId: string, data: {
     controller_id: string;
     approved: boolean;
     findings: string[];
     comments: string;
     flagged_activities?: string[];
-  }) => api.post(`/firefighter/sessions/${sessionId}/controller-review/complete`, data),
+  }) => api.post(`/privileged-access/sessions/${sessionId}/controller-review/complete`, data),
 
   // Legacy review (for compatibility)
   reviewSession: (id: string, data: any) =>
-    api.post(`/firefighter/sessions/${id}/review`, data),
+    api.post(`/privileged-access/sessions/${id}/review`, data),
   getPendingReviews: (reviewerId: string) =>
-    api.get('/firefighter/reviews/pending', { params: { reviewer_id: reviewerId } }),
+    api.get('/privileged-access/reviews/pending', { params: { reviewer_id: reviewerId } }),
 
   // Audit Evidence
   getAuditEvidence: (sessionId: string) =>
-    api.get(`/firefighter/sessions/${sessionId}/audit-evidence`),
+    api.get(`/privileged-access/sessions/${sessionId}/audit-evidence`),
   exportAuditEvidence: (sessionId: string, format: 'json' | 'csv' | 'pdf_data' = 'json') =>
-    api.get(`/firefighter/sessions/${sessionId}/audit-evidence/export`, {
+    api.get(`/privileged-access/sessions/${sessionId}/audit-evidence/export`, {
       params: { format },
       responseType: format === 'json' ? 'json' : 'blob',
     }),
   getSessionsForAudit: (params?: { start_date?: string; end_date?: string; status?: string; firefighter_id?: string }) =>
-    api.get('/firefighter/audit/sessions', { params }),
+    api.get('/privileged-access/audit/sessions', { params }),
 
   // Statistics
-  getStatistics: () => api.get('/firefighter/statistics'),
+  getStatistics: () => api.get('/privileged-access/statistics'),
 };
 
 // ==================== Risk API ====================
@@ -305,19 +305,19 @@ export const usersApi = {
 
 // ==================== Roles API ====================
 export const rolesApi = {
-  list: (params?: any) => api.get('/role-engineering/roles', { params }),
+  list: (params?: any) => api.get('/role-studio/roles', { params }),
 
-  get: (roleId: string) => api.get(`/role-engineering/roles/${roleId}`),
+  get: (roleId: string) => api.get(`/role-studio/roles/${roleId}`),
 
-  create: (data: any) => api.post('/role-engineering/roles', data),
+  create: (data: any) => api.post('/role-studio/roles', data),
 
   update: (roleId: string, data: any) =>
-    api.put(`/role-engineering/roles/${roleId}`, data),
+    api.put(`/role-studio/roles/${roleId}`, data),
 
   testRole: (roleId: string) =>
-    api.post(`/role-engineering/roles/${roleId}/test`),
+    api.post(`/role-studio/roles/${roleId}/test`),
 
-  getCatalog: () => api.get('/role-engineering/catalog'),
+  getCatalog: () => api.get('/role-studio/catalog'),
 };
 
 // ==================== Reports API ====================
@@ -589,25 +589,25 @@ export const approverManagementApi = {
 // ==================== ARM Shopping Cart API ====================
 export const armApi = {
   getCatalog: (params?: Record<string, string>) =>
-    api.get('/arm/catalog', { params }),
+    api.get('/access-lifecycle/catalog', { params }),
 
   createCart: (requesterId: string) =>
-    api.post('/arm/cart', { requester_id: requesterId }),
+    api.post('/access-lifecycle/cart', { requester_id: requesterId }),
 
   addToCart: (cartId: string, roleId: string, data: object) =>
-    api.post(`/arm/cart/${cartId}/add`, { role_id: roleId, ...data }),
+    api.post(`/access-lifecycle/cart/${cartId}/add`, { role_id: roleId, ...data }),
 
   checkConflicts: (cartId: string, existingRoles: string[]) =>
-    api.post(`/arm/cart/${cartId}/check-conflicts`, { existing_user_roles: existingRoles }),
+    api.post(`/access-lifecycle/cart/${cartId}/check-conflicts`, { existing_user_roles: existingRoles }),
 
   submitCart: (cartId: string, comments: string) =>
-    api.post(`/arm/cart/${cartId}/submit`, { comments }),
+    api.post(`/access-lifecycle/cart/${cartId}/submit`, { comments }),
 
   getCart: (cartId: string) =>
-    api.get(`/arm/cart/${cartId}`),
+    api.get(`/access-lifecycle/cart/${cartId}`),
 
   removeFromCart: (cartId: string, roleId: string) =>
-    api.delete(`/arm/cart/${cartId}/items/${roleId}`),
+    api.delete(`/access-lifecycle/cart/${cartId}/items/${roleId}`),
 };
 
 // ==================== Workflow Builder API ====================

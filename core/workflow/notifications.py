@@ -4,8 +4,8 @@
 """
 Notification Engine for GOVERNEX+.
 
-THIS IS A MASSIVE UPGRADE OVER SAP GRC:
-- SAP GRC: Generic step-based emails
+THIS IS A MASSIVE UPGRADE OVER legacy GRC:
+- legacy GRC: Generic step-based emails
 - GOVERNEX+: Context-aware, per-item, decision-ready notifications
 
 Key Differences:
@@ -18,7 +18,7 @@ Key Differences:
 7. Full audit trail
 
 ONE-LINE POSITIONING:
-SAP GRC emails tell you something happened.
+legacy GRC emails tell you something happened.
 GOVERNEX+ emails tell you what to do, why it matters, and what happens next.
 """
 

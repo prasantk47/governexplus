@@ -614,7 +614,7 @@ class GRCAssistant:
     # ===================================================================
 
     SOD_REMEDIATION_SYSTEM = (
-        "You are a SAP GRC access control specialist. Analyse the provided SoD violation "
+        "You are a legacy GRC access control specialist. Analyse the provided SoD violation "
         "and return actionable remediation guidance as a JSON object with keys: "
         "recommendations (list of strings), risk_reduction_estimate (string), "
         "implementation_effort (low|medium|high), mitigation_control_suggestion (string)."

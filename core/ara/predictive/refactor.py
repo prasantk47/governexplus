@@ -4,7 +4,7 @@
 """
 Role Refactoring Engine for GOVERNEX+.
 
-SAP GRC detects risk but does not tell how to fix roles.
+legacy GRC detects risk but does not tell how to fix roles.
 
 GOVERNEX+:
 - Detects → Explains → Suggests redesign

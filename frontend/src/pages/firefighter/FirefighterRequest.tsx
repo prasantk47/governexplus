@@ -104,7 +104,7 @@ export function FirefighterRequest() {
   useEffect(() => {
     const fetchReasonCodes = async () => {
       try {
-        const response = await api.get('/firefighter/reason-codes');
+        const response = await api.get('/privileged-access/reason-codes');
         setReasonCodes(response.data.reason_codes);
       } catch (error) {
         setReasonCodes([
@@ -160,7 +160,7 @@ export function FirefighterRequest() {
     setIsSubmitting(true);
     try {
       const userInfo = { user_id: 'CURRENT_USER', name: 'Current User', email: 'user@company.com' };
-      await api.post('/firefighter/requests', {
+      await api.post('/privileged-access/requests', {
         requester_user_id: userInfo.user_id,
         requester_name: userInfo.name,
         requester_email: userInfo.email,

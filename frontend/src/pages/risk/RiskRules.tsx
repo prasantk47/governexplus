@@ -111,10 +111,10 @@ export function RiskRules() {
         is_enabled: formData.is_enabled,
       };
       if (editingRule) {
-        await api.put(`/sod-rules/custom/${editingRule.id}`, payload);
+        await api.put(`/risk-rules/custom/${editingRule.id}`, payload);
         toast.success(`Rule "${formData.name}" updated`);
       } else {
-        await api.post('/sod-rules/custom', payload);
+        await api.post('/risk-rules/custom', payload);
         toast.success(`Rule "${formData.name}" created`);
       }
       setShowFormModal(false);
@@ -128,13 +128,13 @@ export function RiskRules() {
 
   const handleDelete = async (ruleId: string) => {
     try {
-      await api.put(`/sod-rules/builtin/${ruleId}/toggle`, null, { params: { enabled: false, reason: 'Deactivated via UI' } });
+      await api.put(`/risk-rules/builtin/${ruleId}/toggle`, null, { params: { enabled: false, reason: 'Deactivated via UI' } });
       toast.success('Rule deactivated');
       setDeleteConfirmId(null);
       queryClient.invalidateQueries({ queryKey: ['risk-rules'] });
     } catch {
       try {
-        await api.delete(`/sod-rules/custom/${ruleId}`);
+        await api.delete(`/risk-rules/custom/${ruleId}`);
         toast.success('Rule deleted');
         setDeleteConfirmId(null);
         queryClient.invalidateQueries({ queryKey: ['risk-rules'] });

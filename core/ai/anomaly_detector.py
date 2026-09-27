@@ -108,7 +108,7 @@ class BehavioralAnomalyDetector:
     """
     Real-Time Behavioral Anomaly Detection
 
-    Key advantages over traditional SAP GRC:
+    Key advantages over traditional legacy GRC:
 
     1. LEARNS NORMAL BEHAVIOR: Builds profile of each user
        - What transactions they typically run

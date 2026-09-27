@@ -329,7 +329,7 @@ export const ROLES: Record<UserRole, RoleConfig> = {
       // Live session monitoring — READ ONLY (cannot terminate)
       PERMISSIONS.VIEW_LIVE_SESSIONS,
 
-      // Mitigation, BRM, Approvers, Provisioning, Delegations — READ ONLY
+      // Mitigation, Role Design, Approvers, Provisioning, Delegations — READ ONLY
       PERMISSIONS.VIEW_MITIGATION,
       PERMISSIONS.VIEW_BRM,
       PERMISSIONS.VIEW_APPROVERS,
@@ -444,12 +444,12 @@ export const NAV_PERMISSIONS: NavItemConfig[] = [
   },
   {
     name: 'Privileged Access',
-    href: '/firefighter',
+    href: '/privileged-access',
     permissions: [PERMISSIONS.VIEW_FIREFIGHTER],
     children: [
-      { name: 'Dashboard', href: '/firefighter', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
-      { name: 'Request Access', href: '/firefighter/request', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
-      { name: 'Sessions', href: '/firefighter/sessions', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Dashboard', href: '/privileged-access', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Request Access', href: '/privileged-access/request', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
+      { name: 'Sessions', href: '/privileged-access/sessions', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
     ],
   },
   {

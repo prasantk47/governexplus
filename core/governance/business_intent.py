@@ -2,7 +2,7 @@
 Business Intent Governance Layer
 
 Captures, governs, and traces business purposes for access requests.
-This is BEYOND SAP GRC - making "why" a first-class governed object.
+This is BEYOND legacy GRC - making "why" a first-class governed object.
 
 Key Capabilities:
 - Business intent taxonomy management

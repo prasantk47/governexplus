@@ -150,8 +150,8 @@ def test_ac():
     check("AC-02: Get rule library stats", "GET", "/risk/rules",
           validate=lambda d: isinstance(d, (list, dict)))
 
-    # ── 1.2 ARA — Access Risk Analysis ──
-    print("\n  --- 1.2 Access Risk Analysis (ARA) ---")
+    # ── 1.2 Risk Intelligence — Access Risk Analysis ──
+    print("\n  --- 1.2 Access Risk Analysis (Risk Intelligence) ---")
     status, users = api("GET", "/users/", params={"limit": 1})
     user_id = None
     if status == 200 and isinstance(users, list) and len(users) > 0:
@@ -193,8 +193,8 @@ def test_ac():
         "monitoring_frequency": "monthly",
     }, expect=200)
 
-    # ── 1.5 Access Requests (ARM) ──
-    print("\n  --- 1.5 Access Request Management (ARM) ---")
+    # ── 1.5 Access Requests (Access Lifecycle) ──
+    print("\n  --- 1.5 Access Request Management (Access Lifecycle) ---")
     check("AC-20: List access requests", "GET", "/access-requests/")
     status, ar_data = check("AC-21: Create access request", "POST", "/access-requests/", json_data={
         "request_type": "role_assignment",
@@ -210,7 +210,7 @@ def test_ac():
     check("AC-21: List pending approvals", "GET", "/access-requests/pending")
 
     # ── 1.6 Emergency Access / Firefighter ──
-    print("\n  --- 1.6 Emergency Access Management (EAM) ---")
+    print("\n  --- 1.6 Emergency Access Management (Privileged Access) ---")
     check("AC-30: Firefighter dashboard", "GET", "/firefighter/dashboard")
     check("AC-31: List firefighter sessions", "GET", "/firefighter/sessions")
     status, ff_data = check("AC-30: Request firefighter access", "POST", "/firefighter/request", json_data={

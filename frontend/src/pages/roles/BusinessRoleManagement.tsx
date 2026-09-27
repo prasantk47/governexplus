@@ -61,12 +61,12 @@ type TabKey = 'all' | 'active' | 'draft' | 'retired' | 'high-risk';
 // ---- Fetch helper ---------------------------------------------------------
 
 async function fetchRoles(): Promise<Role[]> {
-  const res = await api.get('/role-engineering/roles');
+  const res = await api.get('/role-studio/roles');
   return res.data?.roles ?? res.data ?? [];
 }
 
 async function deleteRole(roleId: string): Promise<void> {
-  await api.delete(`/role-engineering/roles/${roleId}`);
+  await api.delete(`/role-studio/roles/${roleId}`);
 }
 
 // ---- Sub-components -------------------------------------------------------

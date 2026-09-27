@@ -503,7 +503,7 @@ class DashboardManager:
         }
 
     def get_firefighter_summary(self) -> Dict:
-        """Get firefighter/EAM summary"""
+        """Get firefighter/Privileged Access summary"""
         return {
             "active_sessions": self.metrics.get_current("firefighter.sessions.active") or 0,
             "pending_requests": self.metrics.get_current("firefighter.requests.pending") or 0,

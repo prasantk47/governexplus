@@ -92,14 +92,14 @@ const navigation: NavItem[] = [
   },
   {
     name: 'Privileged Access',
-    href: '/firefighter',
+    href: '/privileged-access',
     icon: FireIcon,
     permissions: [PERMISSIONS.VIEW_FIREFIGHTER],
     children: [
-      { name: 'Dashboard', href: '/firefighter', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
-      { name: 'Request Access', href: '/firefighter/request', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
-      { name: 'Sessions', href: '/firefighter/sessions', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
-      { name: 'Live Monitor', href: '/firefighter/monitor', permissions: [PERMISSIONS.VIEW_LIVE_SESSIONS] },
+      { name: 'Dashboard', href: '/privileged-access', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Request Access', href: '/privileged-access/request', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
+      { name: 'Sessions', href: '/privileged-access/sessions', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Live Monitor', href: '/privileged-access/monitor', permissions: [PERMISSIONS.VIEW_LIVE_SESSIONS] },
     ],
   },
   {

@@ -357,7 +357,7 @@ class TestAuditResources:
                 "name": "Sarah Smith",
                 "email": "sarah.smith@audit.com",
                 "title": "Senior IT Auditor",
-                "skills": ["SAP GRC", "Data Analytics", "CISA"],
+                "skills": ["GovernexPlus", "Data Analytics", "CISA"],
                 "certifications": ["CISA", "CIA"],
                 "available_hours_per_month": 160.0,
                 "is_external": False,

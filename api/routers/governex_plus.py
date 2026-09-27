@@ -2,7 +2,7 @@
 GovernEx+ Advanced Capabilities API
 
 These endpoints represent the 5 differentiating features that make
-this platform UNBEATABLE compared to SAP GRC:
+this platform UNBEATABLE compared to legacy GRC:
 
 1. Business Intent Governance
 2. Control Effectiveness Scoring
@@ -35,7 +35,7 @@ from core.explainability.risk_narratives import (
     RiskNarrativeEngine, AudienceLevel, NarrativeType
 )
 
-router = APIRouter(prefix="/governex-plus", tags=["GovernEx+ Advanced"])
+router = APIRouter(tags=["GovernEx+ Advanced"])
 
 # Initialize engines
 intent_engine = BusinessIntentEngine()
@@ -618,7 +618,7 @@ async def get_governex_plus_dashboard():
             }
         },
         "competitive_advantage": [
-            "Beyond SAP GRC: Intent-level governance",
+            "Beyond legacy GRC: Intent-level governance",
             "Auditor-ready: Control effectiveness proof",
             "Governance quality: Approval behavior detection",
             "Identity-centric: Per-user risk scores",

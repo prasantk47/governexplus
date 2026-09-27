@@ -1,4 +1,4 @@
-# ML-based Anomaly Scorer for ARA
+# ML-based Anomaly Scorer for Risk Intelligence
 # Unsupervised, Explainable, Audit-Safe
 
 """

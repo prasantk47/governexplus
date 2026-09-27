@@ -12,7 +12,12 @@ export function PendingApprovalsTable({ limit = 5 }: PendingApprovalsTableProps)
     queryFn: () =>
       accessRequestApi
         .getPendingApprovals()
-        .then((res) => res.data?.approvals || res.data || []),
+        .then((res) => {
+          const d = res.data;
+          if (Array.isArray(d)) return d;
+          if (d?.approvals && Array.isArray(d.approvals)) return d.approvals;
+          return [];
+        }),
   });
 
   const approvals = (approvalsData || []).slice(0, limit);

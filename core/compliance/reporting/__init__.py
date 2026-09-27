@@ -5,7 +5,7 @@
 Compliance Reporting Engine for GOVERNEX+.
 
 This module provides all reports auditors request during SOX, SOC2, and IT audits.
-Equivalent to SAP GRC SUIM but with modern features.
+Equivalent to legacy GRC SUIM but with modern features.
 
 Report Categories:
 1. User Master Data & Basic Lists

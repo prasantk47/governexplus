@@ -225,7 +225,7 @@ export function SodRuleLibrary() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: RuleFormData) => api.post('/sod-rules/custom', formToPayload(data)),
+    mutationFn: (data: RuleFormData) => api.post('/risk-rules/custom', formToPayload(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
       toast.success('Rule created successfully');
@@ -236,7 +236,7 @@ export function SodRuleLibrary() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: RuleFormData }) =>
-      api.put(`/sod-rules/custom/${id}`, formToPayload(data)),
+      api.put(`/risk-rules/custom/${id}`, formToPayload(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
       toast.success('Rule updated successfully');
@@ -246,7 +246,7 @@ export function SodRuleLibrary() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/sod-rules/custom/${id}`),
+    mutationFn: (id: string) => api.delete(`/risk-rules/custom/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sod-rules'] });
       toast.success('Rule deleted successfully');
@@ -256,7 +256,7 @@ export function SodRuleLibrary() {
   });
 
   const runNowMutation = useMutation({
-    mutationFn: () => api.post('/sod-rules/analyze', { scope: 'all' }),
+    mutationFn: () => api.post('/risk-rules/analyze', { scope: 'all' }),
     onSuccess: (res) => {
       const count = res.data?.violations_found ?? res.data?.total ?? 'N/A';
       toast.success(`Analysis complete. ${count} violations found.`);

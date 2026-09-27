@@ -1189,7 +1189,7 @@ export function AIAssistant() {
     let searchResults: Array<{ id: string; name: string; description: string; risk: string }> = [];
 
     try {
-      const catalogRes = await api.get('/role-engineering/catalog');
+      const catalogRes = await api.get('/role-studio/catalog');
       const catalog = catalogRes.data?.roles || catalogRes.data || [];
       searchResults = catalog
         .filter((r: any) =>

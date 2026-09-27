@@ -108,7 +108,7 @@ const MOCK_ATTENTION: AttentionItem[] = [
     description: 'Emergency access session FF-338 (MRODRIGUEZ, Jan 28) is missing its mandatory log entry.',
     action_label: 'Review',
     action_type: 'review',
-    link: '/firefighter/sessions',
+    link: '/privileged-access/sessions',
   },
   {
     id: 'a7',
@@ -1016,7 +1016,7 @@ export function CommandCenter() {
                 { label: 'New Request', icon: KeyIcon, href: '/access-requests/new', color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' },
                 { label: 'Run Analysis', icon: ChartBarIcon, href: '/risk', color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30' },
                 { label: 'My Reviews', icon: ClipboardDocumentCheckIcon, href: '/certification/review', color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' },
-                { label: 'Emergency Access', icon: BoltIcon, href: '/firefighter/request', color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' },
+                { label: 'Emergency Access', icon: BoltIcon, href: '/privileged-access/request', color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' },
               ].map((action) => {
                 const Icon = action.icon;
                 return (

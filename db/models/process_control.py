@@ -919,7 +919,7 @@ class ControlObjective(Base, TimestampMixin):
     """
     Formal control objective entity linking controls to specific objectives.
 
-    Provides the objective-based control mapping layer required by SAP GRC AC
+    Provides the objective-based control mapping layer required by GovernexPlus AC
     and COSO/COBIT frameworks.  Linked risks and controls are stored as JSON
     arrays of business-key strings (PC-SAP-GAP-05).
     """

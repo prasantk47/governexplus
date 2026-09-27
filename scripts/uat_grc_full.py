@@ -3,13 +3,13 @@
 UAT Script: Governex+ Full GRC Suite — AC + RM + PC + AM + XI + NF
 ====================================================================
 End-to-end lifecycle testing for every module, benchmarked against the
-flows of SAP GRC (Access Control 12.0, Process Control, Risk Management,
+flows of GovernexPlus (Access Control 12.0, Process Control, Risk Management,
 Audit Management) and full-suite GRC tools (MetricStream, Archer,
 ServiceNow IRM).
 
 Each test carries:
   - Governex+ requirement ID  (AC-xx / RM-xx / PC-xx / AM-xx / XI-xx / NF-xx)
-  - SAP GRC equivalent noted in comments (ARA, ARM/MSMP, EAM/SPM, BRM, UAR,
+  - GovernexPlus equivalent noted in comments (Risk Intelligence, Access Lifecycle/MSMP, Privileged Access/SPM, Role Design, UAR,
     PC CAPA/CCM/Sign-off, RM KRI/Response, AM Working Papers/Findings)
 
 Usage:
@@ -207,7 +207,7 @@ def test_auth(username, password):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def test_ac():
-    section("1. ACCESS CONTROL (AC)  [SAP GRC AC 12.0 parity]")
+    section("1. ACCESS CONTROL (AC)  [GovernexPlus AC 12.0 parity]")
 
     sub("1.1 Risk Rules & SoD Library (AC-01..06)")
     check("AC-01: List SoD rules", "GET", "/sod-rules/",
@@ -230,7 +230,7 @@ def test_ac():
     check("AC-03: Update custom rule", "PUT", f"/sod-rules/{rule_id}",
           expect=(200, 404), json_data={"severity": "Critical"})
 
-    sub("1.2 Access Risk Analysis — ARA (AC-10..18)")
+    sub("1.2 Access Risk Analysis — Risk Intelligence (AC-10..18)")
     user_id = None
     status, users = api("GET", "/users/", params={"limit": 5})
     if status == 200:
@@ -239,7 +239,7 @@ def test_ac():
         elif isinstance(users, dict) and users.get("users"):
             user_id = users["users"][0].get("user_id")
     if not user_id:
-        skip("AC-10: No seeded users — user-level ARA skipped")
+        skip("AC-10: No seeded users — user-level Risk Intelligence skipped")
     else:
         check("AC-10: User-level risk analysis", "GET", f"/ara/analyze/user/{user_id}")
         check("AC-11: Simulation — add role (what-if)", "POST", "/ara/simulate",
@@ -278,7 +278,7 @@ def test_ac():
     else:
         skip("AC-13: Mitigation monitoring dashboard not found")
 
-    sub("1.4 Access Request Management — ARM full cycle (AC-20..24)")
+    sub("1.4 Access Request Management — Access Lifecycle full cycle (AC-20..24)")
     check("AC-20: List access requests", "GET", "/access-requests/")
     check("AC-21: List pending approvals", "GET", "/access-requests/pending",
           expect=(200, 404))
@@ -314,7 +314,7 @@ def test_ac():
     else:
         skip("AC-23: Reject path skipped (second request not created)")
 
-    sub("1.4b ARM Shopping Cart")
+    sub("1.4b Access Lifecycle Shopping Cart")
     p, _ = first_of(["/arm/cart"])
     if p:
         ok("AC-24: Cart endpoint live")
@@ -375,7 +375,7 @@ def test_ac():
     else:
         skip("AC-41/42: campaign id not returned")
 
-    sub("1.7 Role Engineering — BRM parity (AC-50..52)")
+    sub("1.7 Role Engineering — Role Design parity (AC-50..52)")
     check("AC-50: Role catalog", "GET", "/role-engineering/catalog")
     check("AC-51: Role mining suggestions", "GET", "/role-engineering/mining")
     check("AC-52: Design role with inline SoD check", "POST",
@@ -395,7 +395,7 @@ def test_ac():
 # ═════════════════════════════════════════════════════════════════════════════
 
 def test_rm():
-    section("2. RISK MANAGEMENT (RM)  [SAP GRC RM / MetricStream ORM parity]")
+    section("2. RISK MANAGEMENT (RM)  [GovernexPlus RM / MetricStream ORM parity]")
 
     sub("2.1 Risk Register (RM-01..04)")
     status, risk = check("RM-01: Create enterprise risk (EN+AR)", "POST",
@@ -534,7 +534,7 @@ def test_rm():
 # ═════════════════════════════════════════════════════════════════════════════
 
 def test_pc(risk_id=None):
-    section("3. PROCESS CONTROL (PC)  [SAP GRC PC / MetricStream ICM parity]")
+    section("3. PROCESS CONTROL (PC)  [GovernexPlus PC / MetricStream ICM parity]")
 
     sub("3.1 Control Library (PC-01..05)")
     status, ctl = check("PC-01: Create control (key/SOX)", "POST",

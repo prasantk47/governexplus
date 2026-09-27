@@ -15,7 +15,7 @@ from core.rules.sod_ruleset import (
 from core.rules.custom_ruleset import CustomRulesetManager
 from db.database import get_db
 
-router = APIRouter(prefix="/sod-rules", tags=["SoD Rules"])
+router = APIRouter(tags=["SoD Rules"])
 
 # Global engine instance
 sod_library = SoDRulesetLibrary()

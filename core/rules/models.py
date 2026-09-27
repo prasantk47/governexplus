@@ -12,7 +12,7 @@ from datetime import datetime
 
 
 class RiskSeverity(Enum):
-    """Risk severity levels aligned with SAP GRC standards"""
+    """Risk severity levels aligned with legacy GRC standards"""
     LOW = 10
     MEDIUM = 30
     HIGH = 60

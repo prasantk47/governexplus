@@ -4,7 +4,7 @@
 """
 ML-Powered Role Design for GOVERNEX+.
 
-SAP GRC starts from roles.
+legacy GRC starts from roles.
 GOVERNEX+ starts from behavior.
 
 Capabilities:

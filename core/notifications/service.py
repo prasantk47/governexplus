@@ -26,7 +26,7 @@ class NotificationType(Enum):
     REQUEST_REMINDER = "request_reminder"
     REQUEST_ESCALATED = "request_escalated"
 
-    # Firefighter/EAM
+    # Firefighter/Privileged Access
     FF_SESSION_STARTED = "ff_session_started"
     FF_SESSION_ENDING = "ff_session_ending"
     FF_SESSION_ENDED = "ff_session_ended"

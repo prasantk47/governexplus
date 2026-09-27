@@ -11,7 +11,7 @@ GOVERNEX+ answers: "What is the safest, fastest, most accountable
 This module provides:
 
 1. Legacy MSMP Support (msmp.py)
-   - SAP GRC-compatible workflow paths
+   - legacy GRC-compatible workflow paths
    - Agent determination rules
    - Parallel path execution
 

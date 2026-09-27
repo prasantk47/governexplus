@@ -4,7 +4,7 @@
 """
 Predictive Risk Engine for GOVERNEX+.
 
-SAP GRC answers: "Is there a risk today?"
+legacy GRC answers: "Is there a risk today?"
 GOVERNEX+ answers: "Who will become risky, when, and why?"
 
 This enables pre-emptive governance, not reactive cleanup.

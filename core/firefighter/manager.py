@@ -1,8 +1,8 @@
 """
-Firefighter / Emergency Access Management (EAM)
+Firefighter / Emergency Access Management (Privileged Access)
 
 Provides controlled, audited emergency access to privileged accounts.
-Equivalent to SAP GRC Firefighter functionality with modern enhancements.
+Equivalent to legacy GRC Firefighter functionality with modern enhancements.
 
 Key Features:
 - Request and approval workflow for emergency access

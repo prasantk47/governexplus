@@ -45,7 +45,7 @@ from audit.logger import AuditLogger
 from db.models.audit import AuditAction
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sso", tags=["Single Sign-On"])
+router = APIRouter(tags=["Single Sign-On"])
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4500")
 

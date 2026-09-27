@@ -1,4 +1,4 @@
-# ARA Machine Learning Module
+# Risk Intelligence Machine Learning Module
 # Intelligent anomaly detection for GOVERNEX+
 
 """

@@ -1,7 +1,7 @@
 """
 Visual Workflow Designer
 
-SAP GRC-equivalent workflow designer with drag-and-drop visual builder,
+legacy GRC-equivalent workflow designer with drag-and-drop visual builder,
 conditional logic, parallel paths, and escalation rules.
 """
 

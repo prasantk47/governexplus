@@ -2,7 +2,7 @@
 Organizational Rules for Risk Analysis
 
 Filters false positives from SoD analysis by considering organizational context.
-SAP GRC equivalent: Organizational Rules that filter risks by company code, plant, etc.
+legacy GRC equivalent: Organizational Rules that filter risks by company code, plant, etc.
 """
 
 from dataclasses import dataclass, field
@@ -205,7 +205,7 @@ class OrganizationalRule:
 class SupplementaryRule:
     """
     Supplementary rule for additional risk conditions.
-    SAP GRC equivalent: Supplementary rules that add conditions to base risks.
+    legacy GRC equivalent: Supplementary rules that add conditions to base risks.
     """
     rule_id: str = field(default_factory=lambda: f"SUP-{uuid.uuid4().hex[:8].upper()}")
     name: str = ""

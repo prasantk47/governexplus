@@ -3,7 +3,7 @@
 GovernexPlus — Deepest Functional Audit
 ========================================
 Tests EVERY feature, EVERY endpoint, EVERY workflow, EVERY edge case.
-Covers: AC (ARA/ARM/EAM/BRM/UAR), PC, RM, AM, XI, NF, SSO, AI.
+Covers: AC (Risk Intelligence/Access Lifecycle/Privileged Access/Role Design/UAR), PC, RM, AM, XI, NF, SSO, AI.
 
 Not a smoke test — this creates real data, runs full lifecycles,
 validates response schemas, and checks cross-module integration.
@@ -107,7 +107,7 @@ def get_id(data, *keys):
 # ═════════════════════════════════════════════════════════════════════════
 
 def seed_test_users():
-    """Seed 3 test users so ARA analysis has data to work with."""
+    """Seed 3 test users so Risk Intelligence analysis has data to work with."""
     users = [
         {"user_id": "AUD_USR_001", "username": "aud_usr_001",
          "full_name": "Audit Test User One", "email": "aud1@governex.local",
@@ -215,11 +215,11 @@ def test_ac_rules():
 
 
 # ═════════════════════════════════════════════════════════════════════════
-# 2. ACCESS CONTROL — ARA (Risk Analysis)
+# 2. ACCESS CONTROL — Risk Intelligence (Risk Analysis)
 # ═════════════════════════════════════════════════════════════════════════
 
 def test_ac_ara():
-    section("2. ACCESS CONTROL — ARA Risk Analysis (AC-10..18)")
+    section("2. ACCESS CONTROL — Risk Intelligence Risk Analysis (AC-10..18)")
 
     sub("2.1 User analysis")
     s, users = api("GET", "/users/", params={"limit": 5})
@@ -237,7 +237,7 @@ def test_ac_ara():
         check("What-if: remove role", "POST", "/ara/simulate", expect=(200, 400, 404),
               json={"user_id": str(user_id), "action": "remove_role", "role_id": "SAP_FI_ACCOUNTANT"})
     else:
-        skip("No users for ARA — skipping user analysis")
+        skip("No users for Risk Intelligence — skipping user analysis")
 
     sub("2.2 Violation management")
     check("List violations", "GET", "/risk/violations", expect=(200, 404))
@@ -245,7 +245,7 @@ def test_ac_ara():
     check("Dormant accounts (90d)", "GET", "/users/dormant", expect=(200, 404), params={"days": 90})
 
     sub("2.3 Batch analysis surface")
-    check("ARA batch endpoint", "POST", "/ara/batch", expect=(200, 201, 404, 405),
+    check("Risk Intelligence batch endpoint", "POST", "/ara/batch", expect=(200, 201, 404, 405),
           json={"scope": "all_users"})
 
 
@@ -284,11 +284,11 @@ def test_ac_mitigation():
 
 
 # ═════════════════════════════════════════════════════════════════════════
-# 4. ACCESS CONTROL — ARM (Access Requests)
+# 4. ACCESS CONTROL — Access Lifecycle (Access Requests)
 # ═════════════════════════════════════════════════════════════════════════
 
 def test_ac_arm():
-    section("4. ACCESS CONTROL — ARM Access Requests (AC-20..24)")
+    section("4. ACCESS CONTROL — Access Lifecycle Access Requests (AC-20..24)")
 
     sub("4.1 Request lifecycle")
     check("List access requests", "GET", "/access-requests/")
@@ -345,11 +345,11 @@ def test_ac_arm():
 
 
 # ═════════════════════════════════════════════════════════════════════════
-# 5. ACCESS CONTROL — EAM (Firefighter)
+# 5. ACCESS CONTROL — Privileged Access (Firefighter)
 # ═════════════════════════════════════════════════════════════════════════
 
 def test_ac_eam():
-    section("5. ACCESS CONTROL — EAM Firefighter (AC-30..33)")
+    section("5. ACCESS CONTROL — Privileged Access Firefighter (AC-30..33)")
 
     sub("5.1 Dashboard + sessions")
     check("Firefighter dashboard", "GET", "/firefighter/dashboard", expect=(200, 404))
@@ -423,11 +423,11 @@ def test_ac_uar():
 
 
 # ═════════════════════════════════════════════════════════════════════════
-# 7. ACCESS CONTROL — BRM (Role Engineering)
+# 7. ACCESS CONTROL — Role Design (Role Engineering)
 # ═════════════════════════════════════════════════════════════════════════
 
 def test_ac_brm():
-    section("7. ACCESS CONTROL — BRM Role Engineering (AC-50..52)")
+    section("7. ACCESS CONTROL — Role Design Role Engineering (AC-50..52)")
 
     check("Role catalog", "GET", "/role-engineering/catalog")
     check("Role mining", "GET", "/role-engineering/mining", expect=(200, 404))

@@ -1,8 +1,8 @@
-# Event Models for ARA Streaming
+# Event Models for Risk Intelligence Streaming
 # Kafka event schemas for real-time risk evaluation
 
 """
-Event models for the ARA streaming pipeline.
+Event models for the Risk Intelligence streaming pipeline.
 
 All events are:
 - JSON serializable
@@ -20,7 +20,7 @@ import json
 
 
 class EventType(Enum):
-    """Types of events in the ARA pipeline."""
+    """Types of events in the Risk Intelligence pipeline."""
     # Inbound events
     ACCESS_REQUEST = "ACCESS_REQUEST"
     ACCESS_GRANTED = "ACCESS_GRANTED"

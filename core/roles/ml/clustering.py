@@ -4,7 +4,7 @@
 """
 Behavior Clustering for Role Design.
 
-SAP GRC: "Finance users"
+legacy GRC: "Finance users"
 GOVERNEX+: Discovers actual job patterns:
 - Vendor onboarding specialists
 - Invoice posting clerks

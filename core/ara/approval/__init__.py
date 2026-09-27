@@ -4,7 +4,7 @@
 """
 Auto-Approval Engine for GOVERNEX+.
 
-SAP GRC: approval = manual.
+legacy GRC: approval = manual.
 GOVERNEX+: approval = risk-adaptive.
 
 Decision Model:

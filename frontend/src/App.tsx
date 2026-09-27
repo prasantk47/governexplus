@@ -212,10 +212,10 @@ function AppRoutes() {
         <Route path="/certification/:campaignId" element={<CertificationReview />} />
 
         {/* Firefighter */}
-        <Route path="/firefighter" element={<FirefighterDashboard />} />
-        <Route path="/firefighter/request" element={<FirefighterRequest />} />
-        <Route path="/firefighter/sessions" element={<FirefighterSessions />} />
-        <Route path="/firefighter/monitor" element={<LiveSessionMonitor />} />
+        <Route path="/privileged-access" element={<FirefighterDashboard />} />
+        <Route path="/privileged-access/request" element={<FirefighterRequest />} />
+        <Route path="/privileged-access/sessions" element={<FirefighterSessions />} />
+        <Route path="/privileged-access/monitor" element={<LiveSessionMonitor />} />
 
         {/* Risk */}
         <Route path="/risk" element={<RiskDashboard />} />

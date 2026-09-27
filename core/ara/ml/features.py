@@ -2,7 +2,7 @@
 # Auditor-explainable behavioral features
 
 """
-Feature extraction for ARA ML models.
+Feature extraction for Risk Intelligence ML models.
 
 All features are:
 - Auditor-explainable (no opaque embeddings)

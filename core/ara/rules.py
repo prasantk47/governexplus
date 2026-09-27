@@ -1,4 +1,4 @@
-# ARA Rule Engine
+# Risk Intelligence Rule Engine
 # Policy-as-Code risk rule definitions and evaluation
 
 """

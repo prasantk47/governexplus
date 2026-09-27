@@ -293,7 +293,7 @@ def seed_audit_logs():
             details={"request_id": req_id, "reason": random.choice(FF_REASONS)[0]},
             success=True,
             compliance_relevant=True,
-            compliance_tags=["SOX", "EAM"],
+            compliance_tags=["SOX", "Privileged Access"],
         )
         count += 1
 
@@ -306,7 +306,7 @@ def seed_audit_logs():
             details={"firefighter_id": ff_id, "approved_for": user_id},
             success=True,
             compliance_relevant=True,
-            compliance_tags=["SOX", "EAM"],
+            compliance_tags=["SOX", "Privileged Access"],
         )
         count += 1
 
@@ -319,7 +319,7 @@ def seed_audit_logs():
             details={"firefighter_id": ff_id, "request_id": req_id},
             success=True,
             compliance_relevant=True,
-            compliance_tags=["SOX", "EAM"],
+            compliance_tags=["SOX", "Privileged Access"],
         )
         count += 1
 
@@ -335,7 +335,7 @@ def seed_audit_logs():
                 details={"action_type": act_type, **act_details, "is_sensitive": sensitive},
                 success=True,
                 compliance_relevant=sensitive,
-                compliance_tags=["EAM"] if sensitive else None,
+                compliance_tags=["Privileged Access"] if sensitive else None,
             )
             count += 1
 
@@ -348,7 +348,7 @@ def seed_audit_logs():
             details={"firefighter_id": ff_id, "reason": "Normal completion"},
             success=True,
             compliance_relevant=True,
-            compliance_tags=["SOX", "EAM"],
+            compliance_tags=["SOX", "Privileged Access"],
         )
         count += 1
 
@@ -362,7 +362,7 @@ def seed_audit_logs():
         details={"reason": "Security policy violation detected", "firefighter_id": "FF_EMERGENCY_01"},
         success=True,
         compliance_relevant=True,
-        compliance_tags=["SOX", "EAM", "SECURITY"],
+        compliance_tags=["SOX", "Privileged Access", "SECURITY"],
     )
     count += 1
 
@@ -376,7 +376,7 @@ def seed_audit_logs():
         details={"reason": "Insufficient justification", "requester": "KTAYLOR"},
         success=True,
         compliance_relevant=True,
-        compliance_tags=["EAM"],
+        compliance_tags=["Privileged Access"],
     )
     count += 1
 

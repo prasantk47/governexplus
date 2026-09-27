@@ -131,7 +131,7 @@ class RiskContext:
 
     How risky is this?
     """
-    # ARA scores
+    # Risk Intelligence scores
     risk_score: float = 0.0
     sod_severity: str = ""  # NONE, LOW, MEDIUM, HIGH, CRITICAL
     sod_conflict_count: int = 0

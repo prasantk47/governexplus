@@ -1,4 +1,4 @@
-# ARA Streaming Module
+# Risk Intelligence Streaming Module
 # Real-time risk evaluation via Kafka
 
 """

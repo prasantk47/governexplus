@@ -2,7 +2,7 @@
 Access Troubleshooter Engine
 
 AI-powered diagnostic engine that answers the single most important question in
-SAP GRC: "Why can't user X execute transaction Y in system Z?"
+legacy GRC: "Why can't user X execute transaction Y in system Z?"
 
 The engine performs a deterministic, ordered diagnostic chain across all known
 failure modes — from basic user status through transport gaps and Fiori catalog

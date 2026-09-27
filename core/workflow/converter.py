@@ -1,10 +1,10 @@
 # MSMP to GOVERNEX+ Converter
-# Migration tool for SAP GRC MSMP workflows
+# Migration tool for legacy GRC MSMP workflows
 
 """
 MSMP Converter for GOVERNEX+.
 
-Converts SAP GRC MSMP workflow configurations to GOVERNEX+ policies.
+Converts legacy GRC MSMP workflow configurations to GOVERNEX+ policies.
 
 MSMP Concepts → GOVERNEX+ Mapping:
 - Process ID → Process Type
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 class MSMPProcessType(Enum):
-    """SAP GRC MSMP process types."""
+    """legacy GRC MSMP process types."""
     SAP_GRAC_ACCESS_REQUEST = "SAP_GRAC_ACCESS_REQUEST"
     SAP_GRAC_SOD_RISK = "SAP_GRAC_SOD_RISK"
     SAP_GRAC_EAM = "SAP_GRAC_EAM"
@@ -259,7 +259,7 @@ class MSMPConverter:
         policy = PolicySet(
             policy_id=f"CONVERTED-{datetime.now().strftime('%Y%m%d%H%M%S')}",
             name="Converted MSMP Policy",
-            description="Policy converted from SAP GRC MSMP configuration",
+            description="Policy converted from legacy GRC MSMP configuration",
             version="1.0",
         )
 

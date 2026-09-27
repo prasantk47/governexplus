@@ -11,10 +11,14 @@ export function ViolationsTrend({ compact = false }: ViolationsTrendProps) {
 
   const { data: trendData } = useQuery({
     queryKey: ['violations-trend'],
-    queryFn: () => dashboardApi.getRiskMetrics().then((res) => res.data?.violations_trend || []),
+    queryFn: () => dashboardApi.getRiskMetrics().then((res) => {
+      const d = res.data;
+      if (Array.isArray(d?.violations_trend)) return d.violations_trend;
+      return [];
+    }),
   });
 
-  const data = (trendData || []).length > 0
+  const data = Array.isArray(trendData) && trendData.length > 0
     ? trendData
     : [{ month: '', violations: 0 }];
 
@@ -75,10 +79,14 @@ export function AccessRequestsTrend({ compact = false }: { compact?: boolean }) 
 
   const { data: trendData } = useQuery({
     queryKey: ['access-requests-trend'],
-    queryFn: () => dashboardApi.getRiskMetrics().then((res) => res.data?.access_requests_trend || []),
+    queryFn: () => dashboardApi.getRiskMetrics().then((res) => {
+      const d = res.data;
+      if (Array.isArray(d?.access_requests_trend)) return d.access_requests_trend;
+      return [];
+    }),
   });
 
-  const data = (trendData || []).length > 0
+  const data = Array.isArray(trendData) && trendData.length > 0
     ? trendData
     : [{ month: '', approved: 0, pending: 0, rejected: 0 }];
 

@@ -22,7 +22,12 @@ interface RecentActivityListProps {
 export function RecentActivityList({ limit = 5 }: RecentActivityListProps) {
   const { data: activitiesData } = useQuery({
     queryKey: ['recent-activity', limit],
-    queryFn: () => auditApi.getLogs({ limit }).then((res) => res.data?.logs || res.data || []),
+    queryFn: () => auditApi.getLogs({ limit }).then((res) => {
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      if (d?.logs && Array.isArray(d.logs)) return d.logs;
+      return [];
+    }),
   });
 
   const activities = (activitiesData || []).slice(0, limit).map((a: any, idx: number) => {

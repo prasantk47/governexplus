@@ -73,7 +73,7 @@ export function AccessRequestList() {
   const filteredRequests = (requests as AccessRequest[]).filter((req) => {
     const matchesSearch =
       !searchTerm ||
-      req.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(req.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.system.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;

@@ -205,7 +205,7 @@ export function ShoppingCart() {
     return (
       role.name.toLowerCase().includes(q) ||
       role.description.toLowerCase().includes(q) ||
-      role.id.toLowerCase().includes(q)
+      String(role.id).toLowerCase().includes(q)
     );
   });
 

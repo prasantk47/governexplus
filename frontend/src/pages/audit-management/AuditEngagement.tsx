@@ -171,7 +171,10 @@ export function AuditEngagement() {
         engagement_type: typeFilter || undefined,
         lead_auditor: leadSearch || undefined,
       });
-      return res.data;
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      if (d?.engagements && Array.isArray(d.engagements)) return d.engagements;
+      return [];
     },
   });
 
@@ -281,7 +284,7 @@ export function AuditEngagement() {
                     return (
                       <tr key={eng.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
                         <td className="px-4 py-3.5 text-xs font-mono text-gray-400 dark:text-gray-500">
-                          {eng.id.slice(0, 8)}
+                          {String(eng.id).slice(0, 8)}
                         </td>
                         <td className="px-4 py-3.5 max-w-[200px]">
                           <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{eng.title}</p>

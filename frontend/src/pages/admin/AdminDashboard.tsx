@@ -147,8 +147,8 @@ export function AdminDashboard() {
 
   const filteredTenants = tenants.filter(t => {
     const matchesSearch = !searchTerm ||
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.admin_email.toLowerCase().includes(searchTerm.toLowerCase());
+      (t.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.admin_email ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || t.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -435,7 +435,7 @@ export function AdminDashboard() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className={clsx('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold shadow-md', tier.gradient)}>
-                              {tenant.name.charAt(0)}
+                              {(tenant.name ?? 'T').charAt(0)}
                             </div>
                             <div>
                               <p className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">

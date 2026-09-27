@@ -700,6 +700,16 @@ def validate_ccm_rule(
     }
 
 
+@router.get("/ccm-rules")
+def list_ccm_rules(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """List all CCM rules for this tenant."""
+    rules = db.query(CCMRule).filter(CCMRule.tenant_id == tenant_id).all()
+    return [r.to_dict() for r in rules]
+
+
 @router.post("/ccm-rules", status_code=201)
 def create_ccm_rule(
     body: Dict[str, Any],

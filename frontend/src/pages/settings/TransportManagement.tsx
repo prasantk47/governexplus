@@ -714,10 +714,10 @@ export function TransportManagement() {
     const q = searchTerm.toLowerCase();
     const matchSearch =
       !searchTerm ||
-      t.id.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.owner.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q);
+      String(t.id).toLowerCase().includes(q) ||
+      (t.description ?? '').toLowerCase().includes(q) ||
+      (t.owner ?? '').toLowerCase().includes(q) ||
+      (t.category ?? '').toLowerCase().includes(q);
     const matchStatus = !statusFilter || t.status === statusFilter;
     const matchSrc    = !sourceFilter || t.source_system === sourceFilter;
     const matchTgt    = !targetFilter || t.target_system === targetFilter;

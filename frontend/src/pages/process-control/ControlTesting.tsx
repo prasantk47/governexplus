@@ -265,7 +265,7 @@ export function ControlTesting() {
       header: 'Test ID',
       render: (t: ControlTest) => (
         <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
-          {t.test_id ?? t.id.slice(0, 8)}
+          {t.test_id ?? String(t.id).slice(0, 8)}
         </span>
       ),
     },
@@ -602,7 +602,7 @@ export function ControlTesting() {
         title="Record Test Result"
         subtitle={
           showResultModal
-            ? `Test ${showResultModal.test_id ?? showResultModal.id.slice(0, 8)} · ${showResultModal.test_type ? labelFor(showResultModal.test_type) : ''}`
+            ? `Test ${showResultModal.test_id ?? String(showResultModal.id).slice(0, 8)} · ${showResultModal.test_type ? labelFor(showResultModal.test_type) : ''}`
             : undefined
         }
         size="md"

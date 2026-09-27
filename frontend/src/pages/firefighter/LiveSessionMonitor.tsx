@@ -325,7 +325,7 @@ export function LiveSessionMonitor() {
                 <span className="text-xs text-gray-500">{session.activityCount} total</span>
               </div>
               <div className="space-y-1">
-                {session.recentCommands.slice(0, 3).map((cmd, i) => (
+                {(session.recentCommands ?? []).slice(0, 3).map((cmd, i) => (
                   <div
                     key={i}
                     className={`flex items-center justify-between p-2 rounded border text-xs ${getCommandRiskColor(cmd.risk)}`}

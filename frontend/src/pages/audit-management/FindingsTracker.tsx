@@ -198,7 +198,10 @@ function FindingsTab({
         status: statusFilter || undefined,
         engagement_id: engagementFilter || undefined,
       });
-      return res.data;
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      const arr = d?.findings ?? d?.items ?? d?.data;
+      return Array.isArray(arr) ? arr : [];
     },
   });
 
@@ -289,12 +292,12 @@ function FindingsTab({
               <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                 {findings.map((f) => (
                   <tr key={f.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{f.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{String(f.id).slice(0, 8)}</td>
                     <td className="px-4 py-3.5 max-w-[180px]">
                       <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{f.title}</p>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-indigo-600 dark:text-indigo-400 max-w-[160px] truncate">
-                      {f.engagement_title || f.engagement_id.slice(0, 8)}
+                      {f.engagement_title || String(f.engagement_id).slice(0, 8)}
                     </td>
                     <td className="px-4 py-3.5">
                       <Badge variant={SEVERITY_BADGE[f.severity] ?? 'neutral'} dot>
@@ -557,7 +560,10 @@ function ActionsTab() {
     queryKey: ['audit-management', 'actions', { statusFilter }],
     queryFn: async () => {
       const res = await auditManagementApi.listFindings({ action_status: statusFilter || undefined });
-      return res.data;
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      const arr = d?.actions ?? d?.items ?? d?.data;
+      return Array.isArray(arr) ? arr : [];
     },
   });
 
@@ -608,7 +614,7 @@ function ActionsTab() {
               <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                 {actions.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{a.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{String(a.id).slice(0, 8)}</td>
                     <td className="px-4 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">{a.description}</td>
                     <td className="px-4 py-3.5 text-sm text-indigo-600 dark:text-indigo-400 max-w-[160px] truncate">{a.finding_title}</td>
                     <td className="px-4 py-3.5 text-sm text-gray-700 dark:text-gray-300">{a.owner_name}</td>
@@ -680,7 +686,10 @@ function OverdueTab() {
     queryKey: ['audit-management', 'actions', 'overdue'],
     queryFn: async () => {
       const res = await auditManagementApi.getOverdueActions();
-      return res.data;
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      const arr = d?.actions ?? d?.items ?? d?.data;
+      return Array.isArray(arr) ? arr : [];
     },
   });
 
@@ -733,7 +742,7 @@ function OverdueTab() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-gray-400">{a.id.slice(0, 8)}</span>
+                      <span className="text-xs font-mono text-gray-400">{String(a.id).slice(0, 8)}</span>
                       <Badge variant="danger">{overdueDays}d overdue</Badge>
                     </div>
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{a.description}</p>
@@ -752,7 +761,7 @@ function OverdueTab() {
                     size="sm"
                     variant="danger"
                     icon={<ArrowUpIcon className="h-3.5 w-3.5" />}
-                    onClick={() => toast.success(`Action ${a.id.slice(0, 8)} escalated`)}
+                    onClick={() => toast.success(`Action ${String(a.id).slice(0, 8)} escalated`)}
                   >
                     Escalate
                   </Button>

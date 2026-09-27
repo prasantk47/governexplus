@@ -75,7 +75,7 @@ export function FirefighterSessions() {
   const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
       session.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      session.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(session.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       session.firefighterId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
     return matchesSearch && matchesStatus;

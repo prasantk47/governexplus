@@ -441,10 +441,10 @@ export function BusinessRoleManagement() {
 
     const matchesSearch =
       searchTerm === '' ||
-      role.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      role.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      role.businessProcess.toLowerCase().includes(searchTerm.toLowerCase());
+      String(role.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (role.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (role.owner ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (role.businessProcess ?? '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesProcess =
       processFilter === 'All Processes' || role.businessProcess === processFilter;

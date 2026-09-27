@@ -231,7 +231,7 @@ function OverviewTab({ data }: { data: RoleOverview }) {
         </div>
         <div className="p-4">
           <div className="flex items-end gap-2 h-28 mb-3">
-            {(Object.entries(data.grade_distribution) as [string, number][]).map(
+            {(Object.entries(data.grade_distribution ?? {}) as [string, number][]).map(
               ([grade, count]) => {
                 const heightPct = total > 0 ? (count / total) * 100 : 0;
                 return (
@@ -250,7 +250,7 @@ function OverviewTab({ data }: { data: RoleOverview }) {
             )}
           </div>
           <div className="grid grid-cols-5 gap-2 pt-3 border-t border-gray-100">
-            {(Object.entries(data.grade_distribution) as [string, number][]).map(
+            {(Object.entries(data.grade_distribution ?? {}) as [string, number][]).map(
               ([grade, count]) => (
                 <div key={grade} className="text-center">
                   <PieSegment value={count} total={total} color={gradeColors[grade]} />
@@ -268,7 +268,7 @@ function OverviewTab({ data }: { data: RoleOverview }) {
           <h3 className="text-sm font-semibold text-gray-800">Top Issues</h3>
         </div>
         <div className="divide-y divide-gray-100">
-          {data.top_issues.map((issue, idx) => {
+          {(data.top_issues ?? []).map((issue, idx) => {
             const barWidth = Math.round((issue.count / total) * 100);
             return (
               <div key={idx} className="px-4 py-3">
@@ -826,7 +826,7 @@ export function RoleIntelligence() {
               )}
               {tab.id === 'naming' && overview && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">
-                  {overview.top_issues.find((i) => i.issue === 'No naming convention')?.count ?? 0}
+                  {overview.top_issues?.find((i: any) => i.issue === 'No naming convention')?.count ?? 0}
                 </span>
               )}
             </button>

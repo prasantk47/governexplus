@@ -648,10 +648,10 @@ export function ModelUser() {
                         <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Process</th>
                         <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
                         <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {comparison.model_user.display_name.split(' ')[0]} Has
+                          {(comparison.model_user?.display_name ?? '').split(' ')[0]} Has
                         </th>
                         <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {comparison.target_user.display_name.split(' ')[0]} Has
+                          {(comparison.target_user?.display_name ?? '').split(' ')[0]} Has
                         </th>
                         <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                       </tr>

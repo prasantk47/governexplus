@@ -355,7 +355,7 @@ export function AccessTimeline() {
                   <div>
                     <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">Contributing Events</p>
                     <ul className="space-y-1.5">
-                      {investigateResult.contributing_events.map((e, i) => (
+                      {(investigateResult.contributing_events ?? []).map((e, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                           <ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
                           {e}
@@ -368,7 +368,7 @@ export function AccessTimeline() {
                   <div>
                     <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">Remediation Steps</p>
                     <ol className="space-y-1.5">
-                      {investigateResult.remediation_steps.map((s, i) => (
+                      {(investigateResult.remediation_steps ?? []).map((s, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                           <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
                           {s}

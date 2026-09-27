@@ -74,19 +74,16 @@ async def list_workflows(engine: MSMPEngine = Depends(_get_engine)):
 
     Returns both pre-built and custom workflows.
     """
-    return {
-        "workflows": [
-            {
-                "id": wf.id,
-                "name": wf.name,
-                "description": wf.description,
-                "stages_count": len(wf.stages),
-                "has_parallel_paths": any(len(s.parallel_paths) > 0 for s in wf.stages),
-                "conditions": wf.conditions
-            }
-            for wf in engine.workflows.values()
-        ]
-    }
+    workflows = []
+    for wf in engine.workflows.values():
+        workflows.append({
+            "id": getattr(wf, 'workflow_id', None) or getattr(wf, 'id', str(id(wf))),
+            "name": getattr(wf, 'name', 'Unnamed'),
+            "description": getattr(wf, 'description', ''),
+            "stages_count": len(getattr(wf, 'stages', getattr(wf, 'parallel_paths', []))),
+            "conditions": getattr(wf, 'activation_conditions', getattr(wf, 'conditions', {})),
+        })
+    return {"workflows": workflows}
 
 
 @router.get("/{workflow_id}")

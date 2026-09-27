@@ -77,7 +77,7 @@ export function ApprovalInbox() {
     const matchesSearch =
       !searchTerm ||
       item.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(item.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.summary.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || item.type === typeFilter;
     const matchesPriority = priorityFilter === 'all' || item.priority === priorityFilter;
@@ -227,7 +227,7 @@ export function ApprovalInbox() {
                         {typeInfo.label}
                       </span>
                       <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${riskInfo.color}`}>
-                        {item.riskLevel.charAt(0).toUpperCase() + item.riskLevel.slice(1)}
+                        {(item.riskLevel ?? 'low').charAt(0).toUpperCase() + (item.riskLevel ?? 'low').slice(1)}
                       </span>
                       {item.sodConflicts && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
@@ -237,7 +237,7 @@ export function ApprovalInbox() {
                       )}
                       {item.priority !== 'normal' && (
                         <span className={`text-xs font-medium ${priorityInfo.color}`}>
-                          {item.priority.toUpperCase()}
+                          {(item.priority ?? '').toUpperCase()}
                         </span>
                       )}
                     </div>

@@ -165,7 +165,7 @@ export function RoleDriftDetection() {
       r.hashes.prod,
       r.severity,
       driftTypeLabel[r.driftType],
-      r.driftedSystems.join('; '),
+      (r.driftedSystems ?? []).join('; '),
     ]);
     const headers = ['Role ID', 'Role Name', 'Process Area', 'DEV Hash', 'QA Hash', 'PROD Hash', 'Severity', 'Drift Type', 'Drifted Systems'];
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');

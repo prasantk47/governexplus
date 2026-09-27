@@ -293,16 +293,16 @@ export function CertificationReview() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${riskInfo.color}`}>
-                      {item.riskLevel.charAt(0).toUpperCase() + item.riskLevel.slice(1)}
+                      {(item.riskLevel ?? 'low').charAt(0).toUpperCase() + (item.riskLevel ?? 'low').slice(1)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {item.lastUsed}
                   </td>
                   <td className="px-6 py-4">
-                    {item.anomalies.length > 0 ? (
+                    {(item.anomalies ?? []).length > 0 ? (
                       <div className="space-y-1">
-                        {item.anomalies.map((anomaly, idx) => (
+                        {(item.anomalies ?? []).map((anomaly, idx) => (
                           <span
                             key={idx}
                             className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 mr-1"

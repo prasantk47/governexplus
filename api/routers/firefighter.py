@@ -89,11 +89,11 @@ def _get_manager(tenant_id: str = Depends(_get_tenant_id)) -> FirefighterManager
 # =============================================================================
 
 class FirefighterRequestCreate(BaseModel):
-    """Request to create a new firefighter access request with structured reason code"""
-    requester_user_id: str = Field(..., example="JSMITH")
-    requester_name: str = Field(..., example="John Smith")
-    requester_email: str = Field(..., example="john.smith@company.com")
-    target_system: str = Field(..., example="SAP_PROD")
+    """Request to create a new privileged access request. Requester auto-fills from JWT."""
+    requester_user_id: Optional[str] = Field(None, example="JSMITH")
+    requester_name: Optional[str] = Field(None, example="John Smith")
+    requester_email: Optional[str] = Field(None, example="john.smith@company.com")
+    target_system: Optional[str] = Field("SAP_PROD", example="SAP_PROD")
     firefighter_id: str = Field(..., example="FF_EMERGENCY_01")
 
     # Reason Code (structured)
@@ -235,11 +235,18 @@ async def create_firefighter_request(request: FirefighterRequestCreate, mgr: Fir
             }
             priority = priority_map.get(request.priority.lower())
 
+        # Auto-fill requester from JWT context
+        from core.tenant import get_current_tenant
+        ctx = get_current_tenant()
+        req_uid = request.requester_user_id or (ctx.user_id if ctx else "unknown")
+        req_name = request.requester_name or (ctx.user_email if ctx else "Unknown")
+        req_email = request.requester_email or (ctx.user_email if ctx else "")
+
         ff_request = await mgr.submit_request(
-            requester_user_id=request.requester_user_id,
-            requester_name=request.requester_name,
-            requester_email=request.requester_email,
-            target_system=request.target_system,
+            requester_user_id=req_uid,
+            requester_name=req_name,
+            requester_email=req_email,
+            target_system=request.target_system or "SAP_PROD",
             firefighter_id=request.firefighter_id,
             reason_code=reason_code,
             reason=request.reason or "",

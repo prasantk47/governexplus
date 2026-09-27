@@ -319,7 +319,7 @@ export function DeficiencyTracker() {
       header: 'ID',
       render: (d: Deficiency) => (
         <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
-          {d.deficiency_id ?? d.id.slice(0, 8)}
+          {d.deficiency_id ?? String(d.id).slice(0, 8)}
         </span>
       ),
     },

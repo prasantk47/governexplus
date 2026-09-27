@@ -175,14 +175,14 @@ export function FioriAnalyzer() {
   const filteredApps = apps.filter(
     (a) =>
       a.title.toLowerCase().includes(appSearch.toLowerCase()) ||
-      a.id.toLowerCase().includes(appSearch.toLowerCase()) ||
+      String(a.id).toLowerCase().includes(appSearch.toLowerCase()) ||
       a.catalog.toLowerCase().includes(appSearch.toLowerCase())
   );
 
   const filteredCatalogs = catalogs.filter(
     (c) =>
       c.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      c.id.toLowerCase().includes(catalogSearch.toLowerCase())
+      String(c.id).toLowerCase().includes(catalogSearch.toLowerCase())
   );
 
   const isTracing = traceMutation.isPending;
@@ -292,11 +292,11 @@ export function FioriAnalyzer() {
                       <p className="text-xs text-gray-400 truncate mt-0.5">{cat.id}</p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <Badge variant="neutral" size="sm">{cat.app_count} apps</Badge>
-                        {cat.assigned_to.slice(0, 2).map((r) => (
+                        {(cat.assigned_to ?? []).slice(0, 2).map((r) => (
                           <Badge key={r} variant="info" size="sm">{r}</Badge>
                         ))}
-                        {cat.assigned_to.length > 2 && (
-                          <Badge variant="neutral" size="sm">+{cat.assigned_to.length - 2}</Badge>
+                        {(cat.assigned_to ?? []).length > 2 && (
+                          <Badge variant="neutral" size="sm">+{(cat.assigned_to ?? []).length - 2}</Badge>
                         )}
                       </div>
                     </div>
@@ -390,7 +390,7 @@ export function FioriAnalyzer() {
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Backend Transactions</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedApp.backend_transactions.map((t) => (
+                    {(selectedApp.backend_transactions ?? []).map((t) => (
                       <Badge key={t} variant="neutral" size="sm">
                         <span className="font-mono">{t}</span>
                       </Badge>
@@ -401,7 +401,7 @@ export function FioriAnalyzer() {
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Required Auth Objects</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedApp.auth_objects.map((o) => (
+                    {(selectedApp.auth_objects ?? []).map((o) => (
                       <Badge key={o} variant="info" size="sm">
                         <span className="font-mono">{o}</span>
                       </Badge>
@@ -531,7 +531,7 @@ export function FioriAnalyzer() {
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Missing Auth Objects</p>
                     <div className="space-y-1">
-                      {diagnoseResult.missing_objects.map((obj) => (
+                      {(diagnoseResult.missing_objects ?? []).map((obj) => (
                         <p key={obj} className="font-mono text-xs bg-gray-100/60 text-gray-700 px-2 py-1 rounded-lg">
                           {obj}
                         </p>

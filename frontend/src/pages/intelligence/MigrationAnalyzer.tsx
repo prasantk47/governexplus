@@ -99,12 +99,17 @@ interface MigrationData {
 // ============================================================================
 
 const mappingStatusConfig: Record<
-  MappingStatus,
-  { variant: 'success' | 'warning' | 'danger'; label: string }
+  string,
+  { variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral'; label: string }
 > = {
   compatible: { variant: 'success', label: 'Compatible' },
+  direct_map: { variant: 'success', label: 'Direct Map' },
   replaced: { variant: 'warning', label: 'Replaced' },
+  fiori_only: { variant: 'info', label: 'Fiori Only' },
+  simplified: { variant: 'info', label: 'Simplified' },
   obsolete: { variant: 'danger', label: 'Obsolete' },
+  removed: { variant: 'danger', label: 'Removed' },
+  unchanged: { variant: 'neutral', label: 'Unchanged' },
 };
 
 const effortConfig: Record<
@@ -150,10 +155,31 @@ export function MigrationAnalyzer() {
 
   const { data: migrationData, isLoading } = useQuery<MigrationData>({
     queryKey: ['migration-analysis'],
-    queryFn: () =>
-      api
-        .get('/migration/transactions/mapping')
-        .then((res) => res.data),
+    queryFn: async () => {
+      const res = await api.get('/migration/transactions/mapping');
+      const d = res.data;
+      // Map API response shape to component's expected shape
+      const mappings = (d?.mappings ?? d?.transactionMappings ?? []).map((m: any) => ({
+        eccTcode: m.ecc_tcode ?? m.eccTcode ?? '',
+        eccDescription: m.notes ?? m.eccDescription ?? '',
+        s4Equivalent: m.s4_tcode ?? m.s4Equivalent ?? null,
+        fioriApp: m.fiori_app_ids?.[0] ?? m.fioriApp ?? null,
+        status: m.status ?? 'unknown',
+        processArea: m.business_process ?? m.processArea ?? '',
+        notes: m.notes ?? '',
+      }));
+      return {
+        overallReadiness: d?.overallReadiness ?? d?.overall_readiness ?? 0,
+        rolesAnalyzed: d?.rolesAnalyzed ?? d?.total ?? mappings.length,
+        compatible: d?.compatible ?? 0,
+        needsChanges: d?.needsChanges ?? 0,
+        obsolete: d?.obsolete ?? 0,
+        transactionMappings: mappings,
+        roleAssessments: d?.roleAssessments ?? d?.role_assessments ?? [],
+        userImpacts: d?.userImpacts ?? d?.user_impacts ?? [],
+        migrationPlan: d?.migrationPlan ?? d?.migration_plan ?? [],
+      };
+    },
   });
 
   const data: MigrationData = migrationData ?? {
@@ -236,7 +262,7 @@ export function MigrationAnalyzer() {
       key: 'status',
       header: 'Status',
       render: (m: TransactionMapping) => {
-        const cfg = mappingStatusConfig[m.status];
+        const cfg = mappingStatusConfig[m.status] ?? { variant: 'neutral' as const, label: m.status };
         return (
           <Badge variant={cfg.variant} size="sm">
             {cfg.label}

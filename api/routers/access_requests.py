@@ -55,16 +55,17 @@ def _get_manager(
 # =============================================================================
 
 class CreateRequestModel(BaseModel):
-    """Model for creating a new access request"""
-    requester_user_id: str = Field(..., example="JSMITH")
-    requester_name: str = Field(..., example="John Smith")
-    requester_email: str = Field(..., example="john.smith@company.com")
-    target_user_id: str = Field(..., example="MBROWN")
-    target_user_name: str = Field(..., example="Mary Brown")
-    requested_roles: List[str] = Field(..., example=["Z_AP_CLERK", "Z_PURCHASER"])
-    business_justification: str = Field(..., min_length=20,
-        example="Need access to process vendor invoices for the new procurement project")
+    """Model for creating a new access request. Requester fields auto-fill from JWT if omitted."""
+    requester_user_id: Optional[str] = Field(None, example="JSMITH")
+    requester_name: Optional[str] = Field(None, example="John Smith")
+    requester_email: Optional[str] = Field(None, example="john.smith@company.com")
+    target_user_id: Optional[str] = Field(None, example="MBROWN")
+    target_user_name: Optional[str] = Field(None, example="Mary Brown")
+    requested_roles: List[str] = Field(default_factory=list, example=["Z_AP_CLERK", "Z_PURCHASER"])
+    business_justification: Optional[str] = Field(None, example="Need access for procurement project")
+    justification: Optional[str] = Field(None)  # alias accepted by frontend
     request_type: Optional[str] = Field(default="new_access")
+    priority: Optional[str] = Field(default="medium")
     is_temporary: bool = Field(default=False)
     end_date: Optional[datetime] = None
     ticket_reference: Optional[str] = Field(None, example="INC0012345")
@@ -172,26 +173,38 @@ async def create_access_request(
     mgr: AccessRequestManager = Depends(_get_manager),
     tenant_id: str = Depends(_get_tenant_id),
 ):
-    """Create a new access request (draft), persisted to database."""
+    """Create a new access request (draft), persisted to database.
+    Requester fields auto-fill from JWT if not provided."""
     try:
+        # Auto-fill requester from JWT context
+        from core.tenant import get_current_tenant
+        ctx = get_current_tenant()
+        requester_id = request.requester_user_id or (ctx.user_id if ctx else "unknown")
+        requester_name = request.requester_name or (ctx.user_email if ctx else "Unknown User")
+        requester_email = request.requester_email or (ctx.user_email if ctx else "")
+        target_id = request.target_user_id or requester_id
+        target_name = request.target_user_name or requester_name
+        justification = request.business_justification or request.justification or "Access requested"
+
         type_map = {
             "new_access": RequestType.NEW_ACCESS,
             "modify_access": RequestType.MODIFY_ACCESS,
             "remove_access": RequestType.REMOVE_ACCESS,
             "temporary": RequestType.TEMPORARY_ACCESS,
-            "extension": RequestType.ROLE_EXTENSION
+            "extension": RequestType.ROLE_EXTENSION,
+            "role_assignment": RequestType.NEW_ACCESS,
         }
         req_type = type_map.get(request.request_type, RequestType.NEW_ACCESS)
 
         access_request = await mgr.create_request(
             tenant_id=tenant_id,
-            requester_user_id=request.requester_user_id,
-            requester_name=request.requester_name,
-            requester_email=request.requester_email,
-            target_user_id=request.target_user_id,
-            target_user_name=request.target_user_name,
+            requester_user_id=requester_id,
+            requester_name=requester_name,
+            requester_email=requester_email,
+            target_user_id=target_id,
+            target_user_name=target_name,
             requested_roles=request.requested_roles,
-            business_justification=request.business_justification,
+            business_justification=justification,
             request_type=req_type,
             is_temporary=request.is_temporary,
             end_date=request.end_date,

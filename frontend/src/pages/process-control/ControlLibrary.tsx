@@ -218,7 +218,7 @@ export function ControlLibrary() {
       header: 'Control ID',
       render: (c: Control) => (
         <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
-          {c.control_id ?? c.id.slice(0, 8)}
+          {c.control_id ?? String(c.id).slice(0, 8)}
         </span>
       ),
     },
@@ -570,7 +570,7 @@ export function ControlLibrary() {
                 {viewControl.name}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {viewControl.control_id ?? viewControl.id.slice(0, 8)} · {viewControl.process_name}
+                {viewControl.control_id ?? String(viewControl.id).slice(0, 8)} · {viewControl.process_name}
               </p>
             </div>
             <button

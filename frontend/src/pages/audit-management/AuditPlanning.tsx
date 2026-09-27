@@ -126,7 +126,10 @@ export function AuditPlanning() {
         plan_type: planTypeFilter || undefined,
         status: statusFilter || undefined,
       });
-      return res.data;
+      const d = res.data;
+      if (Array.isArray(d)) return d;
+      const arr = d?.plans ?? d?.engagements ?? d?.items ?? d?.data;
+      return Array.isArray(arr) ? arr : [];
     },
   });
 
@@ -192,7 +195,7 @@ export function AuditPlanning() {
       key: 'id',
       header: 'Plan ID',
       render: (p: AuditPlan) => (
-        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{p.id.slice(0, 8)}</span>
+        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{String((p as any).plan_id || p.id).slice(0, 12)}</span>
       ),
     },
     {

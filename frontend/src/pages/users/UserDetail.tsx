@@ -317,7 +317,7 @@ export function UserDetail() {
                         Last used: {role.lastUsed}
                       </div>
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${riskInfo.color}`}>
-                        {role.riskLevel.charAt(0).toUpperCase() + role.riskLevel.slice(1)}
+                        {(role.riskLevel ?? 'low').charAt(0).toUpperCase() + (role.riskLevel ?? 'low').slice(1)}
                       </span>
                       {role.status === 'pending_review' && (
                         <span className="inline-flex px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs">
@@ -405,7 +405,7 @@ export function UserDetail() {
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {violation.status.charAt(0).toUpperCase() + violation.status.slice(1)}
+                        {(violation.status ?? 'unknown').charAt(0).toUpperCase() + (violation.status ?? 'unknown').slice(1)}
                       </span>
                       <button className="text-primary-600 hover:text-primary-900 text-sm">
                         View Details

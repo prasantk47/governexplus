@@ -264,7 +264,7 @@ export function CCMDashboard() {
       header: 'Rule ID',
       render: (r: CCMRule) => (
         <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400">
-          {r.rule_id ?? r.id.slice(0, 8)}
+          {r.rule_id ?? String(r.id).slice(0, 8)}
         </span>
       ),
     },

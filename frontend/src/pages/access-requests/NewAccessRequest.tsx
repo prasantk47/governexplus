@@ -309,7 +309,7 @@ export function NewAccessRequest() {
     return allUsers.filter(
       (u) =>
         u.name.toLowerCase().includes(sourceUserSearch.toLowerCase()) ||
-        u.id.toLowerCase().includes(sourceUserSearch.toLowerCase()) ||
+        String(u.id).toLowerCase().includes(sourceUserSearch.toLowerCase()) ||
         u.department.toLowerCase().includes(sourceUserSearch.toLowerCase())
     );
   }, [sourceUserSearch]);

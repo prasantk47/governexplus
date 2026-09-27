@@ -101,9 +101,9 @@ export function RiskViolations() {
 
   const filteredViolations = violations.filter((v) => {
     const matchesSearch =
-      v.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.rule.toLowerCase().includes(searchTerm.toLowerCase());
+      (v.user ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(v.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (v.rule ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
     const matchesRisk = riskFilter === 'all' || v.riskLevel === riskFilter;
     const matchesType = typeFilter === 'all' || v.type === typeFilter;
@@ -162,7 +162,7 @@ export function RiskViolations() {
       header: 'Systems',
       render: (v: Violation) => (
         <div className="flex flex-wrap gap-1">
-          {v.systems.map((system) => (
+          {(v.systems ?? []).map((system) => (
             <Badge key={system} variant="neutral" size="sm">{system}</Badge>
           ))}
         </div>
@@ -315,7 +315,7 @@ export function RiskViolations() {
                 <div>
                   <p className="text-xs text-gray-500">Systems</p>
                   <div className="flex flex-wrap gap-1 mt-0.5">
-                    {selectedViolation.systems.map((s) => (
+                    {(selectedViolation.systems ?? []).map((s) => (
                       <Badge key={s} variant="neutral" size="sm">{s}</Badge>
                     ))}
                   </div>

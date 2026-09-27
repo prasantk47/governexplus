@@ -302,9 +302,9 @@ export function MitigationMonitoring() {
 
   const filteredControls = controls.filter((c) => {
     const matchesSearch =
-      c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.owner.toLowerCase().includes(searchTerm.toLowerCase());
+      String(c.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.owner ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     const matchesType = typeFilter === 'all' || c.type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;

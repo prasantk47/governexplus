@@ -83,7 +83,7 @@ export function AuditDashboard() {
     queryKey: ['audit-management', 'dashboard'],
     queryFn: async () => {
       const res = await auditManagementApi.getDashboard();
-      return res.data;
+      return res.data ?? {};
     },
   });
 
@@ -238,7 +238,7 @@ export function AuditDashboard() {
                 {overdueList.map((action) => (
                   <tr key={action.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="px-5 py-3.5 text-xs font-mono text-gray-500 dark:text-gray-400">
-                      {action.id.slice(0, 8)}
+                      {String(action.id).slice(0, 8)}
                     </td>
                     <td className="px-5 py-3.5 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
                       {action.description}
@@ -260,7 +260,7 @@ export function AuditDashboard() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          toast.success(`Action ${action.id.slice(0, 8)} escalated`);
+                          toast.success(`Action ${String(action.id).slice(0, 8)} escalated`);
                         }}
                       >
                         Escalate

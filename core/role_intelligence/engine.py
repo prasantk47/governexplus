@@ -1326,7 +1326,7 @@ class RoleIntelligenceEngine:
             "unused_roles": unused_count,
             "roles_without_owner": no_owner_count,
             "roles_with_sod_conflicts": roles_with_sod,
-            "ownership_rate_pct": round(roles_with_owner / len(self._catalogue) * 100, 1),
+            "ownership_rate_pct": round(roles_with_owner / max(len(self._catalogue), 1) * 100, 1),
         }
 
     # ------------------------------------------------------------------

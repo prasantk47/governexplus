@@ -171,11 +171,11 @@ export function ProvisioningDashboard() {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       !q ||
-      t.id.toLowerCase().includes(q) ||
-      t.requestId.toLowerCase().includes(q) ||
-      t.user.toLowerCase().includes(q) ||
-      t.role.toLowerCase().includes(q) ||
-      t.targetSystem.toLowerCase().includes(q);
+      String(t.id).toLowerCase().includes(q) ||
+      String(t.requestId ?? '').toLowerCase().includes(q) ||
+      (t.user ?? '').toLowerCase().includes(q) ||
+      (t.role ?? '').toLowerCase().includes(q) ||
+      (t.targetSystem ?? '').toLowerCase().includes(q);
     const matchesSystem = systemFilter === 'all' || t.targetSystem === systemFilter;
     const matchesAction = actionFilter === 'all' || t.action === actionFilter;
     return matchesSearch && matchesSystem && matchesAction;

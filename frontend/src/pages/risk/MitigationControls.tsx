@@ -240,10 +240,10 @@ export function MitigationControls() {
   const filtered = tabFiltered.filter((c) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      c.id.toLowerCase().includes(term) ||
-      c.name.toLowerCase().includes(term) ||
-      c.owner.toLowerCase().includes(term) ||
-      c.description.toLowerCase().includes(term);
+      String(c.id).toLowerCase().includes(term) ||
+      (c.name ?? '').toLowerCase().includes(term) ||
+      (c.owner ?? '').toLowerCase().includes(term) ||
+      (c.description ?? '').toLowerCase().includes(term);
     const matchesType = typeFilter === 'all' || c.controlType === typeFilter;
     const matchesEffectiveness =
       effectivenessFilter === 'all' || c.effectiveness === effectivenessFilter;

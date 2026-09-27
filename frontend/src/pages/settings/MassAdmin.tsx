@@ -275,7 +275,7 @@ function JobDetailPanel({
             USER_RESULT_COLORS[r.status] ?? 'bg-gray-100 text-gray-800'
           }`}
         >
-          {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+          {(r.status ?? 'unknown').charAt(0).toUpperCase() + (r.status ?? 'unknown').slice(1)}
         </span>
       ),
     },

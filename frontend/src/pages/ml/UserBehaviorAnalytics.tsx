@@ -278,7 +278,7 @@ export function UserBehaviorAnalytics() {
                       <h3 className="text-lg font-semibold text-gray-900">{userProfile.user_id}</h3>
                       <div className="flex items-center gap-3 mt-1">
                         <span className={clsx('px-2 py-1 rounded text-sm font-medium', getRiskColor(userProfile.risk_level))}>
-                          {userProfile.risk_level.toUpperCase()} RISK
+                          {(userProfile.risk_level ?? 'unknown').toUpperCase()} RISK
                         </span>
                         <span className="flex items-center gap-1 text-sm text-gray-500">
                           {getTrendIcon(userProfile.risk_trend)}

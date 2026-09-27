@@ -243,7 +243,7 @@ function ResultPanel({ result }: { result: DiagnoseResult }) {
           Diagnostic Chain
         </h3>
         <div className="space-y-2">
-          {result.diagnostic_chain.map((step) => (
+          {(result.diagnostic_chain ?? []).map((step) => (
             <DiagnosticStepRow key={step.step} step={step} />
           ))}
         </div>

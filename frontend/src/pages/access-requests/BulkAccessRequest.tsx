@@ -347,7 +347,7 @@ export function BulkAccessRequest() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
-                            {user.displayName.split(' ').map((n) => n[0] ?? '').filter(Boolean).join('')}
+                            {(user.displayName ?? '').split(' ').map((n) => n[0] ?? '').filter(Boolean).join('')}
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{user.displayName}</div>

@@ -42,7 +42,7 @@ const tiers = [
     price: 99,
     description: 'Perfect for small teams getting started with GRC',
     features: ['Up to 25 users', '2 connected systems', 'Basic SoD Analysis', 'Email support', '5 GB storage'],
-    modules: ['access_management'],
+    modules: ['access_governance'],
     color: 'slate',
     popular: false,
   },
@@ -52,7 +52,7 @@ const tiers = [
     price: 499,
     description: 'For growing organizations with compliance needs',
     features: ['Up to 100 users', '5 connected systems', 'Full compliance frameworks', 'Advanced risk scoring', 'Priority support', '50 GB storage'],
-    modules: ['access_management', 'compliance', 'risk_analytics'],
+    modules: ['access_governance', 'control_assurance', 'risk_intelligence'],
     color: 'indigo',
     popular: true,
   },
@@ -62,20 +62,19 @@ const tiers = [
     price: 2500,
     description: 'Complete solution for large enterprises',
     features: ['Up to 500 users', '20 connected systems', 'AI-powered insights', 'ML analytics', 'Custom integrations', 'Dedicated support', 'Unlimited storage', 'Custom SLAs'],
-    modules: ['access_management', 'compliance', 'risk_analytics', 'ai_assistant', 'advanced_ml'],
+    modules: ['access_governance', 'control_assurance', 'risk_intelligence', 'audit_intelligence', 'ai_copilot', 'privileged_access'],
     color: 'amber',
     popular: false,
   }
 ];
 
 const availableModules = [
-  { id: 'access_management', name: 'Access Management', description: 'User provisioning, role management, access requests', icon: ShieldCheckIcon, color: 'indigo' },
-  { id: 'compliance', name: 'Compliance', description: 'Frameworks, assessments, certifications', icon: ClipboardDocumentCheckIcon, color: 'emerald' },
-  { id: 'risk_analytics', name: 'Risk Analytics', description: 'Risk scoring, SoD analysis, violations', icon: ChartBarIcon, color: 'amber' },
-  { id: 'ai_assistant', name: 'AI Assistant', description: 'Natural language queries, smart recommendations', icon: SparklesIcon, color: 'purple' },
-  { id: 'advanced_ml', name: 'Advanced ML', description: 'Role mining, anomaly detection, predictions', icon: CpuChipIcon, color: 'pink' },
-  { id: 'firefighter', name: 'Privileged Access', description: 'Emergency access management & audit', icon: FireIcon, color: 'red' },
-  { id: 'siem_integration', name: 'SIEM Integration', description: 'Security event monitoring & alerts', icon: BoltIcon, color: 'cyan' },
+  { id: 'access_governance', name: 'Access Governance', description: 'Risk intelligence, access lifecycle, privileged access, role design', icon: ShieldCheckIcon, color: 'indigo' },
+  { id: 'control_assurance', name: 'Control Assurance', description: 'Control library, testing, continuous monitoring, evidence', icon: ClipboardDocumentCheckIcon, color: 'emerald' },
+  { id: 'risk_intelligence', name: 'Risk Intelligence', description: 'Risk register, KRIs, heatmap, scenarios, incidents', icon: ChartBarIcon, color: 'amber' },
+  { id: 'audit_intelligence', name: 'Audit Intelligence', description: 'Audit planning, engagements, findings, action tracking', icon: CpuChipIcon, color: 'rose' },
+  { id: 'ai_copilot', name: 'AI Copilot', description: 'Health score, explain, investigate, recommend, digital twin', icon: SparklesIcon, color: 'purple' },
+  { id: 'privileged_access', name: 'Privileged Access', description: 'Emergency elevated access with session monitoring', icon: FireIcon, color: 'red' },
 ];
 
 export function TenantOnboard() {
@@ -91,7 +90,7 @@ export function TenantOnboard() {
     admin_password: '',
     tier: 'professional',
     trial_days: 14,
-    modules: ['access_management', 'compliance', 'risk_analytics']
+    modules: ['access_governance', 'control_assurance', 'risk_intelligence']
   });
 
   const updateForm = (field: keyof OnboardingData, value: any) => {
@@ -643,7 +642,7 @@ export function TenantOnboard() {
                         admin_password: '',
                         tier: 'professional',
                         trial_days: 14,
-                        modules: ['access_management', 'compliance', 'risk_analytics']
+                        modules: ['access_governance', 'control_assurance', 'risk_intelligence']
                       });
                       setCreatedTenant(null);
                     }}

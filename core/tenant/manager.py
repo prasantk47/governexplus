@@ -86,10 +86,10 @@ class TenantConfig:
 
     # Features
     enabled_modules: List[str] = field(default_factory=lambda: [
-        "access_control",       # Risk Intelligence, Access Lifecycle, Privileged Access, Role Design Studio, Certification
-        "process_control",      # Control Intelligence — controls, testing, CCM, deficiencies, sign-off
-        "risk_management",      # Enterprise Risk Engine — register, assessments, KRI, scenarios, incidents
-        "audit_management",     # Audit Command Center — universe, planning, engagements, findings, actions
+        "access_governance",     # Risk Intelligence, Access Lifecycle, Privileged Access, Role Design Studio, Certification
+        "control_assurance",     # Control Intelligence — controls, testing, CCM, deficiencies, sign-off
+        "risk_intelligence",     # Enterprise Risk Engine — register, assessments, KRI, scenarios, incidents
+        "audit_intelligence",    # Audit Command Center — universe, planning, engagements, findings, actions
     ])
 
     # Notifications

@@ -15,6 +15,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 import { Dashboard } from './pages/Dashboard';
 import { CommandCenter } from './pages/CommandCenter';
 import { Login } from './pages/auth/Login';
+import { LandingPage } from './pages/LandingPage';
 
 // Access Request Pages
 import { AccessRequestList } from './pages/access-requests/AccessRequestList';
@@ -180,6 +181,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Landing Page */}
+      <Route path="/welcome" element={<LandingPage />} />
+
       {/* Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />

@@ -7,7 +7,7 @@
 const getApiBase = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl;
-  if (import.meta.env.DEV) return 'http://localhost:9000';
+  if (import.meta.env.DEV) return 'http://localhost:8000';
   return '/api';
 };
 
@@ -113,11 +113,13 @@ class ProvisioningApiService {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = localStorage.getItem('accessToken');
+    const tenantId = localStorage.getItem('tenantId');
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(tenantId ? { 'X-Tenant-ID': tenantId } : {}),
         ...options.headers,
       },
     });

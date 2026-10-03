@@ -50,16 +50,33 @@ export function ComplianceDashboard() {
 
   const { data: frameworksData } = useQuery({
     queryKey: ['complianceFrameworks'],
-    queryFn: () => api.get('/compliance/frameworks').then((r) => r.data),
+    queryFn: () =>
+      api.get('/frameworks').then((r) => {
+        // Backend returns { total, frameworks: [{framework_id, name, description, ...}] }
+        // Adapt to the ComplianceFramework shape expected by this page
+        const raw: Array<Record<string, unknown>> = r.data?.frameworks ?? r.data ?? [];
+        return raw.map((fw) => ({
+          id: fw.framework_id ?? fw.id,
+          name: fw.name,
+          shortName: (fw.name as string)?.split(' ').map((w: string) => w[0]).join('').slice(0, 6) || (fw.framework_id as string),
+          description: fw.description ?? '',
+          totalControls: 0,
+          compliantControls: 0,
+          partialControls: 0,
+          nonCompliantControls: 0,
+          complianceScore: 0,
+          lastAssessment: 'N/A',
+          nextAssessment: 'N/A',
+          trend: 'stable' as const,
+          trendValue: 0,
+        }));
+      }),
   });
 
-  const { data: controlGapsData } = useQuery({
-    queryKey: ['complianceControlGaps'],
-    queryFn: () => api.get('/compliance/gaps').then((r) => r.data),
-  });
+  // /compliance/gaps endpoint not yet implemented; default to empty list
+  const controlGaps: ControlGap[] = [];
 
   const frameworks: ComplianceFramework[] = frameworksData || [];
-  const controlGaps: ControlGap[] = controlGapsData || [];
 
   const overallScore = frameworks.length
     ? Math.round(frameworks.reduce((acc, f) => acc + f.complianceScore, 0) / frameworks.length)

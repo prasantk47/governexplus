@@ -24,16 +24,23 @@ services:
       - .:/app
     ports:
       - "9000:9000"
+    restart: unless-stopped
     environment:
       - SAPNWRFC_HOME=/usr/local/sap/nwrfcsdk
       - LD_LIBRARY_PATH=/usr/local/sap/nwrfcsdk/lib
       - DATABASE_URL=postgresql://grc_user:grc_secure_password_2024@db:5432/grc_platform
+      - JWT_SECRET=change-me-in-production-use-a-long-random-string
+      - CORS_ORIGINS=http://localhost:4500
     depends_on:
       db:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+        NGINX_CONF: nginx.local.conf
     ports:
       - "4500:80"
     depends_on:

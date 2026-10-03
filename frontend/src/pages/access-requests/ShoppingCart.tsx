@@ -188,7 +188,7 @@ export function ShoppingCart() {
       if (filterSystem) params.system = filterSystem;
       if (filterProcess) params.business_process = filterProcess;
       if (filterRisk) params.risk_level = filterRisk;
-      return armApi.getCatalog(params).then((r) => r.data?.roles || r.data || []);
+      return armApi.getCatalog(params).then((r) => r.data?.items || r.data || []);
     },
   });
 

@@ -77,20 +77,31 @@ const EFFECTIVENESS_DATA = [
 const mitigationApi = {
   listControls: () =>
     api
-      .get('/controls-monitoring/')
-      .then((r) => r.data)
+      .get('/mitigation/controls')
+      .then((r) => r.data?.controls ?? r.data ?? [])
       .catch(() => []),
 
   getExpiring: () =>
     api
       .get('/controls-monitoring/expiring')
-      .then((r) => r.data)
+      .then((r) => r.data?.controls ?? r.data ?? [])
       .catch(() => []),
 
   getStats: () =>
     api
-      .get('/controls-monitoring/stats')
-      .then((r) => r.data)
+      .get('/controls-monitoring/health')
+      .then((r) => {
+        const d = r.data ?? {};
+        const s = d.summary ?? {};
+        return {
+          total: s.total_mitigations ?? 0,
+          healthy: s.active ?? 0,
+          expiringSoon: s.expiring_soon ?? 0,
+          expired: s.expired ?? 0,
+          suspended: s.ineffective ?? 0,
+          healthScore: d.health_score ?? 0,
+        };
+      })
       .catch(() => null),
 
   recertify: (controlId: string) =>

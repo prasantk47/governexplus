@@ -42,7 +42,7 @@ export function BulkAccessRequest() {
   const apiUsers: BulkUser[] = ((usersData as any)?.data?.items ?? []).map((u: any) => ({
     id: u.id ?? u.user_id ?? String(u.username),
     username: u.username ?? '',
-    displayName: u.full_name ?? u.display_name ?? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim(),
+    displayName: u.full_name ?? u.display_name ?? 'Unknown',
     email: u.email ?? '',
     department: u.department ?? '',
     selected: false,

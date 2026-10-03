@@ -5,9 +5,9 @@ const getBaseUrl = () => import.meta.env.VITE_API_URL || '';
 const api = axios.create();
 api.interceptors.request.use(cfg => {
   cfg.baseURL = getBaseUrl();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  const tid = localStorage.getItem('tenant_id');
+  const tid = localStorage.getItem('tenantId');
   if (tid) cfg.headers['X-Tenant-ID'] = tid;
   return cfg;
 });

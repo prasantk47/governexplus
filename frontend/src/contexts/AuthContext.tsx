@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const role = getRoleFromUsername(username);
         const demoUser: User = {
           user_id: username,
-          name: getRoleDisplayName(role, username),
+          name: username,
           email: `${username}@company.com`,
           department: getDepartmentForRole(role),
           role,

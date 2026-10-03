@@ -233,7 +233,7 @@ export function AuditEvidenceCenter() {
         (prev) => [pkg, ...(prev ?? [])]
       );
       setActivePackageId(pkg.id);
-      toast.success(`Evidence package ${pkg.id} generated — ${pkg.totalItems.toLocaleString()} items collected`);
+      toast.success(`Evidence package ${pkg.id} generated — ${(pkg.totalItems ?? 0).toLocaleString()} items collected`);
     },
     onError: () => {
       toast.error('Failed to generate evidence package');
@@ -329,7 +329,7 @@ export function AuditEvidenceCenter() {
         />
         <StatCard
           title="Total Audit Items"
-          value={totalPackageItems.toLocaleString()}
+          value={(totalPackageItems ?? 0).toLocaleString()}
           icon={ChartBarIcon}
           iconBgColor="stat-icon-green"
           iconColor=""
@@ -514,7 +514,7 @@ export function AuditEvidenceCenter() {
                   <div className="flex-1 grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-gray-50/80 border border-gray-200/60 p-3">
                       <div className="text-2xl font-bold text-gray-900">
-                        {activePackage.totalItems.toLocaleString()}
+                        {(activePackage.totalItems ?? 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">Total Audit Items</div>
                     </div>
@@ -550,7 +550,7 @@ export function AuditEvidenceCenter() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-gray-800">{result.label}</span>
                           <Badge variant="neutral" size="sm">
-                            {result.itemCount.toLocaleString()} items
+                            {(result.itemCount ?? 0).toLocaleString()} items
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
@@ -654,7 +654,7 @@ export function AuditEvidenceCenter() {
                         <ClockIcon className="h-3 w-3" />
                         {pkg.generatedAt}
                       </span>
-                      <span>{pkg.totalItems.toLocaleString()} items</span>
+                      <span>{(pkg.totalItems ?? 0).toLocaleString()} items</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">

@@ -157,7 +157,7 @@ const EMPTY_ACTION: CreateActionForm = { description: '', owner_id: '', owner_na
 
 function formatDate(iso: string): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+  return new Date(iso || new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
 function daysOverdue(dueDate: string): number {

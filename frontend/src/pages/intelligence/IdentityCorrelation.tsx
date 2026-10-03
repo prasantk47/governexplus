@@ -593,7 +593,7 @@ export function IdentityCorrelation() {
                       <p className="text-xs text-gray-600 mt-0.5">{alert.person_name}</p>
                       <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{alert.description}</p>
                       <p className="text-xs text-gray-400 mt-2">
-                        Detected: {new Date(alert.detected_at).toLocaleString('en-GB')}
+                        Detected: {new Date(alert.detected_at || new Date()).toLocaleString('en-GB')}
                       </p>
                     </div>
                     <div className="flex gap-2">

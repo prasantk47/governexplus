@@ -163,7 +163,7 @@ function KRISparkline({ data }: { data: KRIMeasurement[] }) {
       </svg>
       <div className="flex justify-between text-[10px] text-gray-400 mt-1">
         {data.map((d, i) => (
-          <span key={i}>{new Date(d.measured_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</span>
+          <span key={i}>{new Date(d.measured_at || new Date()).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</span>
         ))}
       </div>
     </div>
@@ -315,7 +315,7 @@ export function KRIDashboard() {
       render: (k: KRI) => (
         <span className="text-xs text-gray-500">
           {k.last_measured_at
-            ? new Date(k.last_measured_at).toLocaleDateString('en-GB')
+            ? new Date(k.last_measured_at || new Date()).toLocaleDateString('en-GB')
             : 'Never'}
         </span>
       ),
@@ -664,7 +664,7 @@ export function KRIDashboard() {
                 <p className="text-xs text-gray-500">Last Measured</p>
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
                   {historyKRI.last_measured_at
-                    ? new Date(historyKRI.last_measured_at).toLocaleDateString('en-GB')
+                    ? new Date(historyKRI.last_measured_at || new Date()).toLocaleDateString('en-GB')
                     : 'Never'}
                 </p>
               </div>
@@ -699,7 +699,7 @@ export function KRIDashboard() {
                           {m.value} {historyKRI.unit}
                         </Badge>
                         <span className="text-xs text-gray-500 flex-1">
-                          {new Date(m.measured_at).toLocaleString('en-GB')}
+                          {new Date(m.measured_at || new Date()).toLocaleString('en-GB')}
                         </span>
                         {m.notes && (
                           <span className="text-xs text-gray-400 max-w-xs truncate">{m.notes}</span>

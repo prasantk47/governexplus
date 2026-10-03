@@ -379,7 +379,7 @@ export function SecurityControlDetail() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
                         {evaluation.evaluation_date
-                          ? new Date(evaluation.evaluation_date).toLocaleString()
+                          ? new Date(evaluation.evaluation_date || new Date()).toLocaleString()
                           : '-'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">

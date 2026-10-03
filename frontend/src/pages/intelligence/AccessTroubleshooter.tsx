@@ -145,7 +145,7 @@ const accessStatusHistoryLabel = (s: HistoryEntry['access_status']): string => {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('en-GB', {
+  return new Date(iso || new Date()).toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

@@ -154,7 +154,7 @@ function formatFutureTime(isoString: string | null): string {
 
 function formatDateTime(isoString: string | null): string {
   if (!isoString) return '-';
-  return new Date(isoString).toLocaleString(undefined, {
+  return new Date(isoString || new Date()).toLocaleString(undefined, {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
@@ -668,7 +668,7 @@ export function RepoSync() {
         />
         <StatCard
           title="Total Synced Objects"
-          value={stats.totalSyncedObjects.toLocaleString()}
+          value={(stats.totalSyncedObjects ?? 0).toLocaleString()}
           icon={CircleStackIcon}
           iconBgColor="stat-icon-purple"
           iconColor="text-purple-400"
@@ -799,7 +799,7 @@ export function RepoSync() {
                         {/* Objects */}
                         <td className="px-4 py-3">
                           <span className="text-sm font-semibold text-gray-800">
-                            {cfg.objectsSynced.toLocaleString()}
+                            {(cfg.objectsSynced ?? 0).toLocaleString()}
                           </span>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {cfg.syncUsers  && <span className="text-[10px] text-blue-500 font-medium">Users</span>}
@@ -926,7 +926,7 @@ export function RepoSync() {
                       {/* Objects */}
                       <td className="px-4 py-3">
                         <span className="text-sm font-semibold text-gray-800">
-                          {entry.objectsSynced.toLocaleString()}
+                          {(entry.objectsSynced ?? 0).toLocaleString()}
                         </span>
                       </td>
                       {/* Changes */}

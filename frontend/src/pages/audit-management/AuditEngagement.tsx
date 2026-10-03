@@ -109,7 +109,7 @@ const EMPTY_FORM: CreateEngagementForm = {
 
 function formatDate(iso: string): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+  return new Date(iso || new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
 function getNextStageLabel(status: string): string {

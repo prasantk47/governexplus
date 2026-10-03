@@ -318,7 +318,7 @@ export function SecurityControlsDashboard() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
                       {profile.last_evaluation_date
-                        ? new Date(profile.last_evaluation_date).toLocaleDateString()
+                        ? new Date(profile.last_evaluation_date || new Date()).toLocaleDateString()
                         : 'Never'}
                     </td>
                   </tr>
@@ -393,7 +393,7 @@ export function SecurityControlsDashboard() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
                       {evaluation.evaluation_date
-                        ? new Date(evaluation.evaluation_date).toLocaleDateString()
+                        ? new Date(evaluation.evaluation_date || new Date()).toLocaleDateString()
                         : '-'}
                     </td>
                   </tr>

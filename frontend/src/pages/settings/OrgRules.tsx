@@ -115,7 +115,7 @@ const EMPTY_FORM: OrgRuleForm = {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('en-GB', {
+    return new Date(iso || new Date()).toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

@@ -132,7 +132,7 @@ function formatRelativeTime(isoString: string): string {
 }
 
 function formatDateTime(isoString: string): string {
-  return new Date(isoString).toLocaleString(undefined, {
+  return new Date(isoString || new Date()).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

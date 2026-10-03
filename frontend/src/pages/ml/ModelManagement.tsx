@@ -253,7 +253,7 @@ export function ModelManagement() {
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                       <span>Version: {modelDetails.version}</span>
                       <span>Features: {modelDetails.features}</span>
-                      <span>Samples: {modelDetails.training_samples.toLocaleString()}</span>
+                      <span>Samples: {(modelDetails.training_samples ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export function ModelManagement() {
                             v{entry.version}
                           </span>
                           <span className="text-sm text-gray-600">
-                            {new Date(entry.date).toLocaleDateString()}
+                            {new Date(entry.date || new Date()).toLocaleDateString()}
                           </span>
                         </div>
                         <span className={clsx('text-sm font-medium', getMetricColor(entry.accuracy))}>

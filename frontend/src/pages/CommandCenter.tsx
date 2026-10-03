@@ -686,8 +686,9 @@ export function CommandCenter() {
             {/* Items */}
             <div className="divide-y divide-gray-100 dark:divide-slate-700/60">
               {visibleItems.map((item) => {
-                const sev = SEVERITY_CONFIG[item.severity];
-                const act = ACTION_CONFIG[item.action_type];
+                const sev = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG['medium'] || Object.values(SEVERITY_CONFIG)[0];
+                const act = ACTION_CONFIG[item.action_type] || ACTION_CONFIG['review'] || Object.values(ACTION_CONFIG)[0];
+                if (!sev || !act) return null;
                 const SevIcon = sev.icon;
                 const ActIcon = act.icon;
 

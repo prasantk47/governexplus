@@ -159,7 +159,7 @@ function labelFor(val: string): string {
 
 function fmtDate(iso: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso || new Date()).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

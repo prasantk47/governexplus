@@ -430,7 +430,7 @@ export function InactiveUsers() {
                     <td className="px-4 py-3 text-sm">
                       {user.last_login ? (
                         <span className="text-gray-600">
-                          {new Date(user.last_login).toLocaleDateString()}
+                          {new Date(user.last_login || new Date()).toLocaleDateString()}
                         </span>
                       ) : (
                         <span className="text-red-500 font-medium">Never</span>

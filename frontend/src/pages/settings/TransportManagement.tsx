@@ -151,7 +151,7 @@ const EMPTY_FORM: CreateTransportForm = {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso || new Date()).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

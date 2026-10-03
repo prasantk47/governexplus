@@ -341,13 +341,13 @@ export function RiskHeatmap() {
                       <div className="text-center">
                         <p className="text-xs text-gray-500">Latest Inherent</p>
                         <p className="text-lg font-bold text-red-600">
-                          {trends[trends.length - 1].avg_inherent.toFixed(1)}
+                          {(trends[trends.length - 1]?.avg_inherent ?? 0).toFixed(1)}
                         </p>
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500">Latest Residual</p>
                         <p className="text-lg font-bold text-orange-500">
-                          {trends[trends.length - 1].avg_residual.toFixed(1)}
+                          {(trends[trends.length - 1]?.avg_residual ?? 0).toFixed(1)}
                         </p>
                       </div>
                       <div className="text-center">

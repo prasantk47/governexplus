@@ -228,7 +228,7 @@ export function AuditPlanning() {
       key: 'total_audit_hours',
       header: 'Total Hours',
       render: (p: AuditPlan) => (
-        <span className="text-gray-700 dark:text-gray-300">{p.total_audit_hours.toLocaleString()}</span>
+        <span className="text-gray-700 dark:text-gray-300">{(p.total_audit_hours ?? 0).toLocaleString()}</span>
       ),
     },
     {

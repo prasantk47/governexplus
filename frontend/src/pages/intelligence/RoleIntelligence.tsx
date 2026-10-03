@@ -702,42 +702,52 @@ export function RoleIntelligence() {
     queryFn: () => api.get('/role-intelligence/overview').then((r) => r.data),
   });
 
+  // Helper: extract array from API response (handles {items:[...]}, {data:[...]}, or plain [...])
+  const toArr = (d: unknown): any[] => {
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === 'object') {
+      const o = d as Record<string, unknown>;
+      return (Array.isArray(o.items) ? o.items : Array.isArray(o.data) ? o.data : Array.isArray(o.duplicates) ? o.duplicates : Array.isArray(o.roles) ? o.roles : Array.isArray(o.results) ? o.results : []) as any[];
+    }
+    return [];
+  };
+
   const { data: duplicatesData } = useQuery<DuplicateGroup[]>({
     queryKey: ['role-intelligence-duplicates'],
-    queryFn: () => api.get('/role-intelligence/duplicates').then((r) => r.data),
+    queryFn: () => api.get('/role-intelligence/duplicates').then((r) => toArr(r.data)),
     enabled: activeTab === 'duplicates',
   });
 
   const { data: unusedData } = useQuery<UnusedRole[]>({
     queryKey: ['role-intelligence-unused'],
-    queryFn: () => api.get('/role-intelligence/unused').then((r) => r.data),
+    queryFn: () => api.get('/role-intelligence/unused').then((r) => toArr(r.data)),
     enabled: activeTab === 'unused',
   });
 
   const { data: healthData } = useQuery<RoleHealthEntry[]>({
     queryKey: ['role-intelligence-health'],
-    queryFn: () => api.get('/role-intelligence/health').then((r) => r.data),
+    queryFn: () => api.get('/role-intelligence/health').then((r) => toArr(r.data)),
     enabled: activeTab === 'health',
   });
 
   const { data: namingData } = useQuery<NamingIssue[]>({
     queryKey: ['role-intelligence-naming'],
-    queryFn: () => api.get('/role-intelligence/naming-issues').then((r) => r.data),
+    queryFn: () => api.get('/role-intelligence/naming-issues').then((r) => toArr(r.data)),
     enabled: activeTab === 'naming',
   });
 
   const { data: consolidationData } = useQuery<ConsolidationItem[]>({
     queryKey: ['role-intelligence-consolidation'],
-    queryFn: () => api.get('/role-intelligence/consolidation').then((r) => r.data),
+    queryFn: () => api.get('/role-intelligence/consolidation').then((r) => toArr(r.data)),
     enabled: activeTab === 'consolidation',
   });
 
   const overview = overviewData ?? null;
-  const duplicates = duplicatesData ?? [];
-  const unused = unusedData ?? [];
-  const health = healthData ?? [];
-  const naming = namingData ?? [];
-  const consolidation = consolidationData ?? [];
+  const duplicates = Array.isArray(duplicatesData) ? duplicatesData : [];
+  const unused = Array.isArray(unusedData) ? unusedData : [];
+  const health = Array.isArray(healthData) ? healthData : [];
+  const naming = Array.isArray(namingData) ? namingData : [];
+  const consolidation = Array.isArray(consolidationData) ? consolidationData : [];
 
   return (
     <div className="space-y-6">

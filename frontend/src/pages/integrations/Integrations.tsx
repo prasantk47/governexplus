@@ -709,7 +709,7 @@ export function Integrations() {
                     {integration.lastSync ? (
                       <div>
                         <div className="text-sm text-gray-900">
-                          {new Date(integration.lastSync).toLocaleString()}
+                          {new Date(integration.lastSync || new Date()).toLocaleString()}
                         </div>
                         <div className="flex items-center mt-1">
                           <ClockIcon className="h-3 w-3 text-gray-400 mr-1" />
@@ -731,10 +731,10 @@ export function Integrations() {
                   </td>
                   <td className="px-6 py-4">
                     {integration.usersCount !== undefined && (
-                      <div className="text-sm text-gray-900">{integration.usersCount.toLocaleString()} users</div>
+                      <div className="text-sm text-gray-900">{(integration.usersCount ?? 0).toLocaleString()} users</div>
                     )}
                     {integration.rolesCount !== undefined && (
-                      <div className="text-xs text-gray-500">{integration.rolesCount.toLocaleString()} roles</div>
+                      <div className="text-xs text-gray-500">{(integration.rolesCount ?? 0).toLocaleString()} roles</div>
                     )}
                     {integration.operationCount > 0 && (
                       <div className="text-xs text-gray-400">{integration.operationCount} operations</div>

@@ -200,7 +200,7 @@ export function PolicyManagement() {
                       {policy.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{policy.appliedTo.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{(policy.appliedTo ?? 0).toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`text-sm font-medium ${policy.violations > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {policy.violations}
@@ -305,7 +305,7 @@ export function PolicyManagement() {
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-green-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">{selectedPolicy.appliedTo.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">{(selectedPolicy.appliedTo ?? 0).toLocaleString()}</p>
                   <p className="text-sm text-green-700">Applied To</p>
                 </div>
                 <div className={`${selectedPolicy.violations > 0 ? 'bg-red-50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>

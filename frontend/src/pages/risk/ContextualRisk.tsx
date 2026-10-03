@@ -246,7 +246,7 @@ export function ContextualRisk() {
               <EyeIcon className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalEvents.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">{(stats.totalEvents ?? 0).toLocaleString()}</p>
               <p className="text-xs text-gray-500">Total Events</p>
             </div>
           </div>

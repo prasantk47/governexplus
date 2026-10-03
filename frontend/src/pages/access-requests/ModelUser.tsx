@@ -909,7 +909,7 @@ export function ModelUser() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <ClockIcon className="h-3.5 w-3.5" />
-                          {new Date(tpl.last_updated).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {new Date(tpl.last_updated || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-500">{tpl.usage_count}×</td>

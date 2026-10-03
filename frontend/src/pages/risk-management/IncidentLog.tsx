@@ -384,7 +384,7 @@ export function IncidentLog() {
       header: 'Reported',
       render: (inc: Incident) => (
         <span className="text-xs text-gray-500">
-          {new Date(inc.reported_at).toLocaleDateString('en-GB')}
+          {new Date(inc.reported_at || new Date()).toLocaleDateString('en-GB')}
         </span>
       ),
     },
@@ -699,14 +699,14 @@ export function IncidentLog() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Reported At</p>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  {new Date(viewingIncident.reported_at).toLocaleString('en-GB')}
+                  {new Date(viewingIncident.reported_at || new Date()).toLocaleString('en-GB')}
                 </p>
               </div>
               {viewingIncident.occurred_at && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Occurred At</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    {new Date(viewingIncident.occurred_at).toLocaleString('en-GB')}
+                    {new Date(viewingIncident.occurred_at || new Date()).toLocaleString('en-GB')}
                   </p>
                 </div>
               )}

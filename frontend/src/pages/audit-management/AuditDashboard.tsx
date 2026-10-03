@@ -71,7 +71,7 @@ const SEVERITY_CONFIG: { key: keyof FindingsBySeverity; label: string; bg: strin
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+  return new Date(iso || new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

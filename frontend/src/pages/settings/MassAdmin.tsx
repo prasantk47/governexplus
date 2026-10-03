@@ -167,7 +167,7 @@ function OperationPill({ op }: { op: OperationType }) {
 
 function formatDate(iso?: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString();
+  return new Date(iso || new Date()).toLocaleString();
 }
 
 // ─── Determine which extra parameter fields are needed ───────────────────────

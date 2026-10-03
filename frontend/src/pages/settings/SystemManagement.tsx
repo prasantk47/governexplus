@@ -167,7 +167,7 @@ function formatDuration(seconds: number | null): string {
 
 function formatDateTime(isoString: string | null): string {
   if (!isoString) return '-';
-  return new Date(isoString).toLocaleString(undefined, {
+  return new Date(isoString || new Date()).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -551,11 +551,11 @@ function DetailPanel({ system, onClose, onEdit, onSync, onTestConnection, syncin
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 px-4 py-3 text-center">
-                <p className="text-xl font-bold text-gray-900">{system.usersCount.toLocaleString()}</p>
+                <p className="text-xl font-bold text-gray-900">{(system.usersCount ?? 0).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Users</p>
               </div>
               <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 px-4 py-3 text-center">
-                <p className="text-xl font-bold text-gray-900">{system.rolesCount.toLocaleString()}</p>
+                <p className="text-xl font-bold text-gray-900">{(system.rolesCount ?? 0).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Roles</p>
               </div>
               <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 px-4 py-3 text-center">
@@ -596,7 +596,7 @@ function DetailPanel({ system, onClose, onEdit, onSync, onTestConnection, syncin
               <div>
                 <dt className="text-xs text-gray-400">Connected Since</dt>
                 <dd className="text-sm font-medium text-gray-800">
-                  {new Date(system.createdAt).toLocaleDateString(undefined, {
+                  {new Date(system.createdAt || new Date()).toLocaleDateString(undefined, {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -638,7 +638,7 @@ function DetailPanel({ system, onClose, onEdit, onSync, onTestConnection, syncin
                       )}
                       {entry.status !== 'failed' && (
                         <p className="text-xs text-gray-400 mt-1">
-                          {entry.usersSync.toLocaleString()} users &middot; {entry.rolesSync.toLocaleString()} roles
+                          {(entry.usersSync ?? 0).toLocaleString()} users &middot; {(entry.rolesSync ?? 0).toLocaleString()} roles
                         </p>
                       )}
                     </div>
@@ -728,11 +728,11 @@ function SystemCard({ system, onSelect, onSync, onTestConnection, syncingId, tes
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-lg bg-gray-50/60 px-3 py-2 text-center">
-          <p className="text-sm font-semibold text-gray-800">{system.usersCount.toLocaleString()}</p>
+          <p className="text-sm font-semibold text-gray-800">{(system.usersCount ?? 0).toLocaleString()}</p>
           <p className="text-[10px] text-gray-400 uppercase tracking-wide">Users</p>
         </div>
         <div className="rounded-lg bg-gray-50/60 px-3 py-2 text-center">
-          <p className="text-sm font-semibold text-gray-800">{system.rolesCount.toLocaleString()}</p>
+          <p className="text-sm font-semibold text-gray-800">{(system.rolesCount ?? 0).toLocaleString()}</p>
           <p className="text-[10px] text-gray-400 uppercase tracking-wide">Roles</p>
         </div>
         <div className="rounded-lg bg-gray-50/60 px-3 py-2 text-center">
@@ -985,13 +985,13 @@ export function SystemManagement() {
     {
       header: 'Users',
       render: (s: ConnectedSystem) => (
-        <span className="text-sm text-gray-700">{s.usersCount.toLocaleString()}</span>
+        <span className="text-sm text-gray-700">{(s.usersCount ?? 0).toLocaleString()}</span>
       ),
     },
     {
       header: 'Roles',
       render: (s: ConnectedSystem) => (
-        <span className="text-sm text-gray-700">{s.rolesCount.toLocaleString()}</span>
+        <span className="text-sm text-gray-700">{(s.rolesCount ?? 0).toLocaleString()}</span>
       ),
     },
     {

@@ -129,7 +129,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso || new Date()).toLocaleDateString('en-US', {
     month: 'short',
     day: '2-digit',
     year: 'numeric',

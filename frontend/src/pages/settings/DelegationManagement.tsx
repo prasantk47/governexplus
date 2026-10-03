@@ -593,7 +593,7 @@ export function DelegationManagement() {
                 {expiringSoon.map((d) => (
                   <li key={d.id} className="text-xs text-amber-700">
                     {d.delegator_name} to {d.delegate_name} — expires{' '}
-                    {new Date(d.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    {new Date(d.end_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                     <button
                       className="ml-2 underline hover:no-underline"
                       onClick={() => openExtend(d)}
@@ -917,7 +917,7 @@ export function DelegationManagement() {
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 Current end:{' '}
-                {new Date(selectedDelegation.end_date).toLocaleDateString('en-GB', {
+                {new Date(selectedDelegation.end_date || new Date()).toLocaleDateString('en-GB', {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric',
@@ -1072,7 +1072,7 @@ export function DelegationManagement() {
               <div className="p-3 rounded-xl bg-gray-50/60 border border-gray-200/50">
                 <p className="text-xs text-gray-500 mb-1">Start Date</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {new Date(selectedDelegation.start_date).toLocaleDateString('en-GB', {
+                  {new Date(selectedDelegation.start_date || new Date()).toLocaleDateString('en-GB', {
                     day: '2-digit', month: 'short', year: 'numeric',
                   })}
                 </p>
@@ -1080,7 +1080,7 @@ export function DelegationManagement() {
               <div className="p-3 rounded-xl bg-gray-50/60 border border-gray-200/50">
                 <p className="text-xs text-gray-500 mb-1">End Date</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {new Date(selectedDelegation.end_date).toLocaleDateString('en-GB', {
+                  {new Date(selectedDelegation.end_date || new Date()).toLocaleDateString('en-GB', {
                     day: '2-digit', month: 'short', year: 'numeric',
                   })}
                 </p>
@@ -1108,7 +1108,7 @@ export function DelegationManagement() {
                   <p className="text-xs font-medium text-gray-700">Delegation created</p>
                   <p className="text-xs text-gray-400">
                     by {selectedDelegation.created_by} &middot;{' '}
-                    {new Date(selectedDelegation.created_at).toLocaleString('en-GB', {
+                    {new Date(selectedDelegation.created_at || new Date()).toLocaleString('en-GB', {
                       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
                     })}
                   </p>
@@ -1118,7 +1118,7 @@ export function DelegationManagement() {
                     <span className="absolute -left-[1.1rem] top-1 w-3 h-3 rounded-full bg-white border-2 border-blue-400" />
                     <p className="text-xs font-medium text-gray-700">Delegation updated</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(selectedDelegation.updated_at).toLocaleString('en-GB', {
+                      {new Date(selectedDelegation.updated_at || new Date()).toLocaleString('en-GB', {
                         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
                       })}
                     </p>
@@ -1129,7 +1129,7 @@ export function DelegationManagement() {
                     <span className="absolute -left-[1.1rem] top-1 w-3 h-3 rounded-full bg-white border-2 border-gray-400" />
                     <p className="text-xs font-medium text-gray-500">Delegation expired</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(selectedDelegation.end_date).toLocaleDateString('en-GB', {
+                      {new Date(selectedDelegation.end_date || new Date()).toLocaleDateString('en-GB', {
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
                     </p>
@@ -1140,7 +1140,7 @@ export function DelegationManagement() {
                     <span className="absolute -left-[1.1rem] top-1 w-3 h-3 rounded-full bg-white border-2 border-red-400" />
                     <p className="text-xs font-medium text-red-700">Delegation revoked</p>
                     <p className="text-xs text-gray-400">
-                      {new Date(selectedDelegation.updated_at).toLocaleString('en-GB', {
+                      {new Date(selectedDelegation.updated_at || new Date()).toLocaleString('en-GB', {
                         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
                       })}
                     </p>

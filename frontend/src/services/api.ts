@@ -67,7 +67,7 @@ api.interceptors.response.use(
 // ==================== Auth API ====================
 export const authApi = {
   login: (credentials: { username: string; password: string }) =>
-    api.post('/auth/login', credentials),
+    api.post('/auth/login', { ...credentials, tenant_id: localStorage.getItem('tenantId') || 'gvnx' }),
 
   logout: () => api.post('/auth/logout'),
 

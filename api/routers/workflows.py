@@ -95,39 +95,43 @@ async def get_workflow(workflow_id: str, engine: MSMPEngine = Depends(_get_engin
     wf = engine.workflows[workflow_id]
 
     return {
-        "id": wf.id,
-        "name": wf.name,
-        "description": wf.description,
-        "conditions": wf.conditions,
+        "id": getattr(wf, 'workflow_id', None) or getattr(wf, 'id', workflow_id),
+        "name": getattr(wf, 'name', 'Unnamed'),
+        "description": getattr(wf, 'description', ''),
+        "conditions": getattr(wf, 'activation_conditions', getattr(wf, 'conditions', {})),
         "stages": [
             {
-                "name": stage.name,
-                "order": stage.order,
-                "required": stage.required,
+                "name": getattr(stage, 'name', ''),
+                "order": getattr(stage, 'order', 0),
+                "required": getattr(stage, 'required', True),
                 "agent_rules": [
                     {
-                        "id": rule.id,
-                        "name": rule.name,
-                        "type": rule.rule_type.value,
-                        "priority": rule.priority
+                        "id": getattr(rule, 'id', getattr(rule, 'rule_id', str(id(rule)))),
+                        "name": getattr(rule, 'name', ''),
+                        "type": rule.rule_type.value if hasattr(rule, 'rule_type') else '',
+                        "priority": getattr(rule, 'priority', 100)
                     }
-                    for rule in stage.agent_rules
+                    for rule in getattr(stage, 'agent_rules', [])
                 ],
                 "parallel_paths": [
                     {
-                        "id": path.id,
-                        "name": path.name,
-                        "required": path.required,
+                        "id": getattr(path, 'path_id', getattr(path, 'id', getattr(path, 'name', str(id(path))))),
+                        "name": getattr(path, 'name', ''),
+                        "required": getattr(path, 'required', True),
                         "agent_rules": [
-                            {"id": r.id, "name": r.name, "type": r.rule_type.value}
-                            for r in path.agent_rules
+                            {
+                                "id": getattr(r, 'id', getattr(r, 'rule_id', str(id(r)))),
+                                "name": getattr(r, 'name', ''),
+                                "type": r.rule_type.value if hasattr(r, 'rule_type') else ''
+                            }
+                            for r in getattr(path, 'agent_rules', [])
                         ]
                     }
-                    for path in stage.parallel_paths
+                    for path in getattr(stage, 'parallel_paths', [])
                 ],
-                "approval_mode": stage.approval_mode
+                "approval_mode": getattr(stage, 'approval_mode', 'any')
             }
-            for stage in wf.stages
+            for stage in getattr(wf, 'stages', getattr(wf, 'parallel_paths', []))
         ]
     }
 

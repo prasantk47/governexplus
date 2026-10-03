@@ -11,6 +11,7 @@ interface User {
   email: string;
   department: string;
   role: UserRole;
+  title?: string;
 }
 
 interface AuthContextType {
@@ -66,14 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('refreshToken', refresh_token);
       }
 
+      // Store tenant ID from login response so API interceptor sends it
+      const tenantId = userData.tenant_id || 'gvnx';
+      localStorage.setItem('tenantId', tenantId);
+
       // Role comes from backend based on user's assigned role
       const role = (userData.role as UserRole) || 'end_user';
       const userWithRole: User = {
         user_id: userData.user_id || userData.id,
-        name: userData.name || userData.display_name,
+        name: userData.full_name || userData.name || userData.username || 'User',
         email: userData.email,
         department: userData.department || 'General',
         role,
+        title: userData.title,
       };
 
       setUser(userWithRole);
@@ -115,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userData');
+      localStorage.removeItem('tenantId');
       setUser(null);
       window.location.href = '/login';
     }
@@ -142,7 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getRoleName = (): string => {
     if (!user) return '';
-    return ROLES[user.role]?.name ?? '';
+    // Prefer the title from the JWT/userData (e.g. "Senior GRC Analyst") over the
+    // generic role mapping name.
+    return user.title || ROLES[user.role]?.name || '';
   };
 
   return (

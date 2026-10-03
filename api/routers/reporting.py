@@ -71,9 +71,12 @@ async def list_reports(
     to_date: Optional[datetime] = Query(None)
 ):
     """List generated reports"""
-    type_enum = ReportType(report_type) if report_type else None
-    reports = reporting_engine.list_reports(type_enum, generated_by, from_date, to_date)
-    return {"total": len(reports), "reports": [r.to_dict() for r in reports]}
+    try:
+        type_enum = ReportType(report_type) if report_type else None
+        reports = reporting_engine.list_reports(type_enum, generated_by, from_date, to_date)
+        return {"total": len(reports), "reports": [r.to_dict() for r in reports]}
+    except Exception:
+        return {"total": 0, "reports": []}
 
 
 @router.get("/reports/{report_id}")

@@ -4,6 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import {
@@ -581,7 +582,9 @@ export function DashboardLayout() {
         {/* Page content */}
         <main className="py-8">
           <div className="px-4 sm:px-6 lg:px-8">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

@@ -14,7 +14,6 @@ import {
   ShieldCheckIcon,
   ChartBarIcon,
   CpuChipIcon,
-  BoltIcon,
   ClipboardDocumentCheckIcon,
   LockClosedIcon,
   DocumentDuplicateIcon,

@@ -202,6 +202,7 @@ class TenantManager:
             logger.info(
                 "TenantManager: skipping demo tenant creation (APP_ENV=production)."
             )
+        self._load_tenants_from_db()
 
     def _initialize_tier_limits(self) -> Dict[TenantTier, TenantLimits]:
         """Define limits for each tier"""
@@ -315,6 +316,66 @@ class TenantManager:
         )
         self.tenants[default.id] = default
         self.tenants_by_slug[default.slug] = default.id
+        # Also register GvnX tenant
+        self._create_gvnx_tenant()
+
+    def _create_gvnx_tenant(self):
+        """Register GvnX production tenant"""
+        gvnx = Tenant(
+            id="gvnx",
+            name="GvnX",
+            slug="gvnx",
+            status=TenantStatus.ACTIVE,
+            tier=TenantTier.ENTERPRISE,
+            owner_email="prasant@governexplus.com",
+            config=TenantConfig(
+                company_name="GvnX",
+                timezone="UTC",
+                enabled_modules=[
+                    "risk_analysis", "access_requests", "firefighter",
+                    "certification", "audit", "role_engineering",
+                    "compliance", "ai", "arm", "workflows",
+                    "risk_management", "process_control", "audit_management",
+                ]
+            ),
+            limits=self.tier_limits[TenantTier.ENTERPRISE],
+            activated_at=datetime.utcnow()
+        )
+        self.tenants[gvnx.id] = gvnx
+        self.tenants_by_slug[gvnx.slug] = gvnx.id
+        self.tenants_by_domain["gvnx.governexplus.com"] = gvnx.id
+
+    def _load_tenants_from_db(self):
+        """Load tenants from the database into the in-memory registry.
+
+        Runs silently if the DB is not yet available (e.g., first startup before
+        migrations).
+        """
+        try:
+            from db.database import db_manager  # type: ignore
+            session = db_manager.get_session()
+            try:
+                from sqlalchemy import text
+                rows = session.execute(text("SELECT id, name, slug FROM tenants")).fetchall()
+                for row in rows:
+                    tenant_id = str(row[0])
+                    if tenant_id not in self.tenants:
+                        tenant = Tenant(
+                            id=tenant_id,
+                            name=row[1] or tenant_id,
+                            slug=row[2] or tenant_id,
+                            status=TenantStatus.ACTIVE,
+                            tier=TenantTier.ENTERPRISE,
+                            limits=self.tier_limits[TenantTier.ENTERPRISE],
+                            activated_at=datetime.utcnow(),
+                        )
+                        self.tenants[tenant.id] = tenant
+                        self.tenants_by_slug[tenant.slug] = tenant.id
+                        logger.info("TenantManager: loaded tenant '%s' from DB.", tenant_id)
+            finally:
+                session.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("TenantManager: could not load tenants from DB (may not be ready): %s", exc)
 
     def _create_demo_tenant(self):
         """Create demo tenant for testing"""

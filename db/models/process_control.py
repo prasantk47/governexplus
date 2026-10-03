@@ -626,7 +626,7 @@ class CCMRule(Base, TimestampMixin):
 
     # False-positive / exclusion management (PC-SAP-GAP: CCM exclusion rules)
     exclusion_rules = Column(JSON, nullable=True)   # [{"field": "company_code", "operator": "eq", "value": "1000"}]
-    exclusion_count = Column(Integer, default=0, nullable=False)
+    exclusion_count = Column(Integer, default=0, server_default='0', nullable=False)
 
     # Relationships
     control = relationship('ProcessControl', back_populates='ccm_rules')

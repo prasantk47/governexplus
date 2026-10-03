@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [tenantId, setTenantId] = useState(() => localStorage.getItem('tenantId') || 'gvnx');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +17,9 @@ export function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    // Persist tenant selection before login so API interceptor picks it up
+    localStorage.setItem('tenantId', tenantId.trim() || 'gvnx');
 
     try {
       await login(username, password);
@@ -83,6 +87,21 @@ export function Login() {
               )}
             </button>
           </div>
+        </div>
+        <div>
+          <label htmlFor="tenantId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Tenant ID <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
+          </label>
+          <input
+            id="tenantId"
+            name="tenantId"
+            type="text"
+            autoComplete="organization"
+            className="w-full px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+            placeholder="e.g. gvnx"
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+          />
         </div>
       </div>
 

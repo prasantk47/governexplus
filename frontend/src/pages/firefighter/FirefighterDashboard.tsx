@@ -71,9 +71,10 @@ export function FirefighterDashboard() {
 
   // Compute stats from actual data
   const parseDuration = (d: string): number => {
+    if (!d) return 0;
     const hMatch = d.match(/(\d+)\s*h/);
     const mMatch = d.match(/(\d+)\s*m/);
-    return (hMatch ? parseInt(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
+    return (hMatch ? parseInt(hMatch[1], 10) * 60 : 0) + (mMatch ? parseInt(mMatch[1], 10) : 0);
   };
 
   const allSessions = [...recentSessions];

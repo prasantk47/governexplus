@@ -985,7 +985,7 @@ export function CommandCenter() {
                   Cert: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
                 };
                 const moduleColor = moduleColors[activity.module] || moduleColors.Access;
-                const initial = activity.actor === 'System' ? 'S' : activity.actor.split(' ').map(n => n[0]).join('');
+                const initial = activity.actor === 'System' ? 'S' : (activity.actor ?? '').split(' ').map((n: string) => n[0] ?? '').join('');
 
                 return (
                   <div key={activity.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/20 transition-colors">

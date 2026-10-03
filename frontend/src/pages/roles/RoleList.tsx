@@ -113,7 +113,7 @@ export function RoleList() {
       header: 'Type',
       render: (role: Role) => (
         <Badge variant={typeVariant[role.role_type] || 'neutral'} size="sm">
-          {role.role_type?.charAt(0).toUpperCase() + role.role_type?.slice(1)}
+          {role.role_type ? role.role_type.charAt(0).toUpperCase() + role.role_type.slice(1) : ''}
         </Badge>
       ),
     },

@@ -66,7 +66,7 @@ export function SecurityControlsList() {
     queryKey: ['controlCategories'],
     queryFn: async () => {
       const response = await securityControlsApi.getCategories();
-      return response.data.categories || [];
+      return response.data?.categories || [];
     },
   });
 
@@ -74,7 +74,7 @@ export function SecurityControlsList() {
     queryKey: ['controlBusinessAreas'],
     queryFn: async () => {
       const response = await securityControlsApi.getBusinessAreas();
-      return response.data.business_areas || [];
+      return response.data?.business_areas || [];
     },
   });
 

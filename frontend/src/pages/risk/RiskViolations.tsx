@@ -81,7 +81,7 @@ export function RiskViolations() {
     const headers = ['ID', 'User', 'User ID', 'Department', 'Type', 'Rule', 'Risk Level', 'Status', 'Detected Date', 'Systems', 'Mitigation'];
     const rows = filteredViolations.map(v => [
       v.id, v.user, v.userId, v.department, v.type, v.rule, v.riskLevel, v.status,
-      v.detectedDate, v.systems.join('; '), v.mitigation || ''
+      v.detectedDate, (v.systems ?? []).join('; '), v.mitigation || ''
     ]);
 
     const csvContent = [

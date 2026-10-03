@@ -76,9 +76,9 @@ export function ApprovalInbox() {
   const filteredApprovals = (approvals as ApprovalItem[]).filter((item) => {
     const matchesSearch =
       !searchTerm ||
-      item.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.requester ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(item.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.summary.toLowerCase().includes(searchTerm.toLowerCase());
+      (item.summary ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || item.type === typeFilter;
     const matchesPriority = priorityFilter === 'all' || item.priority === priorityFilter;
     return matchesSearch && matchesType && matchesPriority;

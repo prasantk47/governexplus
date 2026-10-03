@@ -74,8 +74,8 @@ export function AccessRequestList() {
     const matchesSearch =
       !searchTerm ||
       String(req.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.system.toLowerCase().includes(searchTerm.toLowerCase());
+      (req.role ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (req.system ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

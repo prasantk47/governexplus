@@ -59,7 +59,7 @@ export function ComplianceDashboard() {
           id: (fw.framework_id ?? fw.id) as string,
           name: fw.name as string,
           shortName: (fw.name as string)?.split(' ').map((w: string) => w[0]).join('').slice(0, 6) || (fw.framework_id as string),
-          description: fw.description ?? '',
+          description: (fw.description as string) ?? '',
           totalControls: 0,
           compliantControls: 0,
           partialControls: 0,

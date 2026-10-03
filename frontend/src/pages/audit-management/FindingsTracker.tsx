@@ -301,7 +301,7 @@ function FindingsTab({
                     </td>
                     <td className="px-4 py-3.5">
                       <Badge variant={SEVERITY_BADGE[f.severity] ?? 'neutral'} dot>
-                        {f.severity.charAt(0).toUpperCase() + f.severity.slice(1)}
+                        {f.severity ? f.severity.charAt(0).toUpperCase() + f.severity.slice(1) : '—'}
                       </Badge>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-gray-400">

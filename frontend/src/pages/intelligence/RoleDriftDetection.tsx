@@ -113,7 +113,7 @@ function hashCell(hash: string, referenceHash: string, systemLabel: string) {
         }`}
         title={`${systemLabel}: ${hash}`}
       >
-        {hash.slice(0, 8)}
+        {hash?.slice(0, 8)}
       </span>
     </div>
   );
@@ -281,7 +281,7 @@ export function RoleDriftDetection() {
                     <div className="text-[10px] text-gray-400">Last checked: {sys.lastChecked}</div>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-gray-500">{sys.hash.slice(0, 12)}...</span>
+                <span className="text-xs font-mono text-gray-500">{sys.hash?.slice(0, 12)}...</span>
               </div>
             ))}
           </div>

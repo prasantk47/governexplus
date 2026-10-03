@@ -424,7 +424,7 @@ export function UserBehaviorAnalytics() {
                   </div>
                   <div className="p-4">
                     <div className="grid grid-cols-7 gap-1">
-                      {timelineData.timeline.slice(0, 14).map((day: any, idx: number) => (
+                      {(timelineData.timeline ?? []).slice(0, 14).map((day: any, idx: number) => (
                         <div
                           key={idx}
                           className={clsx(
@@ -435,7 +435,7 @@ export function UserBehaviorAnalytics() {
                           title={`${day.date}: ${day.transaction_count} transactions, ${day.anomalies_detected} anomalies`}
                         >
                           <p className="font-medium">{day.risk_score}</p>
-                          <p className="text-gray-500">{day.date.slice(-5)}</p>
+                          <p className="text-gray-500">{day.date?.slice(-5)}</p>
                         </div>
                       ))}
                     </div>

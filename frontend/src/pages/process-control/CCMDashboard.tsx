@@ -452,7 +452,7 @@ export function CCMDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                {dashboard.recent_executions.slice(0, 10).map((ex) => (
+                {(dashboard.recent_executions ?? []).slice(0, 10).map((ex) => (
                   <tr key={ex.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                     <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium">
                       {ex.rule_name}

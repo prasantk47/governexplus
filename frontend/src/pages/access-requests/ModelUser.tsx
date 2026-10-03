@@ -877,12 +877,12 @@ export function ModelUser() {
                           <span className="text-xs text-gray-400">roles</span>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {tpl.roles.slice(0, 3).map((r) => (
+                          {(tpl.roles ?? []).slice(0, 3).map((r) => (
                             <span key={r} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
                               {r}
                             </span>
                           ))}
-                          {tpl.roles.length > 3 && (
+                          {(tpl.roles?.length ?? 0) > 3 && (
                             <span className="text-xs text-gray-400">+{tpl.roles.length - 3} more</span>
                           )}
                         </div>

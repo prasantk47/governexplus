@@ -56,8 +56,8 @@ export function ComplianceDashboard() {
         // Adapt to the ComplianceFramework shape expected by this page
         const raw: Array<Record<string, unknown>> = r.data?.frameworks ?? r.data ?? [];
         return raw.map((fw) => ({
-          id: fw.framework_id ?? fw.id,
-          name: fw.name,
+          id: (fw.framework_id ?? fw.id) as string,
+          name: fw.name as string,
           shortName: (fw.name as string)?.split(' ').map((w: string) => w[0]).join('').slice(0, 6) || (fw.framework_id as string),
           description: fw.description ?? '',
           totalControls: 0,

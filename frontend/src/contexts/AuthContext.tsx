@@ -201,16 +201,6 @@ function getRoleFromUsername(username: string): UserRole {
   return 'end_user';
 }
 
-function getRoleDisplayName(role: UserRole, username: string): string {
-  const names: Record<UserRole, string> = {
-    admin: 'System Administrator',
-    security_admin: 'Security Admin',
-    manager: 'Manager',
-    auditor: 'Auditor',
-    end_user: 'End User',
-  };
-  return `${names[role]} (${username})`;
-}
 
 function getDepartmentForRole(role: UserRole): string {
   const departments: Record<UserRole, string> = {

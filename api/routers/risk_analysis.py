@@ -32,9 +32,21 @@ def _get_tenant_id() -> str:
     return ctx.tenant_id if ctx else "default"
 
 
-def _get_engine(tenant_id: str = Depends(_get_tenant_id)) -> RuleEngine:
+def _get_engine(
+    tenant_id: str = Depends(_get_tenant_id),
+    db: Session = Depends(get_db),
+) -> RuleEngine:
     if tenant_id not in _engines:
-        _engines[tenant_id] = RuleEngine()
+        engine = RuleEngine()
+        # Phase 1: load only ACTIVE library rules for this tenant
+        try:
+            from core.library.resolver import load_active_db_rules
+            db_rules = load_active_db_rules(tenant_id, db)
+            if db_rules:
+                engine.add_rules_from_db(db_rules)
+        except Exception:
+            pass  # resolver failure is non-fatal; fall back to built-in rules
+        _engines[tenant_id] = engine
     return _engines[tenant_id]
 
 

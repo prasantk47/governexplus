@@ -419,6 +419,43 @@ class RuleEngine:
 
         logger.info(f"SoDRulesetLibrary: {added} rules added, {skipped} skipped (already registered)")
 
+    def add_rules_from_db(self, db_rows: list) -> int:
+        """
+        Add rules from RiskRuleModel DB rows (Template Library Phase 1).
+
+        Only rows with is_enabled=True are added; existing rule_ids are
+        skipped so DB rules never overwrite the built-in library.
+        Returns count of newly added rules.
+        """
+        added = 0
+        for row in db_rows:
+            rule_id = getattr(row, "rule_id", None)
+            if not rule_id or rule_id in self.rules:
+                continue
+            try:
+                defn = row.rule_definition or {}
+                rule = RiskRule(
+                    rule_id=rule_id,
+                    name=row.name,
+                    description=getattr(row, "description", "") or "",
+                    rule_type=RuleType(getattr(row, "rule_type", "sod")),
+                    severity=RiskSeverity(row.severity.value if hasattr(row.severity, "value") else str(row.severity)),
+                    risk_category=RiskCategory(
+                        getattr(row, "risk_category", "financial").lower()
+                    ) if hasattr(RiskCategory, "__members__") else RiskCategory.FINANCIAL,
+                    functions=defn.get("functions", []),
+                    condition=defn.get("condition", "AND"),
+                    mitigation_controls=getattr(row, "mitigation_controls", []) or [],
+                    business_justification=getattr(row, "business_justification", "") or "",
+                    recommended_actions=getattr(row, "recommended_actions", []) or [],
+                    is_active=getattr(row, "is_enabled", True),
+                )
+                self.add_rule(rule)
+                added += 1
+            except Exception as exc:
+                logger.debug("add_rules_from_db: skipping rule %s: %s", rule_id, exc)
+        return added
+
     def add_rule(self, rule: RiskRule):
         """Add a rule to the engine with indexing"""
         self.rules[rule.rule_id] = rule

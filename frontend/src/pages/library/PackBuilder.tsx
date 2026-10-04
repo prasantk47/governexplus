@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
-  CubeIcon, PlusIcon, TrashIcon, ArrowDownTrayIcon,
+  CubeIcon, ArrowDownTrayIcon,
   CheckCircleIcon, SparklesIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
@@ -73,7 +73,7 @@ export default function PackBuilder() {
     (i: ActiveItem) => !moduleFilter || i.module === moduleFilter,
   );
 
-  const allModules = [...new Set((data?.items || []).map((i: ActiveItem) => i.module))].sort();
+  const allModules = [...new Set((data?.items || []).map((i: ActiveItem) => i.module))].sort() as string[];
 
   const toggleItem = (code: string) => {
     setSelected(prev => {

@@ -13,8 +13,7 @@ from sqlalchemy import (
     ForeignKey, UniqueConstraint, Index, JSON
 )
 from sqlalchemy.orm import relationship
-from db.base import Base
-from db.mixins import TimestampMixin
+from .base import Base, TimestampMixin
 import datetime
 
 

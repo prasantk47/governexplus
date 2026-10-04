@@ -125,17 +125,17 @@ export function RiskHeatmap() {
 
   const { data: trendsData, isLoading: trendsLoading } = useQuery<TrendPoint[]>({
     queryKey: ['risk-trends'],
-    queryFn: () => riskManagementApi.getTrends(12).then(r => r.data?.trend ?? r.data ?? []),
+    queryFn: () => riskManagementApi.getTrends(12).then(r => (() => { const d = r.data; return Array.isArray(d) ? d : Array.isArray(d?.trend) ? d.trend : []; })()),
   });
 
   const { data: topRisksData } = useQuery<TopRisk[]>({
     queryKey: ['risk-top'],
-    queryFn: () => riskManagementApi.getTopRisks(10).then(r => r.data?.risks ?? r.data ?? []),
+    queryFn: () => riskManagementApi.getTopRisks(10).then(r => (() => { const d = r.data; return Array.isArray(d) ? d : Array.isArray(d?.risks) ? d.risks : []; })()),
   });
 
   const cells: HeatmapCell[] = heatmapData?.cells ?? [];
-  const topRisks: TopRisk[] = topRisksData ?? heatmapData?.top_risks ?? [];
-  const trends: TrendPoint[] = trendsData ?? [];
+  const topRisks: TopRisk[] = Array.isArray(topRisksData) ? topRisksData : Array.isArray(heatmapData?.top_risks) ? heatmapData.top_risks : [];
+  const trends: TrendPoint[] = Array.isArray(trendsData) ? trendsData : [];
 
   function getCellData(likelihood: number, impact: number): HeatmapCell | null {
     return cells.find(c => c.likelihood === likelihood && c.impact === impact) ?? null;

@@ -181,10 +181,15 @@ export function RiskRegister() {
           category: categoryFilter || undefined,
           status: statusFilter || undefined,
         })
-        .then(r => r.data?.risks ?? r.data ?? []),
+        .then(r => {
+          const d = r.data;
+          if (Array.isArray(d)) return d;
+          if (Array.isArray(d?.risks)) return d.risks;
+          return [];
+        }),
   });
 
-  const risks: Risk[] = risksData ?? [];
+  const risks: Risk[] = Array.isArray(risksData) ? risksData : [];
 
   const filteredRisks = risks.filter(r => {
     if (!search) return true;

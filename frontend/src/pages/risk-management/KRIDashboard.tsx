@@ -200,7 +200,7 @@ export function KRIDashboard() {
     queryFn: () =>
       riskManagementApi
         .getKRIHistory(historyKRI!.id)
-        .then(r => r.data?.measurements ?? r.data ?? []),
+        .then(r => (() => { const d = r.data; return Array.isArray(d) ? d : Array.isArray(d?.measurements) ? d.measurements : []; })()),
     enabled: !!historyKRI,
   });
 

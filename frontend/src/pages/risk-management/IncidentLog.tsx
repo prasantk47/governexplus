@@ -195,7 +195,7 @@ export function IncidentLog() {
           date_from: dateFrom || undefined,
           date_to: dateTo || undefined,
         })
-        .then(r => r.data?.incidents ?? r.data ?? []),
+        .then(r => (() => { const d = r.data; return Array.isArray(d) ? d : Array.isArray(d?.incidents) ? d.incidents : []; })()),
   });
 
   const incidents: Incident[] = incidentsData ?? [];

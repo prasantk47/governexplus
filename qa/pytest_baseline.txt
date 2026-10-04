@@ -1,0 +1,1010 @@
+============================= test session starts =============================
+collecting ... collected 442 items
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info PASSED [  0%]
+tests/test_api_endpoints.py::TestRootEndpoints::test_health_check PASSED [  0%]
+tests/test_api_endpoints.py::TestRootEndpoints::test_docs_accessible PASSED [  0%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_login_success PASSED [  0%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_login_wrong_password PASSED [  1%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_login_missing_user PASSED [  1%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_profile_requires_auth PASSED [  1%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_profile_with_valid_token PASSED [  1%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_logout_returns_success PASSED [  2%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_token_blacklisted_after_logout PASSED [  2%]
+tests/test_api_endpoints.py::TestAuthEndpoints::test_info_requires_auth PASSED [  2%]
+tests/test_api_endpoints.py::TestValidation::test_login_missing_fields PASSED [  2%]
+tests/test_api_endpoints.py::TestValidation::test_login_empty_body PASSED [  2%]
+tests/test_audit_management.py::TestAuditUniverse::test_create_entity_returns_201 PASSED [  3%]
+tests/test_audit_management.py::TestAuditUniverse::test_create_entity_invalid_type_returns_400 PASSED [  3%]
+tests/test_audit_management.py::TestAuditUniverse::test_list_entities_returns_created PASSED [  3%]
+tests/test_audit_management.py::TestAuditUniverse::test_list_entities_ordered_by_risk_score_desc PASSED [  3%]
+tests/test_audit_management.py::TestAuditUniverse::test_list_entities_search_filter PASSED [  4%]
+tests/test_audit_management.py::TestAuditUniverse::test_compute_risk_score PASSED [  4%]
+tests/test_audit_management.py::TestAuditUniverse::test_update_entity PASSED [  4%]
+tests/test_audit_management.py::TestAuditUniverse::test_get_nonexistent_entity_returns_404 PASSED [  4%]
+tests/test_audit_management.py::TestAuditPlanning::test_create_plan_returns_201 PASSED [  4%]
+tests/test_audit_management.py::TestAuditPlanning::test_list_plans_returns_created PASSED [  5%]
+tests/test_audit_management.py::TestAuditPlanning::test_get_plan_by_id PASSED [  5%]
+tests/test_audit_management.py::TestAuditPlanning::test_get_nonexistent_plan_returns_404 PASSED [  5%]
+tests/test_audit_management.py::TestAuditPlanning::test_submit_plan_transitions_to_pending_approval PASSED [  5%]
+tests/test_audit_management.py::TestAuditPlanning::test_approve_plan_transitions_to_approved PASSED [  6%]
+tests/test_audit_management.py::TestAuditPlanning::test_list_plans_filter_by_status PASSED [  6%]
+tests/test_audit_management.py::TestAuditPlanning::test_generate_risk_based_plan PASSED [  6%]
+tests/test_audit_management.py::TestAuditPlanning::test_update_plan_fields PASSED [  6%]
+tests/test_audit_management.py::TestAuditResources::test_create_resource_returns_201 PASSED [  7%]
+tests/test_audit_management.py::TestAuditResources::test_list_resources PASSED [  7%]
+tests/test_audit_management.py::TestAuditResources::test_list_resources_filter_external PASSED [  7%]
+tests/test_audit_management.py::TestAuditResources::test_availability_query_min_hours PASSED [  7%]
+tests/test_audit_management.py::TestAuditResources::test_update_resource PASSED [  7%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_create_engagement_returns_201 PASSED [  8%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_list_engagements PASSED [  8%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_get_engagement_by_id PASSED [  8%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_planned_to_announced PASSED [  8%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_through_all_stages PASSED [  9%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_past_closed_returns_400 PASSED [  9%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_fieldwork_advance_sets_actual_start PASSED [  9%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_list_engagements_filter_by_status PASSED [  9%]
+tests/test_audit_management.py::TestEngagementLifecycle::test_update_engagement_fields PASSED [  9%]
+tests/test_audit_management.py::TestWorkPrograms::test_create_work_program_template_returns_201 PASSED [ 10%]
+tests/test_audit_management.py::TestWorkPrograms::test_list_work_program_templates PASSED [ 10%]
+tests/test_audit_management.py::TestWorkPrograms::test_list_templates_filter_by_audit_type PASSED [ 10%]
+tests/test_audit_management.py::TestWorkPrograms::test_clone_work_program PASSED [ 10%]
+tests/test_audit_management.py::TestProcedures::test_create_procedure_returns_201 PASSED [ 11%]
+tests/test_audit_management.py::TestProcedures::test_list_procedures_for_engagement PASSED [ 11%]
+tests/test_audit_management.py::TestProcedures::test_complete_procedure_by_preparer PASSED [ 11%]
+tests/test_audit_management.py::TestProcedures::test_review_procedure_by_reviewer PASSED [ 11%]
+tests/test_audit_management.py::TestProcedures::test_update_procedure_fields PASSED [ 11%]
+tests/test_audit_management.py::TestWorkpapers::test_create_workpaper_returns_201 PASSED [ 12%]
+tests/test_audit_management.py::TestWorkpapers::test_list_workpapers_for_engagement PASSED [ 12%]
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_approved PASSED [ 12%]
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_revision_needed PASSED [ 12%]
+tests/test_audit_management.py::TestWorkpapers::test_update_workpaper_content PASSED [ 13%]
+tests/test_audit_management.py::TestFindings::test_create_finding_returns_201 PASSED [ 13%]
+tests/test_audit_management.py::TestFindings::test_list_findings PASSED  [ 13%]
+tests/test_audit_management.py::TestFindings::test_list_findings_filter_by_severity PASSED [ 13%]
+tests/test_audit_management.py::TestFindings::test_management_response_transitions_status PASSED [ 14%]
+tests/test_audit_management.py::TestFindings::test_link_finding_to_risk PASSED [ 14%]
+tests/test_audit_management.py::TestFindings::test_link_finding_to_nonexistent_risk_returns_404 PASSED [ 14%]
+tests/test_audit_management.py::TestFindings::test_link_finding_to_control PASSED [ 14%]
+tests/test_audit_management.py::TestFindings::test_update_finding_status PASSED [ 14%]
+tests/test_audit_management.py::TestFindings::test_check_repeat_finding PASSED [ 15%]
+tests/test_audit_management.py::TestActions::test_create_action_returns_201 PASSED [ 15%]
+tests/test_audit_management.py::TestActions::test_close_action_with_evidence PASSED [ 15%]
+tests/test_audit_management.py::TestActions::test_close_action_without_verifier_stays_completed PASSED [ 15%]
+tests/test_audit_management.py::TestActions::test_overdue_actions_list PASSED [ 16%]
+tests/test_audit_management.py::TestActions::test_update_action_fields PASSED [ 16%]
+tests/test_audit_management.py::TestTimeTracking::test_log_time_returns_201 PASSED [ 16%]
+tests/test_audit_management.py::TestTimeTracking::test_time_accumulates_on_engagement PASSED [ 16%]
+tests/test_audit_management.py::TestTimeTracking::test_time_summary_breakdown_by_auditor PASSED [ 16%]
+tests/test_audit_management.py::TestTimeTracking::test_time_summary_breakdown_by_activity PASSED [ 17%]
+tests/test_audit_management.py::TestTimeTracking::test_time_summary_shows_budget_hours PASSED [ 17%]
+tests/test_audit_management.py::TestTimeTracking::test_auditor_utilization_endpoint PASSED [ 17%]
+tests/test_audit_management.py::TestAMReporting::test_audit_dashboard_returns_all_metrics PASSED [ 17%]
+tests/test_audit_management.py::TestAMReporting::test_audit_dashboard_reflects_seeded_data PASSED [ 18%]
+tests/test_audit_management.py::TestAMReporting::test_committee_report_returns_required_fields PASSED [ 18%]
+tests/test_audit_management.py::TestAMReporting::test_engagement_report_returns_findings_and_actions PASSED [ 18%]
+tests/test_audit_management.py::TestAMReporting::test_engagement_report_severity_summary PASSED [ 18%]
+tests/test_audit_management.py::TestAMReporting::test_committee_report_without_year_uses_current PASSED [ 19%]
+tests/test_auth_service.py::TestPasswordHashing::test_hash_password_produces_bcrypt_hash PASSED [ 19%]
+tests/test_auth_service.py::TestPasswordHashing::test_hash_password_different_each_time PASSED [ 19%]
+tests/test_auth_service.py::TestPasswordHashing::test_verify_correct_password PASSED [ 19%]
+tests/test_auth_service.py::TestPasswordHashing::test_verify_wrong_password PASSED [ 19%]
+tests/test_auth_service.py::TestPasswordHashing::test_verify_empty_hash_returns_false PASSED [ 20%]
+tests/test_auth_service.py::TestAuthentication::test_login_success PASSED [ 20%]
+tests/test_auth_service.py::TestAuthentication::test_login_by_email PASSED [ 20%]
+tests/test_auth_service.py::TestAuthentication::test_login_wrong_password PASSED [ 20%]
+tests/test_auth_service.py::TestAuthentication::test_login_unknown_user PASSED [ 21%]
+tests/test_auth_service.py::TestAuthentication::test_login_locked_user PASSED [ 21%]
+tests/test_auth_service.py::TestAuthentication::test_account_locks_after_5_failures PASSED [ 21%]
+tests/test_auth_service.py::TestAuthentication::test_successful_login_resets_failure_count PASSED [ 21%]
+tests/test_auth_service.py::TestTokens::test_access_token_is_valid_jwt PASSED [ 21%]
+tests/test_auth_service.py::TestTokens::test_refresh_token_type PASSED   [ 22%]
+tests/test_auth_service.py::TestTokens::test_verify_valid_token PASSED   [ 22%]
+tests/test_auth_service.py::TestTokens::test_verify_expired_token PASSED [ 22%]
+tests/test_auth_service.py::TestTokens::test_verify_invalid_token PASSED [ 22%]
+tests/test_auth_service.py::TestTokens::test_verify_refresh_token_as_access_fails PASSED [ 23%]
+tests/test_auth_service.py::TestLogout::test_logout_blacklists_token PASSED [ 23%]
+tests/test_auth_service.py::TestLogout::test_non_blacklisted_token_works PASSED [ 23%]
+tests/test_auth_service.py::TestRoleDetermination::test_admin_username_gets_admin_role PASSED [ 23%]
+tests/test_auth_service.py::TestRoleDetermination::test_finance_user_gets_end_user_role PASSED [ 23%]
+tests/test_auth_service.py::TestRoleDetermination::test_security_dept_user_gets_security_admin PASSED [ 24%]
+tests/test_custom_ruleset.py::TestBuiltinRules::test_get_builtin_rules PASSED [ 24%]
+tests/test_custom_ruleset.py::TestBuiltinRules::test_toggle_builtin_rule_off PASSED [ 24%]
+tests/test_custom_ruleset.py::TestBuiltinRules::test_toggle_builtin_rule_back_on PASSED [ 24%]
+tests/test_custom_ruleset.py::TestCustomRuleCRUD::test_create_custom_rule PASSED [ 25%]
+tests/test_custom_ruleset.py::TestCustomRuleCRUD::test_list_custom_rules PASSED [ 25%]
+tests/test_custom_ruleset.py::TestCustomRuleCRUD::test_update_custom_rule PASSED [ 25%]
+tests/test_custom_ruleset.py::TestCustomRuleCRUD::test_delete_custom_rule PASSED [ 25%]
+tests/test_custom_ruleset.py::TestCloneBuiltinRule::test_clone_creates_custom_copy PASSED [ 26%]
+tests/test_custom_ruleset.py::TestCloneBuiltinRule::test_clone_disables_original PASSED [ 26%]
+tests/test_custom_ruleset.py::TestExportImport::test_export_json PASSED  [ 26%]
+tests/test_custom_ruleset.py::TestExportImport::test_export_yaml PASSED  [ 26%]
+tests/test_drift.py::TestSystemAndRoleLists::test_get_systems_returns_list PASSED [ 26%]
+tests/test_drift.py::TestSystemAndRoleLists::test_known_systems_present PASSED [ 27%]
+tests/test_drift.py::TestSystemAndRoleLists::test_list_roles_returns_list PASSED [ 27%]
+tests/test_drift.py::TestSystemAndRoleLists::test_known_roles_present PASSED [ 27%]
+tests/test_drift.py::TestDetectDrift::test_detect_drift_returns_report PASSED [ 27%]
+tests/test_drift.py::TestDetectDrift::test_aligned_role_has_no_findings PASSED [ 28%]
+tests/test_drift.py::TestDetectDrift::test_drifted_role_has_findings PASSED [ 28%]
+tests/test_drift.py::TestDetectDrift::test_missing_role_is_critical PASSED [ 28%]
+tests/test_drift.py::TestDetectDrift::test_report_has_role_name PASSED   [ 28%]
+tests/test_drift.py::TestDetectDrift::test_report_has_systems_present PASSED [ 28%]
+tests/test_drift.py::TestDetectDrift::test_report_has_drift_hash PASSED  [ 29%]
+tests/test_drift.py::TestDetectDrift::test_aligned_role_is_not_drifted PASSED [ 29%]
+tests/test_drift.py::TestDetectDrift::test_drifted_role_is_flagged PASSED [ 29%]
+tests/test_drift.py::TestDetectDrift::test_finding_has_drift_type_attribute PASSED [ 29%]
+tests/test_drift.py::TestDetectDrift::test_finding_has_severity_attribute PASSED [ 30%]
+tests/test_drift.py::TestScanAllDrift::test_scan_all_returns_list PASSED [ 30%]
+tests/test_drift.py::TestScanAllDrift::test_scan_all_covers_all_roles PASSED [ 30%]
+tests/test_drift.py::TestScanAllDrift::test_scan_all_results_are_drift_reports PASSED [ 30%]
+tests/test_drift.py::TestScanAllDrift::test_scan_all_contains_aligned_and_drifted PASSED [ 30%]
+tests/test_drift.py::TestDriftSummary::test_get_drift_summary_returns_summary PASSED [ 31%]
+tests/test_drift.py::TestDriftSummary::test_summary_total_matches_role_count PASSED [ 31%]
+tests/test_drift.py::TestDriftSummary::test_summary_in_sync_plus_drifted_equals_total PASSED [ 31%]
+tests/test_drift.py::TestDriftSummary::test_summary_drift_percentage_in_range PASSED [ 31%]
+tests/test_drift.py::TestDriftSummary::test_summary_has_severity_breakdown PASSED [ 32%]
+tests/test_drift.py::TestDriftSummary::test_summary_has_systems_compared PASSED [ 32%]
+tests/test_drift.py::TestDriftSummary::test_summary_has_most_drifted_roles PASSED [ 32%]
+tests/test_drift.py::TestDriftSummary::test_summary_roles_drifted_positive PASSED [ 32%]
+tests/test_drift.py::TestCompareSystems::test_compare_systems_returns_list PASSED [ 33%]
+tests/test_drift.py::TestCompareSystems::test_compare_same_system_returns_no_drift PASSED [ 33%]
+tests/test_drift.py::TestCompareSystems::test_compare_dev_prod_finds_differences PASSED [ 33%]
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned PASSED [ 33%]
+tests/test_e2e_golden_flow.py::test_request_rejection_flow PASSED        [ 33%]
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity PASSED      [ 34%]
+tests/test_fiori.py::TestListApps::test_returns_list PASSED              [ 34%]
+tests/test_fiori.py::TestListApps::test_at_least_30_apps PASSED          [ 34%]
+tests/test_fiori.py::TestListApps::test_apps_are_fiori_app_objects PASSED [ 34%]
+tests/test_fiori.py::TestListApps::test_apps_have_required_attributes PASSED [ 35%]
+tests/test_fiori.py::TestGetAppRequirements::test_returns_app_requirements PASSED [ 35%]
+tests/test_fiori.py::TestGetAppRequirements::test_has_app_id PASSED      [ 35%]
+tests/test_fiori.py::TestGetAppRequirements::test_requirements_have_auth_objects PASSED [ 35%]
+tests/test_fiori.py::TestGetAppRequirements::test_requirements_have_odata_service PASSED [ 35%]
+tests/test_fiori.py::TestGetAppRequirements::test_unknown_app_raises PASSED [ 36%]
+tests/test_fiori.py::TestTraceApp::test_returns_trace PASSED             [ 36%]
+tests/test_fiori.py::TestTraceApp::test_trace_has_overall_status PASSED  [ 36%]
+tests/test_fiori.py::TestTraceApp::test_trace_has_chain PASSED           [ 36%]
+tests/test_fiori.py::TestTraceApp::test_trace_has_summary PASSED         [ 37%]
+tests/test_fiori.py::TestDiagnoseTileError::test_returns_tile_diagnosis PASSED [ 37%]
+tests/test_fiori.py::TestDiagnoseTileError::test_diagnosis_has_root_cause PASSED [ 37%]
+tests/test_fiori.py::TestDiagnoseTileError::test_diagnosis_has_remediation PASSED [ 37%]
+tests/test_fiori.py::TestAnalyzeCatalog::test_returns_catalog_analysis PASSED [ 38%]
+tests/test_fiori.py::TestAnalyzeCatalog::test_catalog_has_apps PASSED    [ 38%]
+tests/test_fiori.py::TestListCatalogs::test_returns_list PASSED          [ 38%]
+tests/test_fiori.py::TestListCatalogs::test_catalog_entries_have_id PASSED [ 38%]
+tests/test_fiori.py::TestListOdataServices::test_returns_list PASSED     [ 38%]
+tests/test_identity_correlation.py::TestOverview::test_returns_stats PASSED [ 39%]
+tests/test_identity_correlation.py::TestOverview::test_has_total_accounts PASSED [ 39%]
+tests/test_identity_correlation.py::TestOverview::test_has_total_clusters PASSED [ 39%]
+tests/test_identity_correlation.py::TestOverview::test_has_by_system_counts PASSED [ 39%]
+tests/test_identity_correlation.py::TestCorrelateAll::test_returns_list_of_clusters PASSED [ 40%]
+tests/test_identity_correlation.py::TestCorrelateAll::test_clusters_are_identity_cluster_objects PASSED [ 40%]
+tests/test_identity_correlation.py::TestCorrelateAll::test_clusters_have_accounts PASSED [ 40%]
+tests/test_identity_correlation.py::TestGetCluster::test_returns_cluster_by_id PASSED [ 40%]
+tests/test_identity_correlation.py::TestGetCluster::test_unknown_cluster_raises PASSED [ 40%]
+tests/test_identity_correlation.py::TestCorrelateUser::test_returns_correlation_result PASSED [ 41%]
+tests/test_identity_correlation.py::TestCorrelateUser::test_result_has_matched_accounts PASSED [ 41%]
+tests/test_identity_correlation.py::TestFindOrphans::test_returns_list PASSED [ 41%]
+tests/test_identity_correlation.py::TestFindOrphans::test_orphans_are_orphan_account_objects PASSED [ 41%]
+tests/test_identity_correlation.py::TestFindOrphans::test_orphans_have_reason PASSED [ 42%]
+tests/test_identity_correlation.py::TestCrossSystemRisk::test_get_all_risks PASSED [ 42%]
+tests/test_identity_correlation.py::TestCrossSystemRisk::test_risks_are_cross_system_risk_objects PASSED [ 42%]
+tests/test_identity_correlation.py::TestCrossSystemRisk::test_risks_have_description PASSED [ 42%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_transaction_mapping_is_large PASSED [ 42%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_obsolete_transactions_exist PASSED [ 43%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_auth_object_changes_exist PASSED [ 43%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_fiori_app_catalog_exists PASSED [ 43%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_known_tcodes_present PASSED [ 43%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_obsolete_tcodes_have_required_fields PASSED [ 44%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_auth_changes_have_required_fields PASSED [ 44%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_b_bupa_rlt_is_new_object PASSED [ 44%]
+tests/test_migration.py::TestKnowledgeBaseContents::test_s_fiori_app_is_new_object PASSED [ 44%]
+tests/test_migration.py::TestAnalyzeTransactions::test_returns_transaction_impact PASSED [ 45%]
+tests/test_migration.py::TestAnalyzeTransactions::test_compatibility_pct_in_range PASSED [ 45%]
+tests/test_migration.py::TestAnalyzeTransactions::test_all_compatible_gives_100_pct PASSED [ 45%]
+tests/test_migration.py::TestAnalyzeTransactions::test_replaced_tcodes_identified PASSED [ 45%]
+tests/test_migration.py::TestAnalyzeTransactions::test_fiori_only_tcodes_identified PASSED [ 45%]
+tests/test_migration.py::TestAnalyzeTransactions::test_unknown_tcodes_captured PASSED [ 46%]
+tests/test_migration.py::TestAnalyzeTransactions::test_empty_tcode_list PASSED [ 46%]
+tests/test_migration.py::TestAnalyzeTransactions::test_impact_to_dict PASSED [ 46%]
+tests/test_migration.py::TestGetObsoleteTcodes::test_obsolete_returns_list PASSED [ 46%]
+tests/test_migration.py::TestGetObsoleteTcodes::test_obsolete_list_non_empty PASSED [ 47%]
+tests/test_migration.py::TestGetObsoleteTcodes::test_obsolete_entries_have_fields PASSED [ 47%]
+tests/test_migration.py::TestGetFioriApps::test_fiori_apps_returns_list PASSED [ 47%]
+tests/test_migration.py::TestGetFioriApps::test_fiori_apps_non_empty PASSED [ 47%]
+tests/test_migration.py::TestGetFioriApps::test_fiori_apps_have_required_fields PASSED [ 47%]
+tests/test_migration.py::TestAuthObjectChanges::test_get_auth_changes_returns_list PASSED [ 48%]
+tests/test_migration.py::TestAuthObjectChanges::test_auth_changes_non_empty PASSED [ 48%]
+tests/test_migration.py::TestAuthObjectChanges::test_auth_changes_are_dicts PASSED [ 48%]
+tests/test_migration.py::TestOverviewStats::test_overview_returns_dict PASSED [ 48%]
+tests/test_migration.py::TestOverviewStats::test_overview_has_transaction_mappings PASSED [ 49%]
+tests/test_notification_delivery.py::TestSendEmail::test_send_email_returns_delivery_record PASSED [ 49%]
+tests/test_notification_delivery.py::TestSendEmail::test_send_email_status_is_sent PASSED [ 49%]
+tests/test_notification_delivery.py::TestSendEmail::test_send_email_has_record_id PASSED [ 49%]
+tests/test_notification_delivery.py::TestSendEmail::test_send_email_channel_is_email PASSED [ 50%]
+tests/test_notification_delivery.py::TestSendEmail::test_send_email_to_dict PASSED [ 50%]
+tests/test_notification_delivery.py::TestSendSlack::test_send_slack_returns_delivery_record PASSED [ 50%]
+tests/test_notification_delivery.py::TestSendSlack::test_send_slack_status_is_sent_or_mock PASSED [ 50%]
+tests/test_notification_delivery.py::TestSendSlack::test_send_slack_channel_in_payload_summary PASSED [ 50%]
+tests/test_notification_delivery.py::TestSendNotification::test_send_notification_returns_list PASSED [ 51%]
+tests/test_notification_delivery.py::TestSendNotification::test_send_notification_records_are_delivery_records PASSED [ 51%]
+tests/test_notification_delivery.py::TestSendBulk::test_send_bulk_returns_dict PASSED [ 51%]
+tests/test_notification_delivery.py::TestSendBulk::test_send_bulk_keys_are_notification_ids PASSED [ 51%]
+tests/test_notification_delivery.py::TestGetTemplates::test_get_templates_returns_list PASSED [ 52%]
+tests/test_notification_delivery.py::TestGetTemplates::test_templates_non_empty PASSED [ 52%]
+tests/test_notification_delivery.py::TestGetTemplates::test_templates_have_required_fields PASSED [ 52%]
+tests/test_notification_delivery.py::TestGetTemplates::test_known_template_types_present PASSED [ 52%]
+tests/test_notification_delivery.py::TestPreferences::test_get_preferences_returns_dict PASSED [ 52%]
+tests/test_notification_delivery.py::TestPreferences::test_set_and_get_preferences_roundtrip PASSED [ 53%]
+tests/test_notification_delivery.py::TestPreferences::test_unknown_user_preferences_return_defaults PASSED [ 53%]
+tests/test_notification_delivery.py::TestDeliveryHistory::test_get_delivery_history_returns_list PASSED [ 53%]
+tests/test_notification_delivery.py::TestDeliveryHistory::test_delivery_history_entries_are_dicts PASSED [ 53%]
+tests/test_notification_delivery.py::TestDeliveryHistory::test_delivery_history_limit_respected PASSED [ 54%]
+tests/test_notification_delivery.py::TestGetDeliveryEngine::test_get_delivery_engine_returns_engine PASSED [ 54%]
+tests/test_notification_delivery.py::TestGetDeliveryEngine::test_get_delivery_engine_is_singleton PASSED [ 54%]
+tests/test_notification_delivery.py::TestRetryFailed::test_retry_failed_returns_dict PASSED [ 54%]
+tests/test_notification_delivery.py::TestRetryFailed::test_retry_failed_has_summary_keys PASSED [ 54%]
+tests/test_process_control.py::TestControlLibrary::test_create_control_returns_201 PASSED [ 55%]
+tests/test_process_control.py::TestControlLibrary::test_create_control_invalid_type_returns_400 PASSED [ 55%]
+tests/test_process_control.py::TestControlLibrary::test_list_controls_returns_created PASSED [ 55%]
+tests/test_process_control.py::TestControlLibrary::test_list_controls_filter_by_type PASSED [ 55%]
+tests/test_process_control.py::TestControlLibrary::test_get_control_by_id PASSED [ 56%]
+tests/test_process_control.py::TestControlLibrary::test_get_nonexistent_control_returns_404 PASSED [ 56%]
+tests/test_process_control.py::TestControlLibrary::test_update_control_bumps_version PASSED [ 56%]
+tests/test_process_control.py::TestControlLibrary::test_retire_control_sets_inactive PASSED [ 56%]
+tests/test_process_control.py::TestControlLibrary::test_add_framework_mapping PASSED [ 57%]
+tests/test_process_control.py::TestControlLibrary::test_add_duplicate_framework_mapping_is_idempotent PASSED [ 57%]
+tests/test_process_control.py::TestControlTesting::test_create_test_returns_201 PASSED [ 57%]
+tests/test_process_control.py::TestControlTesting::test_list_tests_for_control PASSED [ 57%]
+tests/test_process_control.py::TestControlTesting::test_record_effective_result PASSED [ 57%]
+tests/test_process_control.py::TestControlTesting::test_record_ineffective_result_auto_creates_deficiency PASSED [ 58%]
+tests/test_process_control.py::TestControlTesting::test_record_partially_effective_creates_observation PASSED [ 58%]
+tests/test_process_control.py::TestControlTesting::test_record_result_invalid_value_returns_400 PASSED [ 58%]
+tests/test_process_control.py::TestDeficiencyManagement::test_create_deficiency_returns_201 PASSED [ 58%]
+tests/test_process_control.py::TestDeficiencyManagement::test_list_deficiencies PASSED [ 59%]
+tests/test_process_control.py::TestDeficiencyManagement::test_filter_deficiencies_by_status PASSED [ 59%]
+tests/test_process_control.py::TestDeficiencyManagement::test_remediate_transitions_to_remediated PASSED [ 59%]
+tests/test_process_control.py::TestDeficiencyManagement::test_verify_transitions_to_verified_closed PASSED [ 59%]
+tests/test_process_control.py::TestDeficiencyManagement::test_update_deficiency_fields PASSED [ 59%]
+tests/test_process_control.py::TestDeficiencyManagement::test_deficiency_for_nonexistent_control_returns_404 PASSED [ 60%]
+tests/test_process_control.py::TestCCM::test_create_ccm_rule_returns_201 PASSED [ 60%]
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_pass PASSED [ 60%]
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_fail_creates_deficiency PASSED [ 60%]
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_invalid_result_returns_400 PASSED [ 61%]
+tests/test_process_control.py::TestCCM::test_ccm_dashboard_returns_aggregates PASSED [ 61%]
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules PASSED [ 61%]
+tests/test_process_control.py::TestCCM::test_sod_bridge_with_violations_creates_fail_result PASSED [ 61%]
+tests/test_process_control.py::TestCCM::test_sod_bridge_without_violations_creates_pass_result PASSED [ 61%]
+tests/test_process_control.py::TestEvidence::test_create_evidence_returns_201 PASSED [ 62%]
+tests/test_process_control.py::TestEvidence::test_get_evidence_by_id PASSED [ 62%]
+tests/test_process_control.py::TestEvidence::test_get_nonexistent_evidence_returns_404 PASSED [ 62%]
+tests/test_process_control.py::TestEvidence::test_list_evidence_filter_by_module PASSED [ 62%]
+tests/test_process_control.py::TestEvidence::test_set_legal_hold_true PASSED [ 63%]
+tests/test_process_control.py::TestEvidence::test_release_legal_hold PASSED [ 63%]
+tests/test_process_control.py::TestEvidence::test_list_evidence_filter_legal_hold PASSED [ 63%]
+tests/test_process_control.py::TestSignOff::test_create_signoff_returns_201 PASSED [ 63%]
+tests/test_process_control.py::TestSignOff::test_submit_signoff_transitions_to_certified PASSED [ 64%]
+tests/test_process_control.py::TestSignOff::test_submit_signoff_with_exceptions PASSED [ 64%]
+tests/test_process_control.py::TestSignOff::test_get_pending_signoffs PASSED [ 64%]
+tests/test_process_control.py::TestSignOff::test_get_pending_signoffs_filtered_by_certifier PASSED [ 64%]
+tests/test_process_control.py::TestSignOff::test_signoff_hierarchy_parent_child PASSED [ 64%]
+tests/test_process_control.py::TestPCDashboard::test_dashboard_returns_all_metrics PASSED [ 65%]
+tests/test_process_control.py::TestPCDashboard::test_dashboard_reflects_seeded_data PASSED [ 65%]
+tests/test_process_control.py::TestPCDashboard::test_audit_package_returns_complete_bundle PASSED [ 65%]
+tests/test_risk_management.py::TestRiskRegister::test_create_risk_returns_201 PASSED [ 65%]
+tests/test_risk_management.py::TestRiskRegister::test_list_risks_returns_created PASSED [ 66%]
+tests/test_risk_management.py::TestRiskRegister::test_list_risks_filter_by_category PASSED [ 66%]
+tests/test_risk_management.py::TestRiskRegister::test_get_risk_by_id PASSED [ 66%]
+tests/test_risk_management.py::TestRiskRegister::test_get_nonexistent_risk_returns_404 PASSED [ 66%]
+tests/test_risk_management.py::TestRiskRegister::test_update_risk_score_recompute PASSED [ 66%]
+tests/test_risk_management.py::TestRiskRegister::test_soft_delete_risk PASSED [ 67%]
+tests/test_risk_management.py::TestRiskRegister::test_create_risk_invalid_category_returns_400 PASSED [ 67%]
+tests/test_risk_management.py::TestRiskAssessment::test_create_assessment_returns_201 PASSED [ 67%]
+tests/test_risk_management.py::TestRiskAssessment::test_list_assessments_for_risk PASSED [ 67%]
+tests/test_risk_management.py::TestRiskAssessment::test_submit_assessment_transitions_to_submitted PASSED [ 68%]
+tests/test_risk_management.py::TestRiskAssessment::test_submit_already_submitted_returns_400 PASSED [ 68%]
+tests/test_risk_management.py::TestRiskAssessment::test_review_assessment_transitions_to_reviewed PASSED [ 68%]
+tests/test_risk_management.py::TestRiskAssessment::test_assessment_campaign_creates_assessments_for_category PASSED [ 68%]
+tests/test_risk_management.py::TestRiskAppetite::test_set_appetite_returns_201 PASSED [ 69%]
+tests/test_risk_management.py::TestRiskAppetite::test_get_appetites_returns_list PASSED [ 69%]
+tests/test_risk_management.py::TestRiskAppetite::test_get_appetites_filter_by_category PASSED [ 69%]
+tests/test_risk_management.py::TestRiskAppetite::test_appetite_upsert_updates_existing PASSED [ 69%]
+tests/test_risk_management.py::TestRiskAppetite::test_appetite_breach_check_within PASSED [ 69%]
+tests/test_risk_management.py::TestRiskAppetite::test_appetite_breach_check_appetite_breach PASSED [ 70%]
+tests/test_risk_management.py::TestRiskAppetite::test_appetite_breach_check_tolerance_breach PASSED [ 70%]
+tests/test_risk_management.py::TestKRI::test_create_kri_returns_201 PASSED [ 70%]
+tests/test_risk_management.py::TestKRI::test_record_measurement_normal_status PASSED [ 70%]
+tests/test_risk_management.py::TestKRI::test_record_measurement_warning_status PASSED [ 71%]
+tests/test_risk_management.py::TestKRI::test_record_measurement_breach_status PASSED [ 71%]
+tests/test_risk_management.py::TestKRI::test_kri_dashboard_contains_totals PASSED [ 71%]
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements PASSED [ 71%]
+tests/test_risk_management.py::TestKRI::test_kri_measurement_for_nonexistent_kri_returns_404 PASSED [ 71%]
+tests/test_risk_management.py::TestRiskResponse::test_create_response_returns_201 PASSED [ 72%]
+tests/test_risk_management.py::TestRiskResponse::test_list_responses_for_risk PASSED [ 72%]
+tests/test_risk_management.py::TestRiskResponse::test_update_response_status_to_in_progress PASSED [ 72%]
+tests/test_risk_management.py::TestRiskResponse::test_update_response_status_to_completed_sets_timestamp PASSED [ 72%]
+tests/test_risk_management.py::TestRiskResponse::test_update_response_invalid_status_returns_400 PASSED [ 73%]
+tests/test_risk_management.py::TestRiskIncident::test_report_incident_returns_201 PASSED [ 73%]
+tests/test_risk_management.py::TestRiskIncident::test_list_incidents PASSED [ 73%]
+tests/test_risk_management.py::TestRiskIncident::test_list_incidents_filter_by_severity PASSED [ 73%]
+tests/test_risk_management.py::TestRiskIncident::test_link_incident_to_risk PASSED [ 73%]
+tests/test_risk_management.py::TestRiskIncident::test_update_incident_status_to_resolved PASSED [ 74%]
+tests/test_risk_management.py::TestRiskIncident::test_report_incident_invalid_severity_returns_400 PASSED [ 74%]
+tests/test_risk_management.py::TestRiskReporting::test_heatmap_returns_25_cells PASSED [ 74%]
+tests/test_risk_management.py::TestRiskReporting::test_heatmap_cells_have_correct_structure PASSED [ 74%]
+tests/test_risk_management.py::TestRiskReporting::test_trends_returns_period_data PASSED [ 75%]
+tests/test_risk_management.py::TestRiskReporting::test_top_risks_returns_ordered_list PASSED [ 75%]
+tests/test_risk_management.py::TestRiskReporting::test_overdue_reviews_only_includes_past_dates PASSED [ 75%]
+tests/test_risk_management.py::TestRiskReporting::test_risk_control_coverage_returns_percentages PASSED [ 75%]
+tests/test_risk_management.py::TestRiskReporting::test_review_attestation_advances_next_review_date PASSED [ 76%]
+tests/test_role_intelligence.py::TestCatalogueBasics::test_catalogue_has_expected_size PASSED [ 76%]
+tests/test_role_intelligence.py::TestCatalogueBasics::test_index_keys_match_catalogue_ids PASSED [ 76%]
+tests/test_role_intelligence.py::TestCatalogueBasics::test_get_role_raises_on_unknown_id PASSED [ 76%]
+tests/test_role_intelligence.py::TestCatalogueBasics::test_get_role_returns_dict PASSED [ 76%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_returns_similarity_result PASSED [ 77%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_scores_in_valid_range PASSED [ 77%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_highly_similar_roles_score_high PASSED [ 77%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_shared_transactions_are_subsets PASSED [ 77%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_unique_to_a_not_in_b PASSED [ 78%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_serialization_to_dict PASSED [ 78%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_role_identity_similarity_is_high PASSED [ 78%]
+tests/test_role_intelligence.py::TestSimilarityAnalysis::test_distinct_roles_score_lower PASSED [ 78%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_find_duplicates_returns_list PASSED [ 78%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_duplicate_groups_have_at_least_two_roles PASSED [ 79%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_canonical_role_in_group PASSED [ 79%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_retirement_candidates_exclude_canonical PASSED [ 79%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_group_ids_are_unique PASSED [ 79%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_high_threshold_returns_fewer_groups PASSED [ 80%]
+tests/test_role_intelligence.py::TestDuplicateDetection::test_serialization_to_dict PASSED [ 80%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_health_score_returns_role_health_score PASSED [ 80%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_score_in_valid_range PASSED [ 80%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_grade_is_valid PASSED [ 80%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_role_with_owner_scores_higher_than_without PASSED [ 81%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_role_with_sod_conflict_loses_points PASSED [ 81%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_unused_role_gets_lower_score PASSED [ 81%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_never_used_role_gets_zero_usage_score PASSED [ 81%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_issues_list_is_list PASSED [ 82%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_recommendations_present_for_bad_role PASSED [ 82%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_calculate_health_all_returns_all_roles PASSED [ 82%]
+tests/test_role_intelligence.py::TestRoleHealthScore::test_health_all_sorted_ascending PASSED [ 82%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_get_usage_stats_returns_usage_report PASSED [ 83%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_total_roles_matches_catalogue PASSED [ 83%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_unused_roles_have_zero_users PASSED [ 83%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_active_roles_have_multiple_users PASSED [ 83%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_retirement_candidates_exist PASSED [ 83%]
+tests/test_role_intelligence.py::TestUsageAnalytics::test_serialization_to_dict PASSED [ 84%]
+tests/test_role_intelligence.py::TestConsolidationPlan::test_recommend_consolidation_returns_plan PASSED [ 84%]
+tests/test_role_intelligence.py::TestConsolidationPlan::test_plan_total_roles_matches_catalogue PASSED [ 84%]
+tests/test_role_intelligence.py::TestConsolidationPlan::test_plan_roles_saveable_non_negative PASSED [ 84%]
+tests/test_role_intelligence.py::TestConsolidationPlan::test_serialization_to_dict PASSED [ 85%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_analyze_naming_returns_naming_report PASSED [ 85%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_total_roles_matches_catalogue PASSED [ 85%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_compliant_plus_non_compliant_equals_total PASSED [ 85%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_antipattern_roles_are_non_compliant PASSED [ 85%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_convention_summary_has_expected_keys PASSED [ 86%]
+tests/test_role_intelligence.py::TestNamingConventionAnalysis::test_serialization_to_dict PASSED [ 86%]
+tests/test_role_intelligence.py::TestFullAnalysis::test_run_full_analysis_returns_dict PASSED [ 86%]
+tests/test_role_intelligence.py::TestFullAnalysis::test_full_analysis_has_summary_key PASSED [ 86%]
+tests/test_role_intelligence.py::TestFullAnalysis::test_full_analysis_has_all_sections PASSED [ 87%]
+tests/test_role_intelligence.py::TestGetOverview::test_get_overview_returns_dict PASSED [ 87%]
+tests/test_role_intelligence.py::TestGetOverview::test_overview_has_expected_keys PASSED [ 87%]
+tests/test_role_intelligence.py::TestGetOverview::test_overview_ownership_rate_valid PASSED [ 87%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_library_loads PASSED [ 88%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_has_121_rules PASSED [ 88%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_has_65_functions PASSED [ 88%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_all_rules_reference_valid_functions PASSED [ 88%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_rule_ids_are_unique PASSED [ 88%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_function_ids_are_unique PASSED [ 89%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_all_risk_levels_present PASSED [ 89%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_business_processes_covered PASSED [ 89%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_get_rules_by_process PASSED [ 89%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_sox_relevant_rules PASSED [ 90%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_get_statistics PASSED [ 90%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_get_function_by_id PASSED [ 90%]
+tests/test_sod_rules.py::TestSoDRulesetLibrary::test_get_rule_by_id PASSED [ 90%]
+tests/test_sod_rules.py::TestRuleEngine::test_engine_loads_rules PASSED  [ 90%]
+tests/test_sod_rules.py::TestRuleEngine::test_engine_has_rule_index PASSED [ 91%]
+tests/test_sod_rules.py::TestRuleEngine::test_analyze_user_with_no_entitlements PASSED [ 91%]
+tests/test_sod_rules.py::TestRuleEngine::test_analyze_user_with_sod_conflict PASSED [ 91%]
+tests/test_sod_rules.py::TestEntitlementModel::test_entitlement_equality PASSED [ 91%]
+tests/test_sod_rules.py::TestEntitlementModel::test_entitlement_with_system PASSED [ 92%]
+tests/test_troubleshooter.py::TestTroubleshootRequest::test_user_id_uppercased PASSED [ 92%]
+tests/test_troubleshooter.py::TestTroubleshootRequest::test_whitespace_stripped PASSED [ 92%]
+tests/test_troubleshooter.py::TestTroubleshootRequest::test_defaults PASSED [ 92%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_returns_diagnosis_result PASSED [ 92%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_has_diagnosis_id PASSED [ 93%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_steps_are_ordered_list PASSED [ 93%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_jdoe_fb60_produces_diagnosis PASSED [ 93%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_confidence_score_in_range PASSED [ 93%]
+tests/test_troubleshooter.py::TestDiagnoseActiveUser::test_result_serializes_to_dict PASSED [ 94%]
+tests/test_troubleshooter.py::TestDiagnoseLockedUser::test_locked_user_gets_access_denied PASSED [ 94%]
+tests/test_troubleshooter.py::TestDiagnoseLockedUser::test_locked_user_has_fail_step PASSED [ 94%]
+tests/test_troubleshooter.py::TestDiagnoseLockedUser::test_locked_user_recommendation_mentions_unlock PASSED [ 94%]
+tests/test_troubleshooter.py::TestDiagnoseExpiredUser::test_expired_user_gets_access_denied PASSED [ 95%]
+tests/test_troubleshooter.py::TestDiagnoseExpiredUser::test_expired_user_has_fail_step PASSED [ 95%]
+tests/test_troubleshooter.py::TestDiagnoseUnknownUser::test_nonexistent_user_gets_access_denied PASSED [ 95%]
+tests/test_troubleshooter.py::TestDiagnoseUnknownUser::test_nonexistent_user_user_exists_step_fails PASSED [ 95%]
+tests/test_troubleshooter.py::TestDiagnoseTransportGap::test_transport_not_in_prd_causes_failure FAILED [ 95%]
+tests/test_troubleshooter.py::TestFioriDiagnosis::test_fiori_app_id_resolved_to_backend_tcode PASSED [ 96%]
+tests/test_troubleshooter.py::TestFioriDiagnosis::test_fiori_app_id_is_detected_as_fiori PASSED [ 96%]
+tests/test_troubleshooter.py::TestFioriDiagnosis::test_fiori_resolve_returns_backend_tcode PASSED [ 96%]
+tests/test_troubleshooter.py::TestFioriDiagnosis::test_unknown_fiori_app_still_runs_checks PASSED [ 96%]
+tests/test_troubleshooter.py::TestBatchDiagnose::test_batch_returns_one_result_per_user PASSED [ 97%]
+tests/test_troubleshooter.py::TestBatchDiagnose::test_batch_results_are_diagnosis_result_objects PASSED [ 97%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_transaction_list_is_non_empty PASSED [ 97%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_transaction_list_has_expected_keys PASSED [ 97%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_known_tcode_returns_requirements PASSED [ 97%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_unknown_tcode_returns_none PASSED [ 98%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_sensitive_tcodes_flagged PASSED [ 98%]
+tests/test_troubleshooter.py::TestTransactionKnowledgeBase::test_fiori_kb_is_populated PASSED [ 98%]
+tests/test_troubleshooter.py::TestCommonIssues::test_common_issues_list_is_non_empty PASSED [ 98%]
+tests/test_troubleshooter.py::TestCommonIssues::test_common_issue_structure PASSED [ 99%]
+tests/test_troubleshooter.py::TestCommonIssues::test_common_issues_have_ci_prefix_ids PASSED [ 99%]
+tests/test_troubleshooter.py::TestDiagnosisHistory::test_history_is_populated_after_diagnose PASSED [ 99%]
+tests/test_troubleshooter.py::TestDiagnosisHistory::test_history_entries_have_required_keys PASSED [ 99%]
+tests/test_troubleshooter.py::TestDiagnosisHistory::test_history_user_filter_works PASSED [100%]
+
+================================== FAILURES ===================================
+______ TestDiagnoseTransportGap.test_transport_not_in_prd_causes_failure ______
+tests\test_troubleshooter.py:172: in test_transport_not_in_prd_causes_failure
+    assert result.status in (DiagnosisStatus.ACCESS_GRANTED, DiagnosisStatus.PARTIAL_ACCESS)
+E   assert <DiagnosisStatus.ACCESS_DENIED: 'access_denied'> in (<DiagnosisStatus.ACCESS_GRANTED: 'access_granted'>, <DiagnosisStatus.PARTIAL_ACCESS: 'partial_access'>)
+E    +  where <DiagnosisStatus.ACCESS_DENIED: 'access_denied'> = DiagnosisResult(diagnosis_id='ff442b14-c0c7-4f5b-ad94-b4568f8ca862', request=TroubleshootRequest(user_id='PCHANG', transaction='STMS', system='PRD', tenant_id='tenant_default', requested_by='system', context=None), status=<DiagnosisStatus.ACCESS_DENIED: 'access_denied'>, root_cause="User 'PCHANG' does not exist in the target system.", diagnosis_steps=[DiagnosisStep(check_name='user_exists', display_name='User Account Exists', status=<CheckStatus.FAIL: 'fail'>, detail="User 'PCHANG' does not exist in the target system.", recommendation='Verify the user ID is correct.  If the user needs to be created, submit a new-user provisioning request through the access request portal.', technical_detail='SU01 lookup returned no result for this user ID.')], recommended_fix='Create the user account via SU01 or the provisioning workflow, or verify the correct user ID with the helpdesk.', estimated_fix_time='1-2 business days', risk_impact=["Transaction 'STMS' is classified as sensitive (Transport Management System).  Assignment requires additional scrutiny and may require a mitigating control."], confidence_score=0.92, diagnosed_at='2026-10-04T14:07:13Z').status
+============================== warnings summary ===============================
+C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:291: 17 warnings
+tests/test_api_endpoints.py: 1 warning
+  C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\fields.py:795
+C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\fields.py:795
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\fields.py:795: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warn('`min_items` is deprecated and will be removed, use `min_length` instead', DeprecationWarning)
+
+<string>:18: 6 warnings
+tests/test_e2e_golden_flow.py: 4 warnings
+  <string>:18: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+<string>:19
+<string>:19
+<string>:19
+<string>:19
+<string>:19
+<string>:19
+  <string>:19: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/test_api_endpoints.py: 86 warnings
+  C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\fields.py:826: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'example'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warn(
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\cross_system\sod_engine.py:213: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "registered_at": datetime.utcnow(),
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  <string>:15: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  <string>:24: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py: 7 warnings
+tests/test_e2e_golden_flow.py: 7 warnings
+  <string>:25: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py: 21 warnings
+  <string>:10: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py: 21 warnings
+  <string>:11: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  <string>:4: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py: 3 warnings
+tests/test_e2e_golden_flow.py: 12 warnings
+  <string>:5: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\tenant\manager.py:315: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    activated_at=datetime.utcnow()
+
+tests/test_api_endpoints.py: 7 warnings
+tests/test_audit_management.py: 205 warnings
+tests/test_process_control.py: 111 warnings
+tests/test_risk_management.py: 111 warnings
+  <string>:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py: 6 warnings
+tests/test_notification_delivery.py: 13 warnings
+  <string>:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\tenant\manager.py:342: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    activated_at=datetime.utcnow()
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\tenant\manager.py:399: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    activated_at=datetime.utcnow()
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\timeline\tracker.py:575: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self._now: datetime = datetime.utcnow()
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\core\access_request\model_user.py:190: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    _now = datetime.utcnow()
+
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+tests/test_api_endpoints.py::TestRootEndpoints::test_root_returns_platform_info
+  D:\Governexplus\api\main.py:119: DeprecationWarning: `example` has been deprecated, please use `examples` instead
+    from api.routers import grc_intelligence
+
+tests/test_api_endpoints.py: 16 warnings
+tests/test_audit_management.py: 321 warnings
+tests/test_auth_service.py: 51 warnings
+tests/test_custom_ruleset.py: 24 warnings
+tests/test_e2e_golden_flow.py: 43 warnings
+tests/test_notification_delivery.py: 26 warnings
+tests/test_process_control.py: 188 warnings
+tests/test_risk_management.py: 172 warnings
+  C:\Users\Welcome\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_api_endpoints.py: 4 warnings
+tests/test_audit_management.py: 1 warning
+tests/test_auth_service.py: 12 warnings
+tests/test_process_control.py: 1 warning
+tests/test_risk_management.py: 1 warning
+  D:\Governexplus\services\auth_service.py:432: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    user.last_login = datetime.utcnow()
+
+tests/test_api_endpoints.py: 4 warnings
+tests/test_audit_management.py: 1 warning
+tests/test_auth_service.py: 12 warnings
+tests/test_process_control.py: 1 warning
+tests/test_risk_management.py: 1 warning
+  D:\Governexplus\services\auth_service.py:724: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_api_endpoints.py: 4 warnings
+tests/test_audit_management.py: 1 warning
+tests/test_auth_service.py: 12 warnings
+tests/test_process_control.py: 1 warning
+tests/test_risk_management.py: 1 warning
+  D:\Governexplus\services\auth_service.py:747: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_api_endpoints.py: 10 warnings
+tests/test_audit_management.py: 1 warning
+tests/test_auth_service.py: 23 warnings
+tests/test_process_control.py: 1 warning
+tests/test_risk_management.py: 1 warning
+  D:\Governexplus\audit\logger.py:100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.utcnow(),
+
+tests/test_audit_management.py::TestAuditPlanning::test_create_plan_returns_201
+tests/test_audit_management.py::TestAuditPlanning::test_list_plans_returns_created
+tests/test_audit_management.py::TestAuditPlanning::test_get_plan_by_id
+tests/test_audit_management.py::TestAuditPlanning::test_submit_plan_transitions_to_pending_approval
+tests/test_audit_management.py::TestAuditPlanning::test_approve_plan_transitions_to_approved
+tests/test_audit_management.py::TestAuditPlanning::test_list_plans_filter_by_status
+tests/test_audit_management.py::TestAuditPlanning::test_update_plan_fields
+tests/test_audit_management.py::TestAMReporting::test_audit_dashboard_reflects_seeded_data
+tests/test_audit_management.py::TestAMReporting::test_committee_report_returns_required_fields
+  D:\Governexplus\api\routers\audit_mgmt.py:260: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    fiscal_year=body.get("fiscal_year", datetime.utcnow().year),
+
+tests/test_audit_management.py::TestAuditPlanning::test_approve_plan_transitions_to_approved
+tests/test_audit_management.py::TestAuditPlanning::test_list_plans_filter_by_status
+  D:\Governexplus\api\routers\audit_mgmt.py:341: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    p.approved_at = datetime.utcnow()
+
+tests/test_audit_management.py::TestAuditPlanning::test_generate_risk_based_plan
+  D:\Governexplus\api\routers\audit_mgmt.py:354: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    fiscal_year = body.get("fiscal_year", datetime.utcnow().year)
+
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_through_all_stages
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_past_closed_returns_400
+tests/test_audit_management.py::TestEngagementLifecycle::test_fieldwork_advance_sets_actual_start
+  D:\Governexplus\api\routers\audit_mgmt.py:523: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    eng.actual_start = datetime.utcnow()
+
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_through_all_stages
+tests/test_audit_management.py::TestEngagementLifecycle::test_advance_past_closed_returns_400
+  D:\Governexplus\api\routers\audit_mgmt.py:525: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    eng.actual_end = datetime.utcnow()
+
+tests/test_audit_management.py::TestProcedures::test_complete_procedure_by_preparer
+tests/test_audit_management.py::TestProcedures::test_review_procedure_by_reviewer
+  D:\Governexplus\api\routers\audit_mgmt.py:677: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    p.prepared_at = datetime.utcnow()
+
+tests/test_audit_management.py::TestProcedures::test_review_procedure_by_reviewer
+  D:\Governexplus\api\routers\audit_mgmt.py:695: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    p.reviewed_at = datetime.utcnow()
+
+tests/test_audit_management.py::TestWorkpapers::test_create_workpaper_returns_201
+  D:\Governexplus\api\routers\audit_mgmt.py:728: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    prepared_at=datetime.utcnow() if body.get("preparer_id") else None,
+
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_approved
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_revision_needed
+  D:\Governexplus\api\routers\audit_mgmt.py:793: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    w.reviewed_at = datetime.utcnow()
+
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_approved
+tests/test_audit_management.py::TestWorkpapers::test_review_workpaper_revision_needed
+  D:\Governexplus\api\routers\audit_mgmt.py:799: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat(),
+
+tests/test_audit_management.py::TestActions::test_close_action_with_evidence
+tests/test_audit_management.py::TestActions::test_close_action_without_verifier_stays_completed
+  D:\Governexplus\api\routers\audit_mgmt.py:1049: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    a.completed_at = datetime.utcnow()
+
+tests/test_audit_management.py::TestActions::test_close_action_with_evidence
+  D:\Governexplus\api\routers\audit_mgmt.py:1053: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    a.verified_at = datetime.utcnow() if body.get("verified_by") else None
+
+tests/test_audit_management.py::TestActions::test_overdue_actions_list
+  D:\Governexplus\api\routers\audit_mgmt.py:1066: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_audit_management.py: 10 warnings
+  D:\Governexplus\api\routers\audit_mgmt.py:1120: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.fromisoformat(body.get("date", datetime.utcnow().isoformat())),
+
+tests/test_audit_management.py::TestAMReporting::test_committee_report_returns_required_fields
+tests/test_audit_management.py::TestAMReporting::test_committee_report_without_year_uses_current
+  D:\Governexplus\api\routers\audit_mgmt.py:1382: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "generated_at": datetime.utcnow().isoformat(),
+
+tests/test_audit_management.py::TestAMReporting::test_engagement_report_returns_findings_and_actions
+tests/test_audit_management.py::TestAMReporting::test_engagement_report_severity_summary
+  D:\Governexplus\api\routers\audit_mgmt.py:1300: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "report_generated_at": datetime.utcnow().isoformat(),
+
+tests/test_audit_management.py::TestAMReporting::test_committee_report_without_year_uses_current
+  D:\Governexplus\api\routers\audit_mgmt.py:1351: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    year = fiscal_year or datetime.utcnow().year
+
+tests/test_audit_management.py::TestAMReporting::test_committee_report_without_year_uses_current
+  D:\Governexplus\tests\test_audit_management.py:1342: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    assert resp.json()["fiscal_year"] == datetime.utcnow().year
+
+tests/test_auth_service.py::TestTokens::test_verify_expired_token
+  D:\Governexplus\tests\test_auth_service.py:144: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "exp": datetime.utcnow() - timedelta(hours=1),
+
+tests/test_auth_service.py::TestTokens::test_verify_expired_token
+  D:\Governexplus\tests\test_auth_service.py:145: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "iat": datetime.utcnow() - timedelta(hours=2),
+
+tests/test_custom_ruleset.py::TestExportImport::test_export_json
+tests/test_custom_ruleset.py::TestExportImport::test_export_yaml
+  D:\Governexplus\core\rules\custom_ruleset.py:326: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "exported_at": datetime.utcnow().isoformat(),
+
+tests/test_drift.py: 311 warnings
+  D:\Governexplus\core\drift\detector.py:1005: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    scan_ts = datetime.utcnow()
+
+tests/test_drift.py::TestDriftSummary::test_get_drift_summary_returns_summary
+tests/test_drift.py::TestDriftSummary::test_summary_total_matches_role_count
+tests/test_drift.py::TestDriftSummary::test_summary_in_sync_plus_drifted_equals_total
+tests/test_drift.py::TestDriftSummary::test_summary_drift_percentage_in_range
+tests/test_drift.py::TestDriftSummary::test_summary_has_severity_breakdown
+tests/test_drift.py::TestDriftSummary::test_summary_has_systems_compared
+tests/test_drift.py::TestDriftSummary::test_summary_has_most_drifted_roles
+tests/test_drift.py::TestDriftSummary::test_summary_roles_drifted_positive
+  D:\Governexplus\core\drift\detector.py:1124: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    scan_timestamp=datetime.utcnow(),
+
+tests/test_drift.py: 73 warnings
+  D:\Governexplus\core\drift\detector.py:1204: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    scan_timestamp=datetime.utcnow(),
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+  D:\Governexplus\core\access_request\manager.py:119: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    submitted_at=request.submitted_at or datetime.utcnow(),
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+  D:\Governexplus\core\effective_access\engine.py:206: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    calculated_at=datetime.utcnow(),
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+  D:\Governexplus\core\effective_access\engine.py:475: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+  D:\Governexplus\core\effective_access\models.py:289: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_request_rejection_flow
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+tests/test_e2e_golden_flow.py::test_evidence_chain_integrity
+  D:\Governexplus\core\evidence\engine.py:265: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  <string>:14: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  D:\Governexplus\core\execution\engine.py:149: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    action.executed_at = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  D:\Governexplus\core\execution\engine.py:162: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    plan.executed_at = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  D:\Governexplus\core\execution\engine.py:191: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    action.verified_at = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  D:\Governexplus\core\execution\engine.py:203: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    plan.verified_at = datetime.utcnow()
+
+tests/test_e2e_golden_flow.py::test_golden_flow_request_to_provisioned
+  D:\Governexplus\core\execution\engine.py:225: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    plan.closed_at = datetime.utcnow()
+
+tests/test_fiori.py::TestTraceApp::test_returns_trace
+tests/test_fiori.py::TestTraceApp::test_trace_has_overall_status
+tests/test_fiori.py::TestTraceApp::test_trace_has_chain
+tests/test_fiori.py::TestTraceApp::test_trace_has_summary
+  D:\Governexplus\core\fiori\analyzer.py:1158: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp = datetime.utcnow().isoformat() + "Z"
+
+tests/test_identity_correlation.py: 323 warnings
+  D:\Governexplus\core\identity_correlation\engine.py:912: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=item.get("created_at", datetime.utcnow().isoformat() + "Z"),
+
+tests/test_identity_correlation.py::TestOverview::test_returns_stats
+tests/test_identity_correlation.py::TestOverview::test_has_total_accounts
+tests/test_identity_correlation.py::TestOverview::test_has_total_clusters
+tests/test_identity_correlation.py::TestOverview::test_has_by_system_counts
+tests/test_identity_correlation.py::TestFindOrphans::test_returns_list
+tests/test_identity_correlation.py::TestFindOrphans::test_orphans_are_orphan_account_objects
+tests/test_identity_correlation.py::TestFindOrphans::test_orphans_have_reason
+  D:\Governexplus\core\identity_correlation\engine.py:1301: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    days = (datetime.utcnow() - login_dt).days
+
+tests/test_identity_correlation.py::TestOverview::test_returns_stats
+tests/test_identity_correlation.py::TestOverview::test_has_total_accounts
+tests/test_identity_correlation.py::TestOverview::test_has_total_clusters
+tests/test_identity_correlation.py::TestOverview::test_has_by_system_counts
+  D:\Governexplus\core\identity_correlation\engine.py:1191: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    last_run=datetime.utcnow().isoformat() + "Z",
+
+tests/test_notification_delivery.py: 21 warnings
+  <string>:16: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_notification_delivery.py: 21 warnings
+  D:\Governexplus\core\notifications\delivery.py:924: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_process_control.py::TestControlLibrary::test_update_control_bumps_version
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_fail_creates_deficiency
+  D:\Governexplus\api\routers\process_ctrl.py:239: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "changed_at": datetime.utcnow().isoformat(),
+
+tests/test_process_control.py::TestControlLibrary::test_add_framework_mapping
+tests/test_process_control.py::TestControlLibrary::test_add_duplicate_framework_mapping_is_idempotent
+tests/test_process_control.py::TestControlLibrary::test_add_duplicate_framework_mapping_is_idempotent
+  D:\Governexplus\api\routers\process_ctrl.py:278: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "added_at": datetime.utcnow().isoformat(),
+
+tests/test_process_control.py::TestDeficiencyManagement::test_remediate_transitions_to_remediated
+tests/test_process_control.py::TestDeficiencyManagement::test_verify_transitions_to_verified_closed
+  D:\Governexplus\api\routers\process_ctrl.py:519: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    d.completed_at = datetime.utcnow()
+
+tests/test_process_control.py::TestDeficiencyManagement::test_verify_transitions_to_verified_closed
+  D:\Governexplus\api\routers\process_ctrl.py:536: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    d.verified_at = datetime.utcnow()
+
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_pass
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_fail_creates_deficiency
+tests/test_process_control.py::TestCCM::test_ccm_dashboard_returns_aggregates
+tests/test_process_control.py::TestCCM::test_ccm_dashboard_returns_aggregates
+  D:\Governexplus\api\routers\process_ctrl.py:775: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    executed_at=datetime.utcnow(),
+
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_pass
+tests/test_process_control.py::TestCCM::test_execute_ccm_rule_fail_creates_deficiency
+tests/test_process_control.py::TestCCM::test_ccm_dashboard_returns_aggregates
+tests/test_process_control.py::TestCCM::test_ccm_dashboard_returns_aggregates
+  D:\Governexplus\api\routers\process_ctrl.py:782: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rule.last_run_at = datetime.utcnow()
+
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+  D:\Governexplus\api\routers\process_ctrl.py:831: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    executed_at=datetime.utcnow(),
+
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+tests/test_process_control.py::TestCCM::test_run_all_ccm_executes_active_rules
+  D:\Governexplus\api\routers\process_ctrl.py:836: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rule.last_run_at = datetime.utcnow()
+
+tests/test_process_control.py::TestCCM::test_sod_bridge_with_violations_creates_fail_result
+tests/test_process_control.py::TestCCM::test_sod_bridge_without_violations_creates_pass_result
+  D:\Governexplus\api\routers\process_ctrl.py:910: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    executed_at=datetime.utcnow(),
+
+tests/test_process_control.py::TestCCM::test_sod_bridge_with_violations_creates_fail_result
+tests/test_process_control.py::TestCCM::test_sod_bridge_without_violations_creates_pass_result
+  D:\Governexplus\api\routers\process_ctrl.py:916: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rule.last_run_at = datetime.utcnow()
+
+tests/test_process_control.py::TestEvidence::test_create_evidence_returns_201
+tests/test_process_control.py::TestEvidence::test_get_evidence_by_id
+tests/test_process_control.py::TestEvidence::test_list_evidence_filter_by_module
+tests/test_process_control.py::TestEvidence::test_list_evidence_filter_by_module
+tests/test_process_control.py::TestEvidence::test_set_legal_hold_true
+tests/test_process_control.py::TestEvidence::test_release_legal_hold
+tests/test_process_control.py::TestEvidence::test_list_evidence_filter_legal_hold
+tests/test_process_control.py::TestPCDashboard::test_audit_package_returns_complete_bundle
+  D:\Governexplus\api\routers\process_ctrl.py:951: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    upload_date=datetime.utcnow(),
+
+tests/test_process_control.py::TestSignOff::test_submit_signoff_transitions_to_certified
+tests/test_process_control.py::TestSignOff::test_submit_signoff_with_exceptions
+  D:\Governexplus\api\routers\process_ctrl.py:1054: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    s.certified_at = datetime.utcnow()
+
+tests/test_process_control.py::TestPCDashboard::test_audit_package_returns_complete_bundle
+  D:\Governexplus\api\routers\process_ctrl.py:1177: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "generated_at": datetime.utcnow().isoformat(),
+
+tests/test_risk_management.py::TestRiskAssessment::test_create_assessment_returns_201
+tests/test_risk_management.py::TestRiskAssessment::test_list_assessments_for_risk
+tests/test_risk_management.py::TestRiskAssessment::test_list_assessments_for_risk
+tests/test_risk_management.py::TestRiskAssessment::test_submit_assessment_transitions_to_submitted
+tests/test_risk_management.py::TestRiskAssessment::test_submit_already_submitted_returns_400
+tests/test_risk_management.py::TestRiskAssessment::test_review_assessment_transitions_to_reviewed
+  D:\Governexplus\api\routers\risk_mgmt.py:338: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    risk.last_assessed_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskAssessment::test_review_assessment_transitions_to_reviewed
+  D:\Governexplus\api\routers\risk_mgmt.py:385: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    a.reviewed_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskAssessment::test_assessment_campaign_creates_assessments_for_category
+tests/test_risk_management.py::TestRiskAssessment::test_assessment_campaign_creates_assessments_for_category
+  D:\Governexplus\api\routers\risk_mgmt.py:431: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    risk.last_assessed_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskAppetite::test_set_appetite_returns_201
+  D:\Governexplus\api\routers\risk_mgmt.py:485: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    approved_at=datetime.utcnow() if body.get("approved_by") else None,
+
+tests/test_risk_management.py::TestKRI::test_record_measurement_normal_status
+tests/test_risk_management.py::TestKRI::test_record_measurement_warning_status
+tests/test_risk_management.py::TestKRI::test_record_measurement_breach_status
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+  D:\Governexplus\api\routers\risk_mgmt.py:659: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    measured_at=datetime.utcnow(),
+
+tests/test_risk_management.py::TestKRI::test_record_measurement_normal_status
+tests/test_risk_management.py::TestKRI::test_record_measurement_warning_status
+tests/test_risk_management.py::TestKRI::test_record_measurement_breach_status
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+tests/test_risk_management.py::TestKRI::test_kri_history_shows_all_measurements
+  D:\Governexplus\api\routers\risk_mgmt.py:667: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    kri.last_measured_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskResponse::test_update_response_status_to_completed_sets_timestamp
+  D:\Governexplus\api\routers\risk_mgmt.py:757: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    resp.completed_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskIncident::test_report_incident_returns_201
+tests/test_risk_management.py::TestRiskIncident::test_list_incidents
+tests/test_risk_management.py::TestRiskIncident::test_list_incidents_filter_by_severity
+tests/test_risk_management.py::TestRiskIncident::test_list_incidents_filter_by_severity
+tests/test_risk_management.py::TestRiskIncident::test_link_incident_to_risk
+tests/test_risk_management.py::TestRiskIncident::test_update_incident_status_to_resolved
+  D:\Governexplus\api\routers\risk_mgmt.py:788: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    detected_at=datetime.utcnow(),
+
+tests/test_risk_management.py::TestRiskIncident::test_update_incident_status_to_resolved
+  D:\Governexplus\api\routers\risk_mgmt.py:814: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    inc.resolved_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskReporting::test_trends_returns_period_data
+  D:\Governexplus\api\routers\risk_mgmt.py:908: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    cutoff = datetime.utcnow() - timedelta(days=period_months * 30)
+
+tests/test_risk_management.py::TestRiskReporting::test_overdue_reviews_only_includes_past_dates
+  D:\Governexplus\api\routers\risk_mgmt.py:968: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskReporting::test_review_attestation_advances_next_review_date
+  D:\Governexplus\api\routers\risk_mgmt.py:986: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    risk.last_assessed_at = datetime.utcnow()
+
+tests/test_risk_management.py::TestRiskReporting::test_review_attestation_advances_next_review_date
+  D:\Governexplus\api\routers\risk_mgmt.py:990: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    risk.next_review_date = datetime.utcnow() + timedelta(days=days)
+
+tests/test_risk_management.py::TestRiskReporting::test_review_attestation_advances_next_review_date
+  D:\Governexplus\api\routers\risk_mgmt.py:996: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "attested_at": datetime.utcnow().isoformat(),
+
+tests/test_risk_management.py::TestRiskReporting::test_review_attestation_advances_next_review_date
+  D:\Governexplus\tests\test_risk_management.py:876: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    assert new_date > datetime.utcnow()
+
+tests/test_troubleshooter.py: 23 warnings
+  D:\Governexplus\core\troubleshooter\engine.py:165: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_troubleshooter.py::TestDiagnoseTransportGap::test_transport_not_in_prd_causes_failure
+=========== 1 failed, 441 passed, 2577 warnings in 67.83s (0:01:07) ===========

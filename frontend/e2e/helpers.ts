@@ -51,7 +51,7 @@ export async function getToken(persona: PersonaId): Promise<string> {
   const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: creds.username, password: creds.password }),
+    body: JSON.stringify({ username: creds.username, password: creds.password, tenant_id: 'qa-tenant-001' }),
   });
   if (!res.ok) throw new Error(`Login failed for ${persona}: ${res.status}`);
   const data = await res.json();

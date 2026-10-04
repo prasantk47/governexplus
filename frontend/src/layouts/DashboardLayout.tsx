@@ -553,7 +553,7 @@ export function DashboardLayout() {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-        <div className="glass-sidebar flex-1 pt-0">
+        <div className="glass-sidebar flex-1 min-h-0 overflow-hidden pt-0">
           <SidebarContent />
         </div>
       </div>

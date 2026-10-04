@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
-from db.session import get_db
+from db.database import get_db
 from db.models.template_library import TemplatePack, TemplateItem, TenantItemActivation
 from api.dependencies import get_current_user
 from core.library.seeder import seed_library
@@ -420,10 +420,13 @@ async def trigger_seed(
         raise HTTPException(status_code=403, detail="Admin only")
 
     def _run_seed():
-        from db.session import SessionLocal
-        with SessionLocal() as s:
+        from db.database import db_manager, get_db
+        s = db_manager.get_session()
+        try:
             result = seed_library(s)
             logger.info("Seeder result: %s", result)
+        finally:
+            s.close()
 
     background_tasks.add_task(_run_seed)
     return {"status": "seeding_started"}

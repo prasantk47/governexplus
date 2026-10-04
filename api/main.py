@@ -699,11 +699,14 @@ app.include_router(
 @app.on_event("startup")
 async def _seed_template_library():
     try:
-        from db.session import SessionLocal
+        from db.database import db_manager
         from core.library.seeder import seed_library
-        with SessionLocal() as s:
+        s = db_manager.get_session()
+        try:
             result = seed_library(s)
             logger.info("Template library seeder: %s", result)
+        finally:
+            s.close()
     except Exception as e:
         logger.warning("Template library seeder failed (non-fatal): %s", e)
 

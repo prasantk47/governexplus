@@ -29,6 +29,13 @@ import {
   ChevronDownIcon,
   CubeTransparentIcon,
   ArrowPathIcon,
+  UserPlusIcon,
+  BuildingStorefrontIcon,
+  BugAntIcon,
+  LifebuoyIcon,
+  MegaphoneIcon,
+  ClipboardDocumentCheckIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -239,6 +246,77 @@ const navigation: NavItem[] = [
     href: '/integrations',
     icon: ServerStackIcon,
     permissions: [PERMISSIONS.MANAGE_INTEGRATIONS],
+  },
+  // ── Extended Modules ──────────────────────────────────────────────────────
+  {
+    name: 'Identity Lifecycle (JML)',
+    href: '/jml',
+    icon: UserPlusIcon,
+    permissions: [PERMISSIONS.VIEW_USERS],
+    children: [
+      { name: 'JML Policies', href: '/jml/policies' },
+      { name: 'HR Event Monitor', href: '/jml/events' },
+    ],
+  },
+  {
+    name: 'Third-Party Risk',
+    href: '/tprm',
+    icon: BuildingStorefrontIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+    children: [
+      { name: 'Vendor Registry', href: '/tprm/vendors' },
+      { name: 'Assessments', href: '/tprm/assessments' },
+      { name: 'Vendor Issues', href: '/tprm/issues' },
+    ],
+  },
+  {
+    name: 'Fraud Detection',
+    href: '/fraud',
+    icon: BugAntIcon,
+    permissions: [PERMISSIONS.VIEW_RISK_DASHBOARD],
+    children: [
+      { name: 'Detection Rules', href: '/fraud/rules' },
+      { name: 'Alert Inbox', href: '/fraud/alerts' },
+      { name: 'Case Management', href: '/fraud/cases' },
+    ],
+  },
+  {
+    name: 'Business Continuity',
+    href: '/bcm',
+    icon: LifebuoyIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+    children: [
+      { name: 'BIA', href: '/bcm/bia' },
+      { name: 'BC Plans', href: '/bcm/plans' },
+      { name: 'Incident Activation', href: '/bcm/activations' },
+    ],
+  },
+  {
+    name: 'Survey Engine',
+    href: '/surveys',
+    icon: ClipboardDocumentCheckIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+    children: [
+      { name: 'Survey Designer', href: '/surveys/designer' },
+      { name: 'Distribution', href: '/surveys/distribution' },
+      { name: 'Analytics', href: '/surveys/analytics' },
+    ],
+  },
+  {
+    name: 'Whistleblower',
+    href: '/whistleblower',
+    icon: MegaphoneIcon,
+    permissions: [PERMISSIONS.VIEW_AUDIT_LOG],
+    children: [
+      { name: 'Intake Form', href: '/whistleblower/intake' },
+      { name: 'Triage Inbox', href: '/whistleblower/inbox' },
+    ],
+  },
+  {
+    name: 'ML & Analytics',
+    href: '/ml',
+    icon: CpuChipIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
   },
   {
     name: 'Settings',

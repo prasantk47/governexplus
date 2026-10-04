@@ -163,6 +163,60 @@ from .audit_management import (
     AnnouncementStatus,
 )
 
+# Extended Modules (JML, TPRM, Fraud, BCM, Whistleblower, Survey)
+from .extended_modules import (
+    # JML
+    JmlPolicy,
+    JmlEventType,
+    JmlEventStatus,
+    JmlEvent,
+    # TPRM
+    Vendor,
+    VendorStatus,
+    VendorAssessment,
+    VendorAssessmentStatus,
+    VendorRiskRating,
+    VendorIssue,
+    VendorIssueSeverity,
+    VendorIssueStatus,
+    VendorContract,
+    VendorContractStatus,
+    # Fraud Detection
+    FraudRule,
+    FraudRuleType,
+    FraudAlert,
+    FraudAlertStatus,
+    FraudCase,
+    FraudCaseSeverity,
+    FraudCaseStatus,
+    # BCM
+    BiaRecord,
+    BcmCriticality,
+    BcmPlan,
+    BcmPlanType,
+    BcmPlanStatus,
+    BcmTestExercise,
+    BcmExerciseType,
+    BcmExerciseOutcome,
+    IncidentActivation,
+    BcmActivationSeverity,
+    BcmActivationStatus,
+    # Whistleblower
+    WhistleblowerCase,
+    WhistleblowerCategory,
+    WhistleblowerStatus,
+    WhistleblowerPriority,
+    WhistleblowerMessage,
+    WhistleblowerSender,
+    # Survey
+    StandaloneSurvey,
+    SurveyType,
+    SurveyStatus,
+    SurveyDistribution,
+    SurveyDistributionStatus,
+    SurveyAnswer,
+)
+
 __all__ = [
     # Core
     "Base",
@@ -324,4 +378,54 @@ __all__ = [
     "DimensionType",
     "AuditAnnouncement",
     "AnnouncementStatus",
+    # Extended Modules — JML
+    "JmlPolicy",
+    "JmlEventType",
+    "JmlEventStatus",
+    "JmlEvent",
+    # Extended Modules — TPRM
+    "Vendor",
+    "VendorStatus",
+    "VendorAssessment",
+    "VendorAssessmentStatus",
+    "VendorRiskRating",
+    "VendorIssue",
+    "VendorIssueSeverity",
+    "VendorIssueStatus",
+    "VendorContract",
+    "VendorContractStatus",
+    # Extended Modules — Fraud Detection
+    "FraudRule",
+    "FraudRuleType",
+    "FraudAlert",
+    "FraudAlertStatus",
+    "FraudCase",
+    "FraudCaseSeverity",
+    "FraudCaseStatus",
+    # Extended Modules — BCM
+    "BiaRecord",
+    "BcmCriticality",
+    "BcmPlan",
+    "BcmPlanType",
+    "BcmPlanStatus",
+    "BcmTestExercise",
+    "BcmExerciseType",
+    "BcmExerciseOutcome",
+    "IncidentActivation",
+    "BcmActivationSeverity",
+    "BcmActivationStatus",
+    # Extended Modules — Whistleblower
+    "WhistleblowerCase",
+    "WhistleblowerCategory",
+    "WhistleblowerStatus",
+    "WhistleblowerPriority",
+    "WhistleblowerMessage",
+    "WhistleblowerSender",
+    # Extended Modules — Survey
+    "StandaloneSurvey",
+    "SurveyType",
+    "SurveyStatus",
+    "SurveyDistribution",
+    "SurveyDistributionStatus",
+    "SurveyAnswer",
 ]

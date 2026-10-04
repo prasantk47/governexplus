@@ -658,6 +658,35 @@ app.include_router(
     tags=["Role Methodology"], dependencies=_require_auth,
 )
 
+# ── Extended Modules — JML, TPRM, Fraud, BCM, Whistleblower, Survey ──────────
+from api.routers import jml, tprm, fraud, bcm, whistleblower, survey as survey_router
+
+app.include_router(
+    jml.router, prefix="/jml",
+    tags=["JML - Joiner Mover Leaver"], dependencies=_require_auth,
+)
+app.include_router(
+    tprm.router, prefix="/tprm",
+    tags=["Third-Party Risk Management"], dependencies=_require_auth,
+)
+app.include_router(
+    fraud.router, prefix="/fraud",
+    tags=["Fraud Detection"], dependencies=_require_auth,
+)
+app.include_router(
+    bcm.router, prefix="/bcm",
+    tags=["Business Continuity Management"], dependencies=_require_auth,
+)
+# Whistleblower: public submit/track endpoints need no auth — handled inside the router
+app.include_router(
+    whistleblower.router, prefix="/whistleblower",
+    tags=["Whistleblower Intake"],
+)
+app.include_router(
+    survey_router.router, prefix="/surveys",
+    tags=["Survey Engine"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

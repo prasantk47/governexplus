@@ -141,6 +141,27 @@ import { AIAssistant } from './pages/ai';
 // Admin Pages (Super Admin Portal)
 import { AdminLogin, AdminDashboard, TenantOnboard } from './pages/admin';
 
+// JML Pages
+import { JmlPolicies, HrEventMonitor } from './pages/jml';
+
+// TPRM Pages
+import { VendorRegistry, AssessmentScoring, VendorIssues } from './pages/tprm';
+
+// Fraud Detection Pages
+import { DetectionRules, AlertInbox, CaseManagement } from './pages/fraud';
+
+// BCM Pages
+import { BiaSummary, BcmPlans, IncidentActivation } from './pages/bcm';
+
+// Whistleblower Pages
+import { WhistleblowerIntake, WhistleblowerInbox } from './pages/whistleblower';
+
+// Survey Pages
+import { SurveyDesigner, SurveyDistribution, ResponseAnalytics } from './pages/survey';
+
+// ML Dashboard
+import { MLDashboard } from './pages/ml';
+
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -324,6 +345,43 @@ function AppRoutes() {
 
         {/* AI Assistant */}
         <Route path="/ai" element={<AIAssistant />} />
+
+        {/* JML — Joiner Mover Leaver */}
+        <Route path="/jml" element={<JmlPolicies />} />
+        <Route path="/jml/policies" element={<JmlPolicies />} />
+        <Route path="/jml/events" element={<HrEventMonitor />} />
+
+        {/* TPRM — Third-Party Risk */}
+        <Route path="/tprm" element={<VendorRegistry />} />
+        <Route path="/tprm/vendors" element={<VendorRegistry />} />
+        <Route path="/tprm/assessments" element={<AssessmentScoring />} />
+        <Route path="/tprm/issues" element={<VendorIssues />} />
+
+        {/* Fraud Detection */}
+        <Route path="/fraud" element={<AlertInbox />} />
+        <Route path="/fraud/rules" element={<DetectionRules />} />
+        <Route path="/fraud/alerts" element={<AlertInbox />} />
+        <Route path="/fraud/cases" element={<CaseManagement />} />
+
+        {/* BCM — Business Continuity */}
+        <Route path="/bcm" element={<BiaSummary />} />
+        <Route path="/bcm/bia" element={<BiaSummary />} />
+        <Route path="/bcm/plans" element={<BcmPlans />} />
+        <Route path="/bcm/activations" element={<IncidentActivation />} />
+
+        {/* Whistleblower */}
+        <Route path="/whistleblower" element={<WhistleblowerInbox />} />
+        <Route path="/whistleblower/inbox" element={<WhistleblowerInbox />} />
+        <Route path="/whistleblower/intake" element={<WhistleblowerIntake />} />
+
+        {/* Survey Engine */}
+        <Route path="/surveys" element={<SurveyDesigner />} />
+        <Route path="/surveys/designer" element={<SurveyDesigner />} />
+        <Route path="/surveys/distribution" element={<SurveyDistribution />} />
+        <Route path="/surveys/analytics" element={<ResponseAnalytics />} />
+
+        {/* ML Dashboard */}
+        <Route path="/ml" element={<MLDashboard />} />
 
       </Route>
 

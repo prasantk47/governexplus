@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies (no pyrfc)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || \
+COPY requirements.qa.txt .
+RUN pip install --no-cache-dir -r requirements.qa.txt || \
     pip install --no-cache-dir fastapi uvicorn sqlalchemy pydantic pyyaml \
         python-dotenv python-jose passlib httpx python-multipart aiohttp \
         structlog networkx pandas numpy scikit-learn alembic psycopg2-binary \

@@ -113,6 +113,8 @@ from api.routers import role_redesign
 from api.routers import migration_copilot
 # New delivery, model-user, and monitoring modules
 from api.routers import notification_delivery, model_user, mitigation_monitoring
+# SMTP configuration (per-tenant email settings)
+from api.routers import smtp_config as smtp_config_router
 # GRC Intelligence Engine (the brain)
 from api.routers import grc_intelligence
 # Internationalisation
@@ -546,6 +548,10 @@ app.include_router(
 app.include_router(
     notification_delivery.router, prefix="/notification-delivery",
     tags=["Notification Delivery"], dependencies=_require_auth,
+)
+app.include_router(
+    smtp_config_router.router, prefix="/settings",
+    tags=["SMTP Configuration"], dependencies=_require_auth,
 )
 app.include_router(
     model_user.router, prefix="/model-user", tags=["Model User & Templates"],

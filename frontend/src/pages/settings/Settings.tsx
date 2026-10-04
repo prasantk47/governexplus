@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Cog6ToothIcon,
   ShieldCheckIcon,
@@ -9,6 +10,7 @@ import {
   TableCellsIcon,
   ExclamationTriangleIcon,
   DocumentTextIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import { RequestFormConfig } from './RequestFormConfig';
 import {
@@ -71,6 +73,12 @@ const settingsSections: SettingsSection[] = [
     name: 'Notifications',
     description: 'Email and alert preferences',
     icon: BellIcon,
+  },
+  {
+    id: 'email',
+    name: 'Email (SMTP)',
+    description: 'Configure outgoing email server',
+    icon: EnvelopeIcon,
   },
   {
     id: 'integrations',
@@ -756,6 +764,28 @@ export function Settings() {
                       </ul>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'email' && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-primary-50 rounded-xl flex-shrink-0">
+                  <EnvelopeIcon className="h-6 w-6 text-primary-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Email (SMTP) Configuration</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Configure your SMTP server so GovernexPlus can send approval emails, risk alerts, and certification reminders directly from your domain.
+                  </p>
+                  <Link
+                    to="/settings/email"
+                    className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Open SMTP Settings
+                  </Link>
                 </div>
               </div>
             </div>

@@ -625,4 +625,32 @@ export const workflowBuilderApi = {
   loadTemplate: (name: string) => api.get(`/workflows/builder/templates/${name}`),
 };
 
+// ==================== SMTP Config API ====================
+export const smtpConfigApi = {
+  get: () => api.get('/settings/smtp'),
+
+  save: (data: {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    from_email: string;
+    from_name: string;
+    use_tls: boolean;
+    is_enabled: boolean;
+  }) => api.put('/settings/smtp', data),
+
+  test: (data: {
+    to: string;
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    from_email?: string;
+    use_tls?: boolean;
+  }) => api.post('/settings/smtp/test', data),
+
+  delete: () => api.delete('/settings/smtp'),
+};
+
 export default api;

@@ -66,6 +66,7 @@ import { MassAdmin } from './pages/settings/MassAdmin';
 import { RepoSync } from './pages/settings/RepoSync';
 import { TransportManagement } from './pages/settings/TransportManagement';
 import { NotificationCenter } from './pages/settings/NotificationCenter';
+import { SmtpSettings } from './pages/settings/SmtpSettings';
 import { PolicyManagement } from './pages/settings/PolicyManagement';
 import { DelegationManagement } from './pages/settings/DelegationManagement';
 
@@ -257,6 +258,7 @@ function AppRoutes() {
         <Route path="/settings/repo-sync" element={<RepoSync />} />
         <Route path="/settings/transports" element={<TransportManagement />} />
         <Route path="/settings/notifications" element={<NotificationCenter />} />
+        <Route path="/settings/email" element={<SmtpSettings />} />
         <Route path="/settings/policies" element={<PolicyManagement />} />
         <Route path="/settings/delegations" element={<DelegationManagement />} />
 

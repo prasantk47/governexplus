@@ -379,15 +379,21 @@ def render_template(template: str, context: Dict[str, Any]) -> str:
 class SMTPClient:
     """Thin wrapper around smtplib for sending emails."""
 
-    def __init__(self) -> None:
-        self.host = os.getenv("SMTP_HOST", "")
-        self.port = int(os.getenv("SMTP_PORT", "587"))
-        self.user = os.getenv("SMTP_USER", "")
-        self.password = os.getenv("SMTP_PASSWORD", "")
-        self.from_addr = os.getenv("SMTP_FROM", "noreply@governexplus.com")
-        use_tls_raw = os.getenv("SMTP_USE_TLS", "true").lower()
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        cfg = config or {}
+        self.host = cfg.get("host") or os.getenv("SMTP_HOST", "")
+        self.port = int(cfg.get("port") or os.getenv("SMTP_PORT", "587"))
+        self.user = cfg.get("username") or os.getenv("SMTP_USER", "")
+        self.password = cfg.get("password") or os.getenv("SMTP_PASSWORD", "")
+        self.from_addr = cfg.get("from_email") or os.getenv("SMTP_FROM", "noreply@governexplus.com")
+        use_tls_raw = str(cfg.get("use_tls", os.getenv("SMTP_USE_TLS", "true"))).lower()
         self.use_tls = use_tls_raw not in ("false", "0", "no")
         self.is_configured = bool(self.host and self.user and self.password)
+
+    @classmethod
+    def from_dict(cls, config: Dict[str, Any]) -> "SMTPClient":
+        """Create an SMTPClient from a config dict (tenant SMTP settings)."""
+        return cls(config=config)
 
     def send(self, payload: EmailPayload) -> Tuple[bool, Optional[str]]:
         """
@@ -562,6 +568,31 @@ class NotificationDeliveryEngine:
         self._slack = SlackClient()
 
     # ------------------------------------------------------------------
+    # Tenant-aware SMTP client loader
+    # ------------------------------------------------------------------
+
+    def _get_smtp_client(self) -> "SMTPClient":
+        """Return an SMTPClient configured for the current tenant.
+
+        Preference order:
+        1. Tenant's DB-stored SMTP config (if enabled)
+        2. Environment variables (system default)
+        """
+        tenant_id = _get_tenant_id()
+        try:
+            with db_manager.session_scope() as session:
+                from db.models.tenant import Tenant as TenantModel
+                tenant = session.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+                if tenant:
+                    settings = tenant.settings or {}
+                    smtp_cfg = settings.get("smtp")
+                    if smtp_cfg and smtp_cfg.get("is_enabled") and smtp_cfg.get("host") and smtp_cfg.get("username") and smtp_cfg.get("password"):
+                        return SMTPClient(config=smtp_cfg)
+        except Exception:
+            pass
+        return self._smtp
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
@@ -579,7 +610,7 @@ class NotificationDeliveryEngine:
             channel=DeliveryChannel.EMAIL.value,
             payload_summary=f"to={','.join(to)} subject={subject[:60]}",
         )
-        success, error = self._smtp.send(payload)
+        success, error = self._get_smtp_client().send(payload)
         self._finalise_record(record, success, error)
         return record
 

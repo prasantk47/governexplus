@@ -104,6 +104,11 @@ class JmlPolicy(Base, TimestampMixin):
     is_active = Column(Boolean, nullable=False, default=True)
     created_by = Column(String(100), nullable=True)
 
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
+
     def __repr__(self):
         return (
             f"<JmlPolicy(id='{self.id}', policy_name='{self.policy_name}', "
@@ -545,6 +550,11 @@ class FraudRule(Base, TimestampMixin):
     # Execution stats
     last_triggered_at = Column(DateTime, nullable=True)
     trigger_count = Column(Integer, nullable=False, default=0)
+
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return (
@@ -1167,6 +1177,11 @@ class StandaloneSurvey(Base, TimestampMixin):
     created_at_override = Column('survey_created_at', DateTime, nullable=True)   # alias to avoid clash with TimestampMixin
     due_date = Column(DateTime, nullable=True)
     allow_anonymous = Column(Boolean, nullable=False, default=False)
+
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return (

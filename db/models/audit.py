@@ -257,6 +257,11 @@ class CertificationCampaignLog(Base):
     # Config overrides (JSON bag)
     config = Column(JSON, nullable=True)
 
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
+
     def to_dict(self):
         return {
             'campaign_id': self.campaign_id,

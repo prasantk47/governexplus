@@ -172,6 +172,11 @@ class MitigationControl(Base, TimestampMixin):
     # AC mitigation gets testing, sign-off, and framework coverage from the PC module.
     process_control_id = Column(String(100), nullable=True)  # FK to process_controls.control_id
 
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
+
     # Relationships
     violations = relationship("RiskViolation", back_populates="mitigation")
 
@@ -256,6 +261,11 @@ class RiskRuleModel(Base, TimestampMixin):
     # Source tracking
     source = Column(String(20), default='custom')  # 'builtin', 'custom', 'cloned', 'imported'
     cloned_from = Column(String(50), nullable=True)  # Original rule_id if cloned
+
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)  # FK → template_items.id
+    template_version = Column(String(20), nullable=True)   # version at activation
+    is_customized = Column(Boolean, nullable=False, default=False)  # True once tenant edited
 
     def __repr__(self):
         return f"<RiskRuleModel(id='{self.rule_id}', name='{self.name}', source='{self.source}')>"

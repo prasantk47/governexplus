@@ -266,6 +266,11 @@ class ProcessControl(Base, TimestampMixin):
     self_assessments = relationship('ControlSelfAssessment', back_populates='control')
     ccm_rules = relationship('CCMRule', back_populates='control')
 
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
+
     def __repr__(self):
         return (
             f"<ProcessControl(control_id='{self.control_id}', "
@@ -362,6 +367,11 @@ class ControlTest(Base, TimestampMixin):
     # Relationships
     control = relationship('ProcessControl', back_populates='tests')
     deficiencies = relationship('ControlDeficiency', back_populates='test')
+
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return (

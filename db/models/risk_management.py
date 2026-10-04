@@ -498,6 +498,11 @@ class KeyRiskIndicator(Base, TimestampMixin):
     risk = relationship('EnterpriseRisk', back_populates='kris')
     measurements = relationship('KRIMeasurement', back_populates='kri')
 
+    # Template Library traceability (Phase 1)
+    source_template_item_id = Column(String(36), nullable=True, index=True)
+    template_version = Column(String(20), nullable=True)
+    is_customized = Column(Boolean, nullable=False, default=False)
+
     def __repr__(self):
         return (
             f"<KeyRiskIndicator(kri_id='{self.kri_id}', "

@@ -1,0 +1,155 @@
+version: "3.9"
+
+# GovernexPlus QA Environment
+# ============================================================
+# Starts the full stack plus:
+#   - Mailpit (SMTP catcher at :8025)
+#   - Mock SAP RFC/SOAP stub    (:9100)
+#   - Mock Azure AD OIDC stub   (:9101)
+#   - Mock HR/SCIM stub         (:9102)
+#
+# Usage:
+#   docker compose -f docker-compose.qa.yml up --build -d
+#   python qa/seed_qa.py          # loads 16 test personas
+#   pytest tests/ -v              # backend suite
+#   npx playwright test           # E2E suite
+#
+# Ports exposed for test automation:
+#   API:       http://localhost:9000
+#   Frontend:  http://localhost:4500
+#   Mailpit:   http://localhost:8025
+#   SAP mock:  http://localhost:9100
+#   AAD mock:  http://localhost:9101
+#   HR mock:   http://localhost:9102
+
+services:
+  # ------------------------------------------------------------------
+  # Database
+  # ------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: grc_user
+      POSTGRES_PASSWORD: grc_qa_password
+      POSTGRES_DB: grc_qa
+    volumes:
+      - qa_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grc_user -d grc_qa"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # API
+  # ------------------------------------------------------------------
+  api:
+    build: .
+    command: uvicorn api.main:app --host 0.0.0.0 --port 9000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    environment:
+      APP_ENV: testing
+      DATABASE_URL: postgresql://grc_user:grc_qa_password@db:5432/grc_qa
+      JWT_SECRET: qa-jwt-secret-do-not-use-in-production
+      CORS_ORIGINS: "http://localhost:4500,http://localhost:9000"
+      # Mail — point at Mailpit SMTP
+      MAIL_SERVER: mailpit
+      MAIL_PORT: "1025"
+      MAIL_FROM: "noreply@governexplus.qa"
+      # SAP connector — point at mock
+      SAP_MOCK_URL: "http://sap_mock:9100"
+      SAP_CONNECTOR_MODE: mock
+      # Azure AD connector — point at mock
+      AZURE_AD_MOCK_URL: "http://aad_mock:9101"
+      AZURE_AD_CONNECTOR_MODE: mock
+      # HR connector — point at mock
+      HR_MOCK_URL: "http://hr_mock:9102"
+      HR_CONNECTOR_MODE: mock
+      # Feature flags — all on for QA
+      TEMPLATE_LIBRARY: "true"
+      TEMPLATE_LIBRARY_COW: "true"
+      TEMPLATE_LIBRARY_AUTO_ACTIVATE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # ------------------------------------------------------------------
+  # Frontend
+  # ------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+        NGINX_CONF: nginx.local.conf
+    ports:
+      - "4500:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ------------------------------------------------------------------
+  # Mailpit — SMTP catcher + web UI
+  # ------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: always
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    environment:
+      MP_MAX_MESSAGES: 500
+
+  # ------------------------------------------------------------------
+  # Mock SAP RFC / SOAP connector stub
+  # ------------------------------------------------------------------
+  sap_mock:
+    image: mockserver/mockserver:latest
+    ports:
+      - "9100:1080"
+    volumes:
+      - ./qa/mocks/sap:/config
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/sap_mock_expectations.json
+      MOCKSERVER_LOG_LEVEL: WARN
+
+  # ------------------------------------------------------------------
+  # Mock Azure AD OIDC / Graph API stub
+  # ------------------------------------------------------------------
+  aad_mock:
+    image: mockserver/mockserver:latest
+    ports:
+      - "9101:1080"
+    volumes:
+      - ./qa/mocks/aad:/config
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/aad_mock_expectations.json
+      MOCKSERVER_LOG_LEVEL: WARN
+
+  # ------------------------------------------------------------------
+  # Mock HR / SCIM stub
+  # ------------------------------------------------------------------
+  hr_mock:
+    image: mockserver/mockserver:latest
+    ports:
+      - "9102:1080"
+    volumes:
+      - ./qa/mocks/hr:/config
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/hr_mock_expectations.json
+      MOCKSERVER_LOG_LEVEL: WARN
+
+volumes:
+  qa_postgres_data:

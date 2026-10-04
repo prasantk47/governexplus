@@ -1,0 +1,101 @@
+[
+  {
+    "httpRequest": { "method": "GET", "path": "/sap/bc/adt/discovery" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/xml"] },
+      "body": "<?xml version=\"1.0\"?><app:service xmlns:app=\"http://www.w3.org/2007/app\"><app:workspace><app:title>SAP QA Mock</app:title></app:workspace></app:service>"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/UserSet" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"results\":[{\"Bname\":\"ALICE.J\",\"Name\":\"Alice Johnson\",\"Department\":\"Finance\",\"Ustyp\":\"A\",\"Class\":\"\"},{\"Bname\":\"BOB.S\",\"Name\":\"Bob Smith\",\"Department\":\"IT Security\",\"Ustyp\":\"A\",\"Class\":\"\"},{\"Bname\":\"FF_PRD_001\",\"Name\":\"Firefighter PRD 001\",\"Department\":\"\",\"Ustyp\":\"A\",\"Class\":\"FF\"},{\"Bname\":\"FF_PRD_002\",\"Name\":\"Firefighter PRD 002\",\"Department\":\"\",\"Ustyp\":\"A\",\"Class\":\"FF\"},{\"Bname\":\"CAROL.W\",\"Name\":\"Carol Williams\",\"Department\":\"Finance\",\"Ustyp\":\"A\",\"Class\":\"\"},{\"Bname\":\"DAVID.B\",\"Name\":\"David Brown\",\"Department\":\"IT Security\",\"Ustyp\":\"A\",\"Class\":\"\"}]}}"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/RoleAssignmentSet" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"results\":[{\"Bname\":\"ALICE.J\",\"Agr_Name\":\"Z_FI_AP_CLERK\",\"From_Dat\":\"20240101\",\"To_Dat\":\"99991231\"},{\"Bname\":\"ALICE.J\",\"Agr_Name\":\"Z_FI_PAYMENT_APPROVER\",\"From_Dat\":\"20240101\",\"To_Dat\":\"99991231\"},{\"Bname\":\"BOB.S\",\"Agr_Name\":\"Z_IT_SECURITY_ADMIN\",\"From_Dat\":\"20240101\",\"To_Dat\":\"99991231\"},{\"Bname\":\"CAROL.W\",\"Agr_Name\":\"Z_FI_AP_MANAGER\",\"From_Dat\":\"20240101\",\"To_Dat\":\"99991231\"}]}}"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/sap/opu/odata/sap/ZHR_EMPLOYEES_SRV/EmployeeSet" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"results\":[{\"Pernr\":\"00001001\",\"Ename\":\"Alice Johnson\",\"Plans\":\"FIN_ANALYST\",\"Orgeh\":\"1000\"},{\"Pernr\":\"00001002\",\"Ename\":\"Bob Smith\",\"Plans\":\"IT_SECURITY\",\"Orgeh\":\"2000\"},{\"Pernr\":\"00001003\",\"Ename\":\"Carol Williams\",\"Plans\":\"FIN_MANAGER\",\"Orgeh\":\"1000\"}]}}"
+    }
+  },
+  {
+    "_comment": "SAP User Provisioning — POST create user (J02, J06)",
+    "httpRequest": { "method": "POST", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/UserSet" },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"Bname\":\"NEW.USER\",\"Name\":\"New User\",\"Department\":\"Finance\",\"Ustyp\":\"A\",\"ReturnCode\":\"0\",\"Message\":\"User created successfully\"}}"
+    }
+  },
+  {
+    "_comment": "SAP Role Assignment — POST assign role to user (J02 provisioned step)",
+    "httpRequest": { "method": "POST", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/RoleAssignmentSet" },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"Bname\":\"NEW.USER\",\"Agr_Name\":\"Z_FI_AP_CLERK\",\"From_Dat\":\"20261001\",\"To_Dat\":\"99991231\",\"ReturnCode\":\"0\"}}"
+    }
+  },
+  {
+    "_comment": "SAP Role Un-assignment — DELETE role from user (J07 termination)",
+    "httpRequest": { "method": "DELETE", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/RoleAssignmentSet\\(.*\\)" },
+    "httpResponse": { "statusCode": 204 }
+  },
+  {
+    "_comment": "SAP User Lock — terminate/disable user (J07)",
+    "httpRequest": { "method": "PUT", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/UserSet\\(.*\\)" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"ReturnCode\":\"0\",\"Message\":\"User locked successfully\"}}"
+    }
+  },
+  {
+    "_comment": "SAP FF Session Activity Log — GET activity for a given FF session (J04)",
+    "httpRequest": { "method": "GET", "path": "/sap/opu/odata/sap/GRAC_FIREFIGHTER_SRV/FFLogSet" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"results\":[{\"Bname\":\"FF_PRD_001\",\"Ffuser\":\"FRED.F\",\"Tcode\":\"FB60\",\"Timestamp\":\"20261001120000\",\"Action\":\"Execute\",\"Object\":\"AP Invoice\",\"Risk\":\"medium\"},{\"Bname\":\"FF_PRD_001\",\"Ffuser\":\"FRED.F\",\"Tcode\":\"FK02\",\"Timestamp\":\"20261001120500\",\"Action\":\"Change\",\"Object\":\"Vendor Master\",\"Risk\":\"high\"},{\"Bname\":\"FF_PRD_001\",\"Ffuser\":\"FRED.F\",\"Tcode\":\"SE16\",\"Timestamp\":\"20261001121000\",\"Action\":\"Display\",\"Object\":\"Table Browser\",\"Risk\":\"low\"}]}}"
+    }
+  },
+  {
+    "_comment": "SAP Transport Create (J16, BRM role generation)",
+    "httpRequest": { "method": "POST", "path": "/sap/bc/adt/cts/transports" },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"transport_id\": \"DEVK900001\", \"status\": \"modifiable\", \"owner\": \"ADMIN\"}"
+    }
+  },
+  {
+    "_comment": "SAP Role (Agr) Create via BRM (J17)",
+    "httpRequest": { "method": "POST", "path": "/sap/opu/odata/sap/SUSR_USER_ADDR_SRV/RoleSet" },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"d\":{\"Agr_Name\":\"Z_QA_NEW_ROLE\",\"Text\":\"QA Test Role\",\"ReturnCode\":\"0\"}}"
+    }
+  },
+  {
+    "_comment": "SAP System Info — for connector test-connection (J16)",
+    "httpRequest": { "method": "GET", "path": "/sap/bc/ping" },
+    "httpResponse": {
+      "statusCode": 200,
+      "body": "Server reached"
+    }
+  }
+]

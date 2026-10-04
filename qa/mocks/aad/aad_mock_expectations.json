@@ -1,0 +1,64 @@
+[
+  {
+    "httpRequest": { "method": "GET", "path": "/v2.0/.well-known/openid-configuration" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"issuer\":\"http://aad_mock:9101\",\"authorization_endpoint\":\"http://aad_mock:9101/oauth2/v2.0/authorize\",\"token_endpoint\":\"http://aad_mock:9101/oauth2/v2.0/token\",\"jwks_uri\":\"http://aad_mock:9101/discovery/keys\"}"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/v1.0/users" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"value\":[{\"id\":\"aad-001\",\"displayName\":\"Alice Johnson\",\"mail\":\"alice.j@demo.corp\",\"userPrincipalName\":\"alice.j@demo.corp\",\"department\":\"Finance\",\"jobTitle\":\"AP Analyst\",\"accountEnabled\":true},{\"id\":\"aad-002\",\"displayName\":\"Bob Smith\",\"mail\":\"bob.s@demo.corp\",\"userPrincipalName\":\"bob.s@demo.corp\",\"department\":\"IT Security\",\"jobTitle\":\"Security Engineer\",\"accountEnabled\":true},{\"id\":\"aad-003\",\"displayName\":\"Carol Williams\",\"mail\":\"carol.w@demo.corp\",\"userPrincipalName\":\"carol.w@demo.corp\",\"department\":\"Finance\",\"jobTitle\":\"Finance Manager\",\"accountEnabled\":true}]}"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/v1.0/groups" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"value\":[{\"id\":\"grp-001\",\"displayName\":\"Finance-AP\",\"description\":\"Accounts Payable team\"},{\"id\":\"grp-002\",\"displayName\":\"IT-Security\",\"description\":\"IT Security team\"},{\"id\":\"grp-003\",\"displayName\":\"GRC-Admins\",\"description\":\"GRC Platform Administrators\"},{\"id\":\"grp-004\",\"displayName\":\"Finance-Management\",\"description\":\"Finance management team\"}]}"
+    }
+  },
+  {
+    "_comment": "Group members — used when sync maps AAD group → SAP role (J16 connector sync)",
+    "httpRequest": { "method": "GET", "path": "/v1.0/groups/grp-001/members" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"value\":[{\"id\":\"aad-001\",\"displayName\":\"Alice Johnson\",\"mail\":\"alice.j@demo.corp\"},{\"id\":\"aad-004\",\"displayName\":\"Dan AP\",\"mail\":\"dan.ap@demo.corp\"}]}"
+    }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/v1.0/groups/grp-002/members" },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"value\":[{\"id\":\"aad-002\",\"displayName\":\"Bob Smith\",\"mail\":\"bob.s@demo.corp\"}]}"
+    }
+  },
+  {
+    "_comment": "Create user in AAD — provisioning from JML (J06)",
+    "httpRequest": { "method": "POST", "path": "/v1.0/users" },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"id\":\"aad-new-001\",\"displayName\":\"New Employee\",\"mail\":\"new.emp@demo.corp\",\"accountEnabled\":true}"
+    }
+  },
+  {
+    "_comment": "Disable user in AAD — termination (J07)",
+    "httpRequest": { "method": "PATCH", "path": "/v1.0/users/aad-001" },
+    "httpResponse": {
+      "statusCode": 204
+    }
+  },
+  {
+    "_comment": "Add user to group — role assignment (J02 provisioned)",
+    "httpRequest": { "method": "POST", "path": "/v1.0/groups/grp-001/members/$ref" },
+    "httpResponse": { "statusCode": 204 }
+  }
+]

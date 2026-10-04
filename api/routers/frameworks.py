@@ -8,7 +8,7 @@ CRUD for GRC framework definitions and their hierarchical requirements
 Direct DB queries — no manager class needed.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 import uuid
@@ -82,7 +82,7 @@ def _build_req_tree(requirements: List[FrameworkRequirement]) -> List[Dict[str, 
 
 @router.post("/", status_code=201)
 def create_framework(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -166,7 +166,7 @@ def get_framework(
 @router.put("/{framework_id}")
 def update_framework(
     framework_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -201,7 +201,7 @@ def update_framework(
 @router.post("/{framework_id}/requirements", status_code=201)
 def add_requirement(
     framework_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -275,7 +275,7 @@ def list_requirements(
 @router.put("/requirements/{requirement_id}")
 def update_requirement(
     requirement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

@@ -63,7 +63,7 @@ def get_policies(
 
 @router.post("/policies")
 def set_retention_policy(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     manager: RetentionManager = Depends(_get_manager),
 ):
     """
@@ -165,7 +165,7 @@ def apply_retention(
 @router.put("/legal-hold/{evidence_id}")
 def set_legal_hold(
     evidence_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     manager: RetentionManager = Depends(_get_manager),
     tenant_id: str = Depends(_get_tenant_id),
 ):

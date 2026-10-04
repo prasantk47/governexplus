@@ -79,7 +79,7 @@ def _role_or_404(db: Session, role_id: str, tenant_id: str):
 @router.put("/roles/{role_id}/prerequisites")
 def set_prerequisites(
     role_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -166,7 +166,7 @@ def get_prerequisites(
 @router.put("/roles/{role_id}/methodology-stage")
 def advance_methodology_stage(
     role_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -286,7 +286,7 @@ def get_reaffirmation_status(
 
 @router.post("/roles/reaffirmation-campaign")
 def create_reaffirmation_campaign(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

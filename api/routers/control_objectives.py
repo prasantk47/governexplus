@@ -98,7 +98,7 @@ def _enrich_objective(obj: ControlObjective, db: Session, tenant_id: str) -> Dic
 
 @router.post("/", status_code=201)
 def create_objective(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -207,7 +207,7 @@ def get_objective(
 @router.put("/{objective_id}")
 def update_objective(
     objective_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -236,7 +236,7 @@ def update_objective(
 @router.post("/{objective_id}/link-controls")
 def link_controls(
     objective_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -277,7 +277,7 @@ def link_controls(
 @router.post("/{objective_id}/link-risks")
 def link_risks(
     objective_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

@@ -61,7 +61,7 @@ def _build_tree_node(sp: SubProcess, child_map: Dict[int, List[SubProcess]]) -> 
 
 @router.post("/", status_code=201)
 def create_subprocess(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -191,7 +191,7 @@ def get_subprocess(
 @router.put("/{subprocess_id}")
 def update_subprocess(
     subprocess_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -239,7 +239,7 @@ def delete_subprocess(
 @router.post("/{subprocess_id}/link-controls")
 def link_controls(
     subprocess_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -266,7 +266,7 @@ def link_controls(
 @router.post("/{subprocess_id}/link-risks")
 def link_risks(
     subprocess_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

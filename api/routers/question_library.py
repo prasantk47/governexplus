@@ -98,7 +98,7 @@ def _compute_score(questions: List[Dict], responses: Dict[str, Any]) -> Optional
 
 @router.post("/questions", status_code=201)
 def create_question(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -172,7 +172,7 @@ def list_questions(
 @router.put("/questions/{question_id}")
 def update_question(
     question_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -199,7 +199,7 @@ def update_question(
 
 @router.post("/", status_code=201)
 def create_questionnaire(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -303,7 +303,7 @@ def get_questionnaire(
 @router.post("/{questionnaire_id}/clone")
 def clone_questionnaire(
     questionnaire_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -340,7 +340,7 @@ def clone_questionnaire(
 @router.post("/{questionnaire_id}/responses", status_code=201)
 def submit_response(
     questionnaire_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -416,7 +416,7 @@ def list_responses(
 @router.put("/responses/{response_id}/submit")
 def mark_response_submitted(
     response_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -443,7 +443,7 @@ def mark_response_submitted(
 @router.put("/responses/{response_id}/review")
 def review_response(
     response_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

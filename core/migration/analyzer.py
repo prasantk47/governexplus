@@ -816,26 +816,26 @@ def _ensure_loaded() -> None:
             # Re-query (covers both the seed path and an already-populated DB)
             rows = session.query(MigrationMapping).all()
 
-        for row in rows:
-            try:
-                status = MigrationStatus(row.status)
-            except ValueError:
-                status = MigrationStatus.COMPATIBLE
+            for row in rows:
+                try:
+                    status = MigrationStatus(row.status)
+                except ValueError:
+                    status = MigrationStatus.COMPATIBLE
 
-            try:
-                risk = MigrationRisk(row.risk_level or "low")
-            except ValueError:
-                risk = MigrationRisk.LOW
+                try:
+                    risk = MigrationRisk(row.risk_level or "low")
+                except ValueError:
+                    risk = MigrationRisk.LOW
 
-            TRANSACTION_MAPPING[row.ecc_tcode.upper()] = TransactionMapping(
-                ecc_tcode=row.ecc_tcode,
-                s4_tcode=row.s4_tcode,
-                status=status,
-                fiori_app_ids=row.fiori_app_ids or [],
-                notes=row.notes or "",
-                business_process=row.business_process or "",
-                risk=risk,
-            )
+                TRANSACTION_MAPPING[row.ecc_tcode.upper()] = TransactionMapping(
+                    ecc_tcode=row.ecc_tcode,
+                    s4_tcode=row.s4_tcode,
+                    status=status,
+                    fiori_app_ids=row.fiori_app_ids or [],
+                    notes=row.notes or "",
+                    business_process=row.business_process or "",
+                    risk=risk,
+                )
 
         _mapping_loaded = True
         logger.debug("TRANSACTION_MAPPING loaded: %d entries from DB", len(TRANSACTION_MAPPING))

@@ -12,7 +12,7 @@ Full process control lifecycle (PC-01 through PC-32):
   - SOX-style cascading sign-offs
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -127,7 +127,7 @@ def _signoff_or_404(db: Session, certification_id: str, tenant_id: str) -> SignO
 
 @router.post("/controls", status_code=201)
 def create_control(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -210,7 +210,7 @@ def get_control(
 @router.put("/controls/{control_id}")
 def update_control(
     control_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -249,7 +249,7 @@ def update_control(
 @router.put("/controls/{control_id}/retire")
 def retire_control(
     control_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -267,7 +267,7 @@ def retire_control(
 @router.post("/controls/{control_id}/framework-mappings")
 def add_framework_mapping(
     control_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -340,7 +340,7 @@ def get_framework_coverage(
 @router.post("/controls/{control_id}/tests", status_code=201)
 def create_test(
     control_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -374,7 +374,7 @@ def create_test(
 @router.put("/tests/{test_id}/result")
 def record_test_result(
     test_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -429,7 +429,7 @@ def get_control_tests(
 
 @router.post("/deficiencies", status_code=201)
 def create_deficiency(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -489,7 +489,7 @@ def list_deficiencies(
 @router.put("/deficiencies/{deficiency_id}")
 def update_deficiency(
     deficiency_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -510,7 +510,7 @@ def update_deficiency(
 @router.put("/deficiencies/{deficiency_id}/remediate")
 def remediate_deficiency(
     deficiency_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -526,7 +526,7 @@ def remediate_deficiency(
 @router.put("/deficiencies/{deficiency_id}/verify")
 def verify_deficiency(
     deficiency_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -545,7 +545,7 @@ def verify_deficiency(
 
 @router.post("/self-assessment-campaigns")
 def create_self_assessment_campaign(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -590,7 +590,7 @@ def create_self_assessment_campaign(
 @router.put("/self-assessments/{assessment_id}/submit")
 def submit_self_assessment(
     assessment_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -628,7 +628,7 @@ def get_pending_self_assessments(
 
 @router.post("/ccm-rules/validate")
 def validate_ccm_rule(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -712,7 +712,7 @@ def list_ccm_rules(
 
 @router.post("/ccm-rules", status_code=201)
 def create_ccm_rule(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -756,7 +756,7 @@ def create_ccm_rule(
 @router.post("/ccm-rules/{rule_id}/execute")
 def execute_ccm_rule(
     rule_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -814,7 +814,7 @@ def execute_ccm_rule(
 
 @router.post("/ccm/run-all")
 def run_all_ccm(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -865,7 +865,7 @@ def get_ccm_dashboard(
 
 @router.post("/ccm/sod-bridge")
 def ccm_sod_bridge(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -929,7 +929,7 @@ def ccm_sod_bridge(
 
 @router.post("/evidence", status_code=201)
 def create_evidence(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -997,7 +997,7 @@ def get_evidence(
 @router.put("/evidence/{evidence_id}/legal-hold")
 def set_legal_hold(
     evidence_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1013,7 +1013,7 @@ def set_legal_hold(
 
 @router.post("/signoffs", status_code=201)
 def create_signoff(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1041,7 +1041,7 @@ def create_signoff(
 @router.put("/signoffs/{certification_id}/submit")
 def submit_signoff(
     certification_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

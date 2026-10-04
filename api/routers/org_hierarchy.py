@@ -7,7 +7,7 @@ GRC modules (XI-01, RM-02, PC-02).
 Direct DB queries — no manager class needed.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 import uuid
@@ -86,7 +86,7 @@ def _build_tree(units: List[OrgUnit]) -> List[Dict[str, Any]]:
 
 @router.post("/units", status_code=201)
 def create_org_unit(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -196,7 +196,7 @@ def get_org_unit(
 @router.put("/units/{unit_id}")
 def update_org_unit(
     unit_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

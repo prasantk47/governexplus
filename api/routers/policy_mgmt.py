@@ -65,7 +65,7 @@ def _append_version_history(policy: PolicyDocument, changed_by: str, summary: st
 
 @router.post("/", status_code=201)
 def create_policy(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -172,7 +172,7 @@ def get_policy(
 @router.put("/{policy_id}")
 def update_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -218,7 +218,7 @@ def update_policy(
 @router.put("/{policy_id}/submit")
 def submit_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -236,7 +236,7 @@ def submit_policy(
 @router.put("/{policy_id}/approve")
 def approve_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -258,7 +258,7 @@ def approve_policy(
 @router.put("/{policy_id}/publish")
 def publish_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -284,7 +284,7 @@ def publish_policy(
 @router.put("/{policy_id}/archive")
 def archive_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -299,7 +299,7 @@ def archive_policy(
 @router.put("/{policy_id}/retire")
 def retire_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -318,7 +318,7 @@ def retire_policy(
 @router.post("/{policy_id}/acknowledge")
 def acknowledge_policy(
     policy_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

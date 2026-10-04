@@ -167,7 +167,7 @@ def _run_monte_carlo(distribution_type: str, params: Dict[str, Any], iterations:
 
 @router.post("/scenarios", status_code=201)
 def create_scenario(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -242,7 +242,7 @@ def get_scenario(
 @router.put("/scenarios/{scenario_id}")
 def update_scenario(
     scenario_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -268,7 +268,7 @@ def update_scenario(
 @router.post("/scenarios/{scenario_id}/simulate")
 def simulate_scenario(
     scenario_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
@@ -357,7 +357,7 @@ def list_simulations(
 
 @router.post("/opportunities", status_code=201)
 def create_opportunity(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -415,7 +415,7 @@ def list_opportunities(
 @router.put("/opportunities/{opportunity_id}")
 def update_opportunity(
     opportunity_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -440,7 +440,7 @@ def update_opportunity(
 @router.put("/opportunities/{opportunity_id}/realize")
 def realize_opportunity(
     opportunity_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -462,7 +462,7 @@ def realize_opportunity(
 
 @router.post("/objectives", status_code=201)
 def create_objective(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -520,7 +520,7 @@ def list_objectives(
 @router.put("/objectives/{objective_id}")
 def update_objective(
     objective_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -543,7 +543,7 @@ def update_objective(
 @router.post("/objectives/{objective_id}/link-risks")
 def link_risks_to_objective(
     objective_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

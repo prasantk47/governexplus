@@ -320,9 +320,8 @@ class BusinessRoleManager:
                             business_process="",
                             department="",
                             job_function="",
-                            category="general",
                             risk_level=r.risk_level or "medium",
-                            technical_role_mappings=[
+                            technical_mappings=[
                                 TechnicalRoleMapping(
                                     technical_role_id=r.role_id,
                                     system_id=r.source_system or "SAP",

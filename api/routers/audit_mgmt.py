@@ -153,7 +153,7 @@ _ENGAGEMENT_STATUS_ORDER = [
 
 @router.post("/entities", status_code=201)
 def create_entity(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -205,7 +205,7 @@ def list_entities(
 @router.put("/entities/{entity_id}")
 def update_entity(
     entity_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -221,7 +221,7 @@ def update_entity(
 @router.post("/entities/{entity_id}/compute-risk")
 def compute_entity_risk(
     entity_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -242,7 +242,7 @@ def compute_entity_risk(
 
 @router.post("/plans", status_code=201)
 def create_plan(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -301,7 +301,7 @@ def get_plan(
 @router.put("/plans/{plan_id}")
 def update_plan(
     plan_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -317,7 +317,7 @@ def update_plan(
 @router.put("/plans/{plan_id}/submit")
 def submit_plan(
     plan_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -331,7 +331,7 @@ def submit_plan(
 @router.put("/plans/{plan_id}/approve")
 def approve_plan(
     plan_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -346,7 +346,7 @@ def approve_plan(
 
 @router.post("/plans/generate-risk-based")
 def generate_risk_based_plan(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -402,7 +402,7 @@ def generate_risk_based_plan(
 
 @router.post("/engagements", status_code=201)
 def create_engagement(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -486,7 +486,7 @@ def get_engagement(
 @router.put("/engagements/{engagement_id}")
 def update_engagement(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -507,7 +507,7 @@ def update_engagement(
 @router.put("/engagements/{engagement_id}/advance")
 def advance_engagement(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -534,7 +534,7 @@ def advance_engagement(
 
 @router.post("/work-programs", status_code=201)
 def create_work_program(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -573,7 +573,7 @@ def list_work_program_templates(
 @router.post("/work-programs/{program_id}/clone")
 def clone_work_program(
     program_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -608,7 +608,7 @@ def clone_work_program(
 @router.post("/engagements/{engagement_id}/procedures", status_code=201)
 def create_procedure(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -649,7 +649,7 @@ def list_procedures(
 @router.put("/procedures/{procedure_id}")
 def update_procedure(
     procedure_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -666,7 +666,7 @@ def update_procedure(
 @router.put("/procedures/{procedure_id}/complete")
 def complete_procedure(
     procedure_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -685,7 +685,7 @@ def complete_procedure(
 @router.put("/procedures/{procedure_id}/review")
 def review_procedure(
     procedure_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -706,7 +706,7 @@ def review_procedure(
 @router.post("/engagements/{engagement_id}/workpapers", status_code=201)
 def create_workpaper(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -753,7 +753,7 @@ def list_workpapers(
 @router.put("/workpapers/{workpaper_id}")
 def update_workpaper(
     workpaper_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -769,7 +769,7 @@ def update_workpaper(
 @router.put("/workpapers/{workpaper_id}/submit-review")
 def submit_workpaper_for_review(
     workpaper_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -783,7 +783,7 @@ def submit_workpaper_for_review(
 @router.put("/workpapers/{workpaper_id}/review")
 def review_workpaper(
     workpaper_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -817,7 +817,7 @@ def review_workpaper(
 @router.post("/engagements/{engagement_id}/findings", status_code=201)
 def create_finding(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -876,7 +876,7 @@ def list_findings(
 @router.put("/findings/{finding_id}")
 def update_finding(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -896,7 +896,7 @@ def update_finding(
 @router.put("/findings/{finding_id}/management-response")
 def record_management_response(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -916,7 +916,7 @@ def record_management_response(
 @router.post("/findings/{finding_id}/link-risk")
 def link_finding_to_risk(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -936,7 +936,7 @@ def link_finding_to_risk(
 @router.post("/findings/{finding_id}/link-control")
 def link_finding_to_control(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -956,7 +956,7 @@ def link_finding_to_control(
 @router.post("/findings/{finding_id}/link-violation")
 def link_finding_to_violation(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -997,7 +997,7 @@ def check_repeat_finding(
 @router.post("/findings/{finding_id}/actions", status_code=201)
 def create_action(
     finding_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1022,7 +1022,7 @@ def create_action(
 @router.put("/actions/{action_id}")
 def update_action(
     action_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1040,7 +1040,7 @@ def update_action(
 @router.put("/actions/{action_id}/close")
 def close_action(
     action_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1078,7 +1078,7 @@ def get_overdue_actions(
 
 @router.post("/actions/escalate")
 def escalate_actions(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1106,7 +1106,7 @@ def escalate_actions(
 @router.post("/engagements/{engagement_id}/time", status_code=201)
 def log_time(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1187,7 +1187,7 @@ def get_auditor_utilization(
 
 @router.post("/resources", status_code=201)
 def create_auditor_resource(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1228,7 +1228,7 @@ def list_auditor_resources(
 @router.put("/resources/{auditor_id}")
 def update_auditor_resource(
     auditor_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1390,7 +1390,7 @@ def get_committee_report(
 @router.post("/engagements/{engagement_id}/pull-evidence", status_code=201)
 def pull_evidence_for_engagement(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     mgr=Depends(_get_manager),
 ):
     """
@@ -1414,7 +1414,7 @@ def pull_evidence_for_engagement(
 @router.post("/procedures/{procedure_id}/pull-evidence", status_code=201)
 def pull_evidence_for_procedure(
     procedure_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
     mgr=Depends(_get_manager),
@@ -1455,7 +1455,7 @@ def pull_evidence_for_procedure(
 @router.put("/engagements/{engagement_id}/opinion")
 def set_audit_opinion(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1532,7 +1532,7 @@ def set_audit_opinion(
 @router.post("/plans/{plan_id}/roll-forward")
 def roll_forward_plan(
     plan_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1629,7 +1629,7 @@ def roll_forward_plan(
 
 @router.post("/dimensions", status_code=201)
 def create_dimension(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -1690,7 +1690,7 @@ def list_dimensions(
 @router.post("/engagements/{engagement_id}/announce", status_code=201)
 def create_announcement(
     engagement_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

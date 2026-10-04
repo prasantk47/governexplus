@@ -9,7 +9,7 @@ Full enterprise risk management lifecycle (RM-01 through RM-31):
   - Heatmap, trend, and coverage reporting
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -125,7 +125,7 @@ def _kri_status(kri: KeyRiskIndicator) -> str:
 
 @router.post("/risks", status_code=201)
 def create_risk(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -258,7 +258,7 @@ def recompute_control_coverage(
 @router.put("/risks/{risk_id}")
 def update_risk(
     risk_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -302,7 +302,7 @@ def delete_risk(
 @router.post("/risks/{risk_id}/assessments", status_code=201)
 def create_assessment(
     risk_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -359,7 +359,7 @@ def get_risk_assessments(
 @router.put("/assessments/{assessment_id}/submit")
 def submit_assessment(
     assessment_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -375,7 +375,7 @@ def submit_assessment(
 @router.put("/assessments/{assessment_id}/review")
 def review_assessment(
     assessment_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -391,7 +391,7 @@ def review_assessment(
 
 @router.post("/assessment-campaigns")
 def run_assessment_campaign(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -445,7 +445,7 @@ def run_assessment_campaign(
 
 @router.post("/appetites", status_code=201)
 def set_appetite(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -583,7 +583,7 @@ def check_appetite_breach(
 
 @router.post("/kris", status_code=201)
 def create_kri(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -646,7 +646,7 @@ def get_kri_dashboard(
 @router.post("/kris/{kri_id}/measurements", status_code=201)
 def record_kri_measurement(
     kri_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -700,7 +700,7 @@ def get_kri_history(
 @router.post("/risks/{risk_id}/responses", status_code=201)
 def create_response(
     risk_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -744,7 +744,7 @@ def get_risk_responses(
 @router.put("/responses/{response_id}/status")
 def update_response_status(
     response_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -768,7 +768,7 @@ def update_response_status(
 
 @router.post("/incidents", status_code=201)
 def report_incident(
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -800,7 +800,7 @@ def report_incident(
 @router.put("/incidents/{incident_id}")
 def update_incident(
     incident_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -838,7 +838,7 @@ def get_incidents(
 @router.post("/incidents/{incident_id}/link-risk")
 def link_incident_to_risk(
     incident_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):
@@ -977,7 +977,7 @@ def get_overdue_reviews(
 @router.post("/risks/{risk_id}/review-attestation")
 def record_review_attestation(
     risk_id: str,
-    body: Dict[str, Any],
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

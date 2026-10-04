@@ -46,7 +46,10 @@ export async function loginAs(page: Page, persona: PersonaId) {
 }
 
 // ── API token helper (for API-level assertions) ───────────────────────────
+const _tokenCache: Partial<Record<PersonaId, string>> = {};
+
 export async function getToken(persona: PersonaId): Promise<string> {
+  if (_tokenCache[persona]) return _tokenCache[persona]!;
   const creds = PERSONAS[persona];
   const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
@@ -55,6 +58,7 @@ export async function getToken(persona: PersonaId): Promise<string> {
   });
   if (!res.ok) throw new Error(`Login failed for ${persona}: ${res.status}`);
   const data = await res.json();
+  _tokenCache[persona] = data.access_token;
   return data.access_token;
 }
 

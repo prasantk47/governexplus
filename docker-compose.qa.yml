@@ -72,6 +72,9 @@ services:
       # HR connector — point at mock
       HR_MOCK_URL: "http://hr_mock:9102"
       HR_CONNECTOR_MODE: mock
+      # QA: raise auth rate limit so Playwright suite doesn't get 429
+      RATE_LIMIT_AUTH: "300/minute"
+      RATE_LIMIT_DEFAULT: "600/minute"
       # Feature flags — all on for QA
       TEMPLATE_LIBRARY: "true"
       TEMPLATE_LIBRARY_COW: "true"

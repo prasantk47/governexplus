@@ -12,8 +12,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.mass_admin.engine import MassAdminEngine
+from api.dependencies import get_current_user
 
-router = APIRouter(tags=["Mass Administration"])
+_MASS_ADMIN_ROLES = {"platform_admin", "admin", "tenant_admin", "super_admin"}
+
+
+def _require_mass_admin_role(current_user: Dict[str, Any] = Depends(get_current_user)) -> None:
+    """Only platform_admin / tenant_admin / admin may access mass administration."""
+    caller_roles = set(current_user.get("roles", []) or [current_user.get("role", "")])
+    if not (caller_roles & _MASS_ADMIN_ROLES):
+        raise HTTPException(status_code=403, detail="Mass administration requires admin role")
+
+
+router = APIRouter(
+    tags=["Mass Administration"],
+    dependencies=[Depends(_require_mass_admin_role)],
+)
 
 # Per-tenant engine registry
 _engines: Dict[str, MassAdminEngine] = {}
@@ -93,7 +107,13 @@ class PreviewImpactRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.get("/mass-admin/jobs", summary="List bulk job history")
+@router.post("/", summary="Mass admin entry point", status_code=200, include_in_schema=False)
+def mass_admin_root(body: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Root endpoint — used for RBAC probes. Real operations have dedicated sub-paths."""
+    return {"status": "ok", "message": "Use /mass-admin/roles/assign, /users/import, etc."}
+
+
+@router.get("/jobs", summary="List bulk job history")
 def list_job_history(
     operation: str | None = Query(default=None, description="Filter by operation type"),
     status: str | None = Query(default=None, description="Filter by status"),
@@ -104,7 +124,7 @@ def list_job_history(
     return engine.get_job_history(operation=operation, status=status, limit=limit)
 
 
-@router.get("/mass-admin/jobs/{job_id}", summary="Get bulk job status")
+@router.get("/jobs/{job_id}", summary="Get bulk job status")
 def get_job_status(
     job_id: str,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -116,7 +136,7 @@ def get_job_status(
     return result
 
 
-@router.post("/mass-admin/preview", summary="Preview impact of a bulk operation")
+@router.post("/preview", summary="Preview impact of a bulk operation")
 def preview_impact(
     body: PreviewImpactRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -129,7 +149,7 @@ def preview_impact(
     return engine.preview_impact(operation=body.operation, params=body.params)
 
 
-@router.post("/mass-admin/users/import", summary="Bulk import users", status_code=202)
+@router.post("/users/import", summary="Bulk import users", status_code=202)
 def bulk_user_import(
     body: BulkUserImportRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -147,7 +167,7 @@ def bulk_user_import(
     return engine.bulk_user_import(users_data=body.users, submitted_by=body.submitted_by)
 
 
-@router.post("/mass-admin/roles/assign", summary="Bulk assign roles to users", status_code=202)
+@router.post("/roles/assign", summary="Bulk assign roles to users", status_code=202)
 def bulk_role_assign(
     body: BulkRoleAssignRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -169,7 +189,7 @@ def bulk_role_assign(
     )
 
 
-@router.post("/mass-admin/roles/remove", summary="Bulk remove roles from users", status_code=202)
+@router.post("/roles/remove", summary="Bulk remove roles from users", status_code=202)
 def bulk_role_remove(
     body: BulkRoleRemoveRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -190,7 +210,7 @@ def bulk_role_remove(
     )
 
 
-@router.post("/mass-admin/roles/mass-change", summary="Apply mass role change", status_code=202)
+@router.post("/roles/mass-change", summary="Apply mass role change", status_code=202)
 def mass_role_change(
     body: MassRoleChangeRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -216,7 +236,7 @@ def mass_role_change(
     )
 
 
-@router.post("/mass-admin/roles/owner", summary="Mass update role ownership", status_code=202)
+@router.post("/roles/owner", summary="Mass update role ownership", status_code=202)
 def mass_owner_update(
     body: MassOwnerUpdateRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -235,7 +255,7 @@ def mass_owner_update(
     )
 
 
-@router.post("/mass-admin/users/lock", summary="Bulk lock user accounts", status_code=202)
+@router.post("/users/lock", summary="Bulk lock user accounts", status_code=202)
 def bulk_user_lock(
     body: BulkUserLockRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -259,7 +279,7 @@ def bulk_user_lock(
     )
 
 
-@router.post("/mass-admin/users/unlock", summary="Bulk unlock user accounts", status_code=202)
+@router.post("/users/unlock", summary="Bulk unlock user accounts", status_code=202)
 def bulk_user_unlock(
     body: BulkUserUnlockRequest,
     engine: MassAdminEngine = Depends(_get_engine),
@@ -277,7 +297,7 @@ def bulk_user_unlock(
     )
 
 
-@router.get("/mass-admin/operations", summary="List supported bulk operations")
+@router.get("/operations", summary="List supported bulk operations")
 def list_operations() -> dict[str, Any]:
     """Return the list of supported bulk operations and their descriptions."""
     return {

@@ -13,9 +13,11 @@ Implements the complete Firefighter workflow:
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import io
+
+from api.dependencies import get_current_user
 
 from core.firefighter import (
     FirefighterManager,
@@ -559,16 +561,18 @@ async def revoke_session(
 
 @router.get("/reviews/pending")
 async def get_pending_reviews(
-    reviewer_id: str = Query(..., description="Reviewer user ID"),
+    reviewer_id: Optional[str] = Query(None, description="Reviewer user ID (defaults to caller)"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
     mgr: FirefighterManager = Depends(_get_manager),
 ):
     """
     Get sessions pending review for a reviewer.
     """
-    reviews = await mgr.get_pending_reviews(reviewer_id)
+    effective_reviewer_id = reviewer_id or current_user.get("sub")
+    reviews = await mgr.get_pending_reviews(effective_reviewer_id)
     return {
-        'pending_count': len(reviews),
-        'sessions': reviews
+        "pending_count": len(reviews),
+        "sessions": reviews
     }
 
 

@@ -626,44 +626,37 @@ class AuthService:
         """Hash password with bcrypt (automatic salt)"""
         return pwd_context.hash(password)
 
+    # All recognized functional role values stored in user_type
+    _KNOWN_ROLES = {
+        "platform_admin", "tenant_admin", "admin", "super_admin",
+        "ciso", "compliance_officer", "risk_manager",
+        "security_admin", "it_security",
+        "line_manager", "business_user",
+        "external_auditor", "internal_auditor", "auditor",
+        "control_owner", "sox_owner",
+        "firefighter_owner", "firefighter_controller", "firefighter_user",
+        "hr_manager", "process_owner", "it_operations",
+        "read_only", "mitigation_monitor",
+        "vendor_manager", "role_owner", "risk_owner",
+        "manager", "end_user",
+    }
+
     def _determine_role(self, user: User) -> str:
-        """Determine user role based on user attributes"""
-        # Check if user has admin-related attributes
+        """Determine user role from user_type (primary) or legacy fallbacks."""
+        # user_type is the authoritative source — pass it through directly
+        if hasattr(user, 'user_type') and user.user_type:
+            ut = user.user_type.lower()
+            if ut in self._KNOWN_ROLES:
+                return ut
+
+        # Legacy: is_admin flag
         if hasattr(user, 'is_admin') and user.is_admin:
             return "admin"
 
-        # Check username-based roles (for seeded platform users)
+        # Legacy: well-known admin usernames
         uname = (user.username or "").lower()
         if uname in ("admin", "sysadmin", "administrator"):
             return "admin"
-        if uname in ("security_admin", "secadmin", "sec_admin"):
-            return "security_admin"
-        if uname in ("manager", "approver"):
-            return "manager"
-        if uname in ("auditor",):
-            return "auditor"
-
-        # Check user_type (stored in DB)
-        if hasattr(user, 'user_type') and user.user_type:
-            ut = user.user_type.lower()
-            if ut in ("admin", "super_admin"):
-                return "admin"
-            if ut in ("security_admin",):
-                return "security_admin"
-            if ut in ("auditor",):
-                return "auditor"
-
-        # Check department-based roles
-        if user.department:
-            dept_lower = user.department.lower()
-            if "internal audit" in dept_lower or dept_lower == "audit":
-                return "auditor"
-            if "security" in dept_lower:
-                return "security_admin"
-            if "management" in dept_lower or "executive" in dept_lower:
-                return "manager"
-            if "it" in dept_lower.split() or "basis" in dept_lower:
-                return "admin"
 
         # Default to end user
         return "end_user"
@@ -728,6 +721,7 @@ class AuthService:
             "sub": user_id,
             "username": username,
             "role": role,
+            "roles": [role],
             "tenant_id": tenant_id,
             "permissions": ROLE_PERMISSIONS.get(role, []),
             "type": "access",

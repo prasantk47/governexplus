@@ -19,6 +19,16 @@ from core.rules.models import Entitlement, UserAccess, RiskCategory
 from db.database import get_db
 from db.models.user import User, Role, UserRole, UserEntitlement
 from db.models.risk import RiskViolation
+from api.dependencies import get_current_user
+
+_RULES_ALLOWED_ROLES = {
+    "platform_admin", "admin", "tenant_admin", "super_admin",
+    "it_security", "security_admin",
+    "compliance", "compliance_officer",
+    "ciso",
+    "risk_manager",
+    "internal_auditor", "external_auditor",
+}
 
 router = APIRouter(tags=["Risk Analysis"])
 
@@ -483,8 +493,13 @@ async def list_rules(
     category: Optional[str] = Query(None, description="Filter by risk category"),
     enabled_only: bool = Query(True, description="Only return enabled rules"),
     engine: RuleEngine = Depends(_get_engine),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
-    """List all available risk rules."""
+    """List all available risk rules. Requires security or compliance role."""
+    caller_role = current_user.get("role", "")
+    caller_roles = set(current_user.get("roles", []) or [current_user.get("role", "")])
+    if not (caller_roles & _RULES_ALLOWED_ROLES or caller_role in _RULES_ALLOWED_ROLES):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to view SoD rules")
     rules = []
     for rule_id, rule in engine.rules.items():
         if enabled_only and not rule.enabled:

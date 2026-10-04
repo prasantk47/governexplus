@@ -67,7 +67,7 @@ class User(Base, TimestampMixin):
     location = Column(String(100), nullable=True)
 
     # User type and status (stored as varchar for flexibility)
-    user_type = Column(String(20), default='dialog')
+    user_type = Column(String(50), default='end_user')
     status = Column(String(20), default='active')
 
     # Validity

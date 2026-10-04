@@ -1,5 +1,5 @@
 {
-  "_comment": "GovernexPlus QA — 22 test personas covering the full guide RBAC matrix",
+  "_comment": "GovernexPlus QA \u2014 22 test personas covering the full guide RBAC matrix",
   "_note": "P07 is Line Manager (not Business Analyst). P17-P22 added to cover guide personas missing in initial cut.",
   "tenant_id": "qa-tenant-001",
   "personas": [
@@ -11,11 +11,15 @@
       "full_name": "Patricia Admin",
       "password": "QaP@ss2026!Platform",
       "department": "Platform Operations",
-      "user_type": "admin",
-      "roles": ["platform_admin"],
-      "nav_allowed": ["ALL"],
+      "user_type": "platform_admin",
+      "roles": [
+        "platform_admin"
+      ],
+      "nav_allowed": [
+        "ALL"
+      ],
       "nav_denied": [],
-      "description": "Cross-tenant superuser — manage system config, cross-tenant access (logged as platform_admin escalation)"
+      "description": "Cross-tenant superuser \u2014 manage system config, cross-tenant access (logged as platform_admin escalation)"
     },
     {
       "persona_id": "P02",
@@ -25,10 +29,20 @@
       "full_name": "Thomas Tenant",
       "password": "QaP@ss2026!Tenant",
       "department": "IT Administration",
-      "user_type": "admin",
-      "roles": ["tenant_admin"],
-      "nav_allowed": ["dashboard", "settings", "users", "library", "reports"],
-      "nav_denied": ["/platform/tenants"],
+      "user_type": "tenant_admin",
+      "roles": [
+        "tenant_admin"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "settings",
+        "users",
+        "library",
+        "reports"
+      ],
+      "nav_denied": [
+        "/platform/tenants"
+      ],
       "description": "Full access within tenant, no cross-tenant. Manages template library and system config."
     },
     {
@@ -39,10 +53,24 @@
       "full_name": "Christina CISO",
       "password": "QaP@ss2026!CISO",
       "department": "Information Security",
-      "user_type": "standard",
-      "roles": ["ciso"],
-      "nav_allowed": ["dashboard", "ara", "risk", "eam", "certifications", "risk-management", "reports/ff-activity", "reports/sod-violations"],
-      "nav_denied": ["/settings/mass-admin", "/platform/tenants"],
+      "user_type": "ciso",
+      "roles": [
+        "ciso"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "ara",
+        "risk",
+        "eam",
+        "certifications",
+        "risk-management",
+        "reports/ff-activity",
+        "reports/sod-violations"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/platform/tenants"
+      ],
       "description": "Risk oversight, EAM supervision, violation escalation, KRI monitoring."
     },
     {
@@ -53,10 +81,22 @@
       "full_name": "Charles Compliance",
       "password": "QaP@ss2026!Compliance",
       "department": "Compliance",
-      "user_type": "standard",
-      "roles": ["compliance_officer"],
-      "nav_allowed": ["dashboard", "certifications", "ara/violations", "compliance", "process-control", "reports"],
-      "nav_denied": ["/settings/mass-admin", "/eam/ids"],
+      "user_type": "compliance_officer",
+      "roles": [
+        "compliance_officer"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "certifications",
+        "ara/violations",
+        "compliance",
+        "process-control",
+        "reports"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/eam/ids"
+      ],
       "description": "Owns certifications, SoD remediation tracking, framework mapping, policy attestation."
     },
     {
@@ -67,10 +107,21 @@
       "full_name": "Richard Risk",
       "password": "QaP@ss2026!Risk",
       "department": "Risk Management",
-      "user_type": "standard",
-      "roles": ["risk_manager"],
-      "nav_allowed": ["dashboard", "risk-management", "tprm", "reports/risk-heatmap", "reports/kri-dashboard"],
-      "nav_denied": ["/eam/ids", "/settings/mass-admin"],
+      "user_type": "risk_manager",
+      "roles": [
+        "risk_manager"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "risk-management",
+        "tprm",
+        "reports/risk-heatmap",
+        "reports/kri-dashboard"
+      ],
+      "nav_denied": [
+        "/eam/ids",
+        "/settings/mass-admin"
+      ],
       "description": "Manages risk register, KRIs, risk assessments, mitigation plans, TPRM oversight."
     },
     {
@@ -81,10 +132,23 @@
       "full_name": "Ivan Security",
       "password": "QaP@ss2026!Security",
       "department": "IT Security",
-      "user_type": "standard",
-      "roles": ["security_admin"],
-      "nav_allowed": ["dashboard", "risk/rules", "ara", "access-requests", "role-management", "eam", "settings/connectors"],
-      "nav_denied": ["/risk-management/register", "/platform/tenants"],
+      "user_type": "security_admin",
+      "roles": [
+        "security_admin"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "risk/rules",
+        "ara",
+        "access-requests",
+        "role-management",
+        "eam",
+        "settings/connectors"
+      ],
+      "nav_denied": [
+        "/risk-management/register",
+        "/platform/tenants"
+      ],
       "description": "Manages SoD rules, access provisioning, role methodology, connectors, EAM."
     },
     {
@@ -95,10 +159,22 @@
       "full_name": "Linda Manager",
       "password": "QaP@ss2026!LineMgr",
       "department": "Finance",
-      "user_type": "standard",
-      "roles": ["line_manager"],
-      "nav_allowed": ["dashboard", "access-requests/pending", "certifications/my-items", "jml", "reports/user-access-review"],
-      "nav_denied": ["/settings", "/risk/rules", "/eam/ids"],
+      "user_type": "line_manager",
+      "roles": [
+        "line_manager"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "access-requests/pending",
+        "certifications/my-items",
+        "jml",
+        "reports/user-access-review"
+      ],
+      "nav_denied": [
+        "/settings",
+        "/risk/rules",
+        "/eam/ids"
+      ],
       "description": "Approves direct-report access requests, performs certification reviews, triggers JML events."
     },
     {
@@ -109,10 +185,21 @@
       "full_name": "Robert Requestor",
       "password": "QaP@ss2026!Request",
       "department": "Accounts Payable",
-      "user_type": "standard",
-      "roles": ["business_user"],
-      "nav_allowed": ["dashboard", "access-requests/submit", "certifications/my-items"],
-      "nav_denied": ["/risk/rules", "/settings", "/eam", "/certifications/campaigns"],
+      "user_type": "business_user",
+      "roles": [
+        "business_user"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "access-requests/submit",
+        "certifications/my-items"
+      ],
+      "nav_denied": [
+        "/risk/rules",
+        "/settings",
+        "/eam",
+        "/certifications/campaigns"
+      ],
       "description": "Submits access requests, participates in certifications, views own access."
     },
     {
@@ -123,10 +210,21 @@
       "full_name": "Audrey External",
       "password": "QaP@ss2026!ExtAudit",
       "department": "External Audit",
-      "user_type": "standard",
-      "roles": ["external_auditor"],
-      "nav_allowed": ["certifications (read)", "reports (read)", "ara/violations (read)", "process-control (read)"],
-      "nav_denied": ["POST /certifications/campaigns", "POST /risk-management/risks", "/settings"],
+      "user_type": "external_auditor",
+      "roles": [
+        "external_auditor"
+      ],
+      "nav_allowed": [
+        "certifications (read)",
+        "reports (read)",
+        "ara/violations (read)",
+        "process-control (read)"
+      ],
+      "nav_denied": [
+        "POST /certifications/campaigns",
+        "POST /risk-management/risks",
+        "/settings"
+      ],
       "description": "Read-only: evidence packages, certification results, control test reports, violation log."
     },
     {
@@ -137,10 +235,22 @@
       "full_name": "Sandra SOX",
       "password": "QaP@ss2026!SOX",
       "department": "Finance",
-      "user_type": "standard",
-      "roles": ["control_owner"],
-      "nav_allowed": ["dashboard", "process-control", "compliance", "certifications/my-items", "reports/control-testing"],
-      "nav_denied": ["/settings/mass-admin", "/eam/ids", "/risk/rules"],
+      "user_type": "control_owner",
+      "roles": [
+        "control_owner"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "process-control",
+        "compliance",
+        "certifications/my-items",
+        "reports/control-testing"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/eam/ids",
+        "/risk/rules"
+      ],
       "description": "Creates/attests SOX controls, runs tests, raises deficiencies, maps to ITGC frameworks."
     },
     {
@@ -151,11 +261,21 @@
       "full_name": "Frank FFOwner",
       "password": "QaP@ss2026!FFOwner",
       "department": "IT Operations",
-      "user_type": "standard",
-      "roles": ["firefighter_owner"],
-      "nav_allowed": ["dashboard", "eam/ids (own)", "eam/sessions (own)", "certifications/my-items"],
-      "nav_denied": ["/eam/controller", "/settings/mass-admin"],
-      "description": "Business-responsible owner of specific FF IDs. Recertifies IDs quarterly. Does NOT log into FF IDs — see P17 for session user."
+      "user_type": "firefighter_owner",
+      "roles": [
+        "firefighter_owner"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "eam/ids (own)",
+        "eam/sessions (own)",
+        "certifications/my-items"
+      ],
+      "nav_denied": [
+        "/eam/controller",
+        "/settings/mass-admin"
+      ],
+      "description": "Business-responsible owner of specific FF IDs. Recertifies IDs quarterly. Does NOT log into FF IDs \u2014 see P17 for session user."
     },
     {
       "persona_id": "P12",
@@ -165,10 +285,21 @@
       "full_name": "Felicia Controller",
       "password": "QaP@ss2026!FFCtrl",
       "department": "IT Security",
-      "user_type": "standard",
-      "roles": ["firefighter_controller"],
-      "nav_allowed": ["dashboard", "eam/controller", "eam/sessions", "eam/logs", "reports/ff-activity"],
-      "nav_denied": ["/settings/mass-admin", "/eam/ids/create"],
+      "user_type": "firefighter_controller",
+      "roles": [
+        "firefighter_controller"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "eam/controller",
+        "eam/sessions",
+        "eam/logs",
+        "reports/ff-activity"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/eam/ids/create"
+      ],
       "description": "Reviews all FF session logs within 72h SLA, signs off or flags violations."
     },
     {
@@ -179,10 +310,20 @@
       "full_name": "Helen HR",
       "password": "QaP@ss2026!HRMgr",
       "department": "Human Resources",
-      "user_type": "standard",
-      "roles": ["hr_manager"],
-      "nav_allowed": ["dashboard", "jml", "reports/jml-compliance"],
-      "nav_denied": ["/settings", "/risk/rules", "/eam"],
+      "user_type": "hr_manager",
+      "roles": [
+        "hr_manager"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "jml",
+        "reports/jml-compliance"
+      ],
+      "nav_denied": [
+        "/settings",
+        "/risk/rules",
+        "/eam"
+      ],
       "description": "Triggers JML lifecycle events (hire, transfer, terminate) via HR integration."
     },
     {
@@ -193,10 +334,21 @@
       "full_name": "Peter Process",
       "password": "QaP@ss2026!Process",
       "department": "Finance",
-      "user_type": "standard",
-      "roles": ["process_owner"],
-      "nav_allowed": ["dashboard", "process-control", "certifications/my-items", "compliance/frameworks (read)"],
-      "nav_denied": ["/settings", "/eam", "/risk/rules"],
+      "user_type": "process_owner",
+      "roles": [
+        "process_owner"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "process-control",
+        "certifications/my-items",
+        "compliance/frameworks (read)"
+      ],
+      "nav_denied": [
+        "/settings",
+        "/eam",
+        "/risk/rules"
+      ],
       "description": "Owns business processes and their controls; certifies control effectiveness; remediates deficiencies."
     },
     {
@@ -207,10 +359,20 @@
       "full_name": "Oscar ITOps",
       "password": "QaP@ss2026!ITOps",
       "department": "IT Operations",
-      "user_type": "standard",
-      "roles": ["it_operations"],
-      "nav_allowed": ["dashboard", "settings/connectors (read)", "reports/audit-log (read)"],
-      "nav_denied": ["/settings/mass-admin", "/risk/rules", "/certifications/campaigns"],
+      "user_type": "it_operations",
+      "roles": [
+        "it_operations"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "settings/connectors (read)",
+        "reports/audit-log (read)"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/risk/rules",
+        "/certifications/campaigns"
+      ],
       "description": "Monitors system connectors and batch jobs; limited GRC write access."
     },
     {
@@ -221,10 +383,20 @@
       "full_name": "Victor Viewer",
       "password": "QaP@ss2026!View",
       "department": "Executive",
-      "user_type": "standard",
-      "roles": ["read_only"],
-      "nav_allowed": ["dashboard", "reports (read)"],
-      "nav_denied": ["POST /access-requests/submit", "/settings", "/eam", "/risk/rules"],
+      "user_type": "read_only",
+      "roles": [
+        "read_only"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "reports (read)"
+      ],
+      "nav_denied": [
+        "POST /access-requests/submit",
+        "/settings",
+        "/eam",
+        "/risk/rules"
+      ],
       "description": "Dashboards and reports only. Zero write access across the entire platform."
     },
     {
@@ -235,10 +407,19 @@
       "full_name": "Fred Fighter",
       "password": "QaP@ss2026!FFUser",
       "department": "IT Operations",
-      "user_type": "standard",
-      "roles": ["firefighter_user"],
-      "nav_allowed": ["eam/sessions/request (own)", "eam/sessions/end (own)"],
-      "nav_denied": ["/eam/controller", "/eam/ids/create", "/settings"],
+      "user_type": "firefighter_user",
+      "roles": [
+        "firefighter_user"
+      ],
+      "nav_allowed": [
+        "eam/sessions/request (own)",
+        "eam/sessions/end (own)"
+      ],
+      "nav_denied": [
+        "/eam/controller",
+        "/eam/ids/create",
+        "/settings"
+      ],
       "description": "The SAP user who logs INTO a Firefighter ID to perform emergency work. Distinct from FF Owner (P11) and FF Controller (P12)."
     },
     {
@@ -249,10 +430,21 @@
       "full_name": "Monica Mitigation",
       "password": "QaP@ss2026!MitMon",
       "department": "Compliance",
-      "user_type": "standard",
-      "roles": ["mitigation_monitor"],
-      "nav_allowed": ["dashboard", "ara/mitigations", "process-control (read)", "reports/mitigation-effectiveness"],
-      "nav_denied": ["/ara/rules", "/settings", "/certifications/campaigns"],
+      "user_type": "mitigation_monitor",
+      "roles": [
+        "mitigation_monitor"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "ara/mitigations",
+        "process-control (read)",
+        "reports/mitigation-effectiveness"
+      ],
+      "nav_denied": [
+        "/ara/rules",
+        "/settings",
+        "/certifications/campaigns"
+      ],
       "description": "Periodically tests and attests that mitigating controls for active SoD violations are operating effectively."
     },
     {
@@ -263,10 +455,22 @@
       "full_name": "Iris Internal",
       "password": "QaP@ss2026!IntAudit",
       "department": "Internal Audit",
-      "user_type": "standard",
-      "roles": ["internal_auditor"],
-      "nav_allowed": ["dashboard", "audit-management", "certifications (read)", "process-control (read)", "ara/violations (read)", "reports"],
-      "nav_denied": ["/settings/mass-admin", "POST /certifications/campaigns"],
+      "user_type": "internal_auditor",
+      "roles": [
+        "internal_auditor"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "audit-management",
+        "certifications (read)",
+        "process-control (read)",
+        "ara/violations (read)",
+        "reports"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "POST /certifications/campaigns"
+      ],
       "description": "Plans and executes internal audits; creates audit programs, tracks findings. More access than external auditor."
     },
     {
@@ -277,10 +481,20 @@
       "full_name": "Vera Vendor",
       "password": "QaP@ss2026!Vendor",
       "department": "Procurement",
-      "user_type": "standard",
-      "roles": ["vendor_manager"],
-      "nav_allowed": ["dashboard", "tprm", "reports/tprm-summary"],
-      "nav_denied": ["/settings", "/risk/rules", "/certifications/campaigns"],
+      "user_type": "vendor_manager",
+      "roles": [
+        "vendor_manager"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "tprm",
+        "reports/tprm-summary"
+      ],
+      "nav_denied": [
+        "/settings",
+        "/risk/rules",
+        "/certifications/campaigns"
+      ],
       "description": "Manages vendor inventory, issues TPRM assessment questionnaires, tracks responses and risk ratings."
     },
     {
@@ -291,10 +505,21 @@
       "full_name": "Owen RoleOwner",
       "password": "QaP@ss2026!RoleOwn",
       "department": "IT Security",
-      "user_type": "standard",
-      "roles": ["role_owner"],
-      "nav_allowed": ["dashboard", "access-requests/pending (own roles)", "certifications/my-items", "role-management/my-roles"],
-      "nav_denied": ["/settings/mass-admin", "/risk/rules", "/eam/ids"],
+      "user_type": "role_owner",
+      "roles": [
+        "role_owner"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "access-requests/pending (own roles)",
+        "certifications/my-items",
+        "role-management/my-roles"
+      ],
+      "nav_denied": [
+        "/settings/mass-admin",
+        "/risk/rules",
+        "/eam/ids"
+      ],
       "description": "Approves access requests for specific SAP roles they own. Certifies current role membership. Maintains role description."
     },
     {
@@ -305,10 +530,21 @@
       "full_name": "Reginald RiskOwner",
       "password": "QaP@ss2026!RiskOwn",
       "department": "Finance",
-      "user_type": "standard",
-      "roles": ["risk_owner"],
-      "nav_allowed": ["dashboard", "risk-management/my-risks", "risk-management/mitigations", "reports/risk-heatmap (read)"],
-      "nav_denied": ["/settings", "/certifications/campaigns", "/eam/ids"],
+      "user_type": "risk_owner",
+      "roles": [
+        "risk_owner"
+      ],
+      "nav_allowed": [
+        "dashboard",
+        "risk-management/my-risks",
+        "risk-management/mitigations",
+        "reports/risk-heatmap (read)"
+      ],
+      "nav_denied": [
+        "/settings",
+        "/certifications/campaigns",
+        "/eam/ids"
+      ],
       "description": "Accountable for specific risks in the register. Manages treatment actions, updates residual score, reports status to Risk Manager."
     }
   ]

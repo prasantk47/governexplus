@@ -268,8 +268,8 @@ def update_scenario(
 @router.post("/scenarios/{scenario_id}/simulate")
 def simulate_scenario(
     scenario_id: str,
-    body: Dict[str, Any] = Body(default={}),
     background_tasks: BackgroundTasks,
+    body: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
 ):

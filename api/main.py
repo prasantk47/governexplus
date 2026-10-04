@@ -182,6 +182,20 @@ async def lifespan(app: FastAPI):
     init_db()
     install_tenant_scoping()
     logger.info("Database initialized, tenant scoping active")
+
+    # Seed Template Library (idempotent)
+    try:
+        from db.database import db_manager
+        from core.library.seeder import seed_library
+        s = db_manager.get_session()
+        try:
+            result = seed_library(s)
+            logger.info("Template library seeder: %s", result)
+        finally:
+            s.close()
+    except Exception as e:
+        logger.warning("Template library seeder failed (non-fatal): %s", e)
+
     yield
     # Shutdown
     logger.info("Shutting down Governex+ Platform...")
@@ -696,20 +710,6 @@ app.include_router(
 )
 
 # Seed the template library on startup (idempotent)
-@app.on_event("startup")
-async def _seed_template_library():
-    try:
-        from db.database import db_manager
-        from core.library.seeder import seed_library
-        s = db_manager.get_session()
-        try:
-            result = seed_library(s)
-            logger.info("Template library seeder: %s", result)
-        finally:
-            s.close()
-    except Exception as e:
-        logger.warning("Template library seeder failed (non-fatal): %s", e)
-
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

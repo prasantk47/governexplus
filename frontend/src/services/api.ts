@@ -497,6 +497,16 @@ export const securityControlsApi = {
 
   getImportTemplate: (format: 'json' | 'csv' = 'json') =>
     api.get('/security-controls/import/template', { params: { format } }),
+
+  // Template library
+  listTemplates: (params?: { category?: string; search?: string; compliance_framework?: string }) =>
+    api.get('/security-controls/templates', { params }),
+
+  adoptTemplate: (controlId: string) =>
+    api.post(`/security-controls/templates/${controlId}/adopt`),
+
+  seedDefaults: () =>
+    api.post('/security-controls/seed-defaults'),
 };
 
 // ==================== Audit API ====================

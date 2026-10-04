@@ -643,3 +643,122 @@ async def get_import_template(
         "format": format,
         "template": template
     }
+
+
+# =============================================================================
+# Template Library & Seed Endpoints
+# =============================================================================
+
+@router.get("/templates")
+async def list_templates(
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    compliance_framework: Optional[str] = Query(None),
+):
+    """
+    List SAP security control templates from the built-in library.
+    Templates are in-memory (SAP- prefix); customers adopt them into their environment.
+    """
+    from core.security_controls.sap_library import SAP_CONTROLS_LIBRARY
+
+    results = SAP_CONTROLS_LIBRARY
+
+    if category:
+        results = [c for c in results if c.get("category", "").lower() == category.lower()]
+
+    if compliance_framework:
+        results = [
+            c for c in results
+            if compliance_framework.upper() in [f.upper() for f in c.get("compliance_frameworks", [])]
+        ]
+
+    if search:
+        q = search.lower()
+        results = [
+            c for c in results
+            if q in c.get("control_id", "").lower()
+            or q in c.get("control_name", "").lower()
+            or q in c.get("description", "").lower()
+            or q in (c.get("profile_parameter") or "").lower()
+        ]
+
+    # Collect unique categories for filter UI
+    all_categories = sorted({c.get("category", "") for c in SAP_CONTROLS_LIBRARY if c.get("category")})
+
+    return {
+        "templates": results,
+        "total": len(results),
+        "categories": all_categories,
+    }
+
+
+@router.post("/templates/{control_id}/adopt")
+async def adopt_template(
+    control_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Adopt a SAP- template into the tenant's controls as a customizable CUST- copy.
+    If a CUST- copy already exists it is returned as-is (idempotent).
+    """
+    from core.security_controls.sap_library import SAP_CONTROLS_LIBRARY
+
+    template = next((c for c in SAP_CONTROLS_LIBRARY if c["control_id"] == control_id), None)
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template not found: {control_id}")
+
+    # Derive CUST- id: SAP-AUTH-001 → CUST-AUTH-001
+    cust_id = "CUST-" + control_id.removeprefix("SAP-")
+
+    manager = SecurityControlManager(db)
+
+    # Return existing if already adopted
+    existing = manager.get_control(cust_id)
+    if existing:
+        return {
+            "status": "existing",
+            "message": f"Template already adopted as {cust_id}",
+            "control": existing.to_dict(),
+        }
+
+    # Clone template with CUST- prefix
+    adopted_data = {**template, "control_id": cust_id, "status": "active"}
+    control = manager.create_control(adopted_data)
+
+    return {
+        "status": "adopted",
+        "message": f"Template adopted as {cust_id} — you can now customize it",
+        "control": control.to_dict(),
+    }
+
+
+@router.post("/seed-defaults")
+async def seed_default_controls(db: Session = Depends(get_db)):
+    """
+    Seed the SAP security controls library into the database (idempotent).
+    Existing controls (same control_id) are skipped — custom changes are preserved.
+    """
+    from core.security_controls.sap_library import SAP_CONTROLS_LIBRARY
+
+    manager = SecurityControlManager(db)
+    inserted = 0
+    skipped = 0
+
+    for ctrl in SAP_CONTROLS_LIBRARY:
+        existing = manager.get_control(ctrl["control_id"])
+        if existing:
+            skipped += 1
+            continue
+        try:
+            manager.create_control(ctrl)
+            inserted += 1
+        except Exception:
+            skipped += 1
+
+    return {
+        "status": "success",
+        "message": f"Seed complete: {inserted} inserted, {skipped} skipped (already exist)",
+        "inserted": inserted,
+        "skipped": skipped,
+        "total_library": len(SAP_CONTROLS_LIBRARY),
+    }

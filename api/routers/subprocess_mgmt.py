@@ -6,7 +6,7 @@ controls and risks.  Endpoints support unlimited nesting via the
 self-referential parent_subprocess_id FK.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 import uuid

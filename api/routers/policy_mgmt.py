@@ -5,7 +5,7 @@ Covers PC-SAP-GAP-07: Full policy document lifecycle from draft → retire,
 including versioning, acknowledgment tracking, and review scheduling.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from sqlalchemy.orm import Session

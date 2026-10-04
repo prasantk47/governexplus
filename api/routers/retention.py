@@ -13,7 +13,7 @@ PUT  /retention/legal-hold/{evidence_id}   — toggle legal hold
 GET  /retention/report                     — retention status report
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Body
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 

@@ -6,7 +6,7 @@ specific objectives.  Provides objective-based control mapping and gap
 analysis (objectives without any linked controls).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 import uuid

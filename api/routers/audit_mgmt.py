@@ -13,7 +13,7 @@ Full internal audit lifecycle (AM-01 through AM-32):
   - Committee-ready reporting
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session

@@ -155,7 +155,7 @@ import { BiaSummary, BcmPlans, IncidentActivation } from './pages/bcm';
 
 // Whistleblower Pages
 import { WhistleblowerIntake, WhistleblowerInbox } from './pages/whistleblower';
-import { ContentLibrary, ActivationWizard, ActiveContent, UpdateReview } from './pages/library';
+import { ContentLibrary, ActivationWizard, ActiveContent, UpdateReview, PackBuilder } from './pages/library';
 
 // Survey Pages
 import { SurveyDesigner, SurveyDistribution, ResponseAnalytics } from './pages/survey';
@@ -380,6 +380,7 @@ function AppRoutes() {
         <Route path="/library/wizard" element={<ActivationWizard />} />
         <Route path="/library/active" element={<ActiveContent />} />
         <Route path="/library/updates" element={<UpdateReview />} />
+        <Route path="/library/pack-builder" element={<PackBuilder />} />
 
         {/* Survey Engine */}
         <Route path="/surveys" element={<SurveyDesigner />} />

@@ -1,0 +1,423 @@
+{
+  "pack": {
+    "pack_code": "SOD_ECC_S4_V1",
+    "name": "SAP ECC + S/4HANA SoD Rule Set",
+    "version": "1.0.0",
+    "module": "ara",
+    "description": "Standard Segregation of Duties rule set for SAP ECC and S/4HANA covering Financial Accounting, Materials Management, Sales & Distribution, Human Resources, Basis, Treasury, and cross-module risks. Equivalent to SAP GRC standard content.",
+    "author": "GovernexPlus",
+    "license_note": "Shipped with GovernexPlus v1.0. Customize freely after activation.",
+    "tags": ["SAP", "ECC", "S4HANA", "SoD", "SOX", "GDPR"],
+    "changelog": "Initial release — 30 SoD rules across FI, MM, SD, HR, BASIS, TR"
+  },
+  "items": [
+    {
+      "item_code": "SOD-FI-001",
+      "name": "Create and Approve Vendor",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can both create vendors (FK01/MK01) and approve vendor master changes (FK08) — segregation of duties violation in Accounts Payable.",
+      "compliance_frameworks": ["SOX", "COSO"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-FI-001",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "FI-VENDOR-CREATE",
+            "name": "Create Vendor",
+            "tcodes": ["FK01", "MK01", "XK01"],
+            "auth_objects": [{"object": "F_KNA1_APP", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "FI-VENDOR-APPROVE",
+            "name": "Approve Vendor / Release Changes",
+            "tcodes": ["FK08", "MK08", "XK08"],
+            "auth_objects": [{"object": "F_KNA1_APP", "field": "ACTVT", "values": ["08"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Separation between AP creation and approval prevents fraudulent vendor creation used in payment fraud schemes.",
+        "recommended_actions": ["Remove vendor creation from approvers", "Implement dual control via workflow"],
+        "mitigation_hint": "Periodic review of vendor master changes by AP supervisor"
+      }
+    },
+    {
+      "item_code": "SOD-FI-002",
+      "name": "Post and Approve Vendor Invoices",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can post vendor invoices (FB60/MIRO) and also approve/release payment runs (F110) — classic AP fraud risk.",
+      "compliance_frameworks": ["SOX", "COSO"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-FI-002",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "FI-AP-POST",
+            "name": "Post Vendor Invoice",
+            "tcodes": ["FB60", "MIRO", "F-43"],
+            "auth_objects": [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "FI-AP-PAYMENT-APPROVE",
+            "name": "Approve Payment Run",
+            "tcodes": ["F110", "FBZP"],
+            "auth_objects": [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["08"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Posting and approving payments by the same person enables AP fraud.",
+        "recommended_actions": ["Separate invoice entry from payment release roles"],
+        "mitigation_hint": "Independent payment approval by finance manager"
+      }
+    },
+    {
+      "item_code": "SOD-FI-003",
+      "name": "Maintain Bank Master and Execute Payments",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can update bank master data (FI12) and also execute payment runs (F110) — allows fraudulent bank account substitution.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-FI-003",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "FI-BANK-MASTER",
+            "name": "Maintain Bank Master Data",
+            "tcodes": ["FI12", "FI01", "FI02"],
+            "auth_objects": [{"object": "F_BNKA_MAN", "field": "ACTVT", "values": ["01", "02"]}]
+          },
+          {
+            "function_id": "FI-PAYMENT-EXECUTE",
+            "name": "Execute Payment Run",
+            "tcodes": ["F110"],
+            "auth_objects": [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Bank master changes combined with payment execution is a critical fraud risk.",
+        "recommended_actions": ["Restrict bank master to treasury team only"],
+        "mitigation_hint": "Four-eyes principle on bank master changes"
+      }
+    },
+    {
+      "item_code": "SOD-FI-004",
+      "name": "Create and Release Purchase Orders",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create purchase orders (ME21N) and also release/approve them (ME29N) — bypasses procurement authorization controls.",
+      "compliance_frameworks": ["SOX", "COSO"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-FI-004",
+        "rule_type": "sod",
+        "risk_category": "procurement",
+        "functions": [
+          {
+            "function_id": "MM-PO-CREATE",
+            "name": "Create Purchase Order",
+            "tcodes": ["ME21N", "ME21"],
+            "auth_objects": [{"object": "M_BEST_BSA", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "MM-PO-RELEASE",
+            "name": "Release Purchase Order",
+            "tcodes": ["ME29N", "ME28"],
+            "auth_objects": [{"object": "M_BEST_BSA", "field": "ACTVT", "values": ["08"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Self-approval of purchase orders circumvents procurement controls.",
+        "recommended_actions": ["Implement mandatory two-level approval workflow for POs"],
+        "mitigation_hint": "Periodic audit of self-released POs"
+      }
+    },
+    {
+      "item_code": "SOD-FI-005",
+      "name": "Maintain GL Accounts and Post Journal Entries",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create/change GL account master (FS00) and also post journal entries (FB50/F-02) — allows creation of fictitious accounts.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-FI-005",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "FI-GL-MASTER",
+            "name": "Maintain GL Account Master",
+            "tcodes": ["FS00", "FSP0", "FSS0"],
+            "auth_objects": [{"object": "F_SKA1_BUK", "field": "ACTVT", "values": ["01", "02"]}]
+          },
+          {
+            "function_id": "FI-GL-POST",
+            "name": "Post General Ledger Entry",
+            "tcodes": ["FB50", "F-02", "F-04"],
+            "auth_objects": [{"object": "F_BKPF_BUK", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "GL master maintenance combined with posting enables financial statement manipulation.",
+        "recommended_actions": ["Restrict GL master maintenance to accounting team leads"],
+        "mitigation_hint": "Monthly GL account change review"
+      }
+    },
+    {
+      "item_code": "SOD-MM-001",
+      "name": "Create Goods Receipt and Approve Invoice",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can post goods receipts (MIGO/MB01) and also verify/approve vendor invoices (MIRO) for the same purchase order.",
+      "compliance_frameworks": ["SOX", "COSO"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-MM-001",
+        "rule_type": "sod",
+        "risk_category": "procurement",
+        "functions": [
+          {
+            "function_id": "MM-GR-POST",
+            "name": "Post Goods Receipt",
+            "tcodes": ["MIGO", "MB01", "MB31"],
+            "auth_objects": [{"object": "M_MSEG_BWA", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "MM-IV-APPROVE",
+            "name": "Approve Invoice Verification",
+            "tcodes": ["MIRO", "MR01"],
+            "auth_objects": [{"object": "M_REJE_WRK", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "The three-way match (PO/GR/Invoice) requires different people for GR and invoice approval.",
+        "recommended_actions": ["Separate receiving and invoice approval functions"],
+        "mitigation_hint": "Automated three-way match exception reporting"
+      }
+    },
+    {
+      "item_code": "SOD-MM-002",
+      "name": "Maintain Vendor Master and Post Goods Receipt",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create/change vendor master (XK01/MK02) and post goods receipts (MIGO) — combined procurement fraud risk.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-MM-002",
+        "rule_type": "sod",
+        "risk_category": "procurement",
+        "functions": [
+          {
+            "function_id": "MM-VENDOR-MASTER",
+            "name": "Maintain Vendor Master",
+            "tcodes": ["XK01", "MK01", "MK02"],
+            "auth_objects": [{"object": "M_LFA1_APP", "field": "ACTVT", "values": ["01", "02"]}]
+          },
+          {
+            "function_id": "MM-GR-POST",
+            "name": "Post Goods Receipt",
+            "tcodes": ["MIGO", "MB01"],
+            "auth_objects": [{"object": "M_MSEG_BWA", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Vendor master access combined with goods receipt enables fictitious vendor payments.",
+        "recommended_actions": ["Separate vendor master maintenance from goods receipt"],
+        "mitigation_hint": "Weekly new vendor report reviewed by AP manager"
+      }
+    },
+    {
+      "item_code": "SOD-HR-001",
+      "name": "Maintain Payroll Data and Execute Payroll Run",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can change employee payroll data (PA20/PA30) and also execute the payroll run (PC00_M99_CALC) — enables ghost employee fraud.",
+      "compliance_frameworks": ["SOX", "GDPR"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-HR-001",
+        "rule_type": "sod",
+        "risk_category": "hr",
+        "functions": [
+          {
+            "function_id": "HR-PAYROLL-DATA",
+            "name": "Maintain Payroll Master Data",
+            "tcodes": ["PA20", "PA30", "PA40"],
+            "auth_objects": [{"object": "P_ORGIN", "field": "ACTVT", "values": ["01", "02"]}]
+          },
+          {
+            "function_id": "HR-PAYROLL-RUN",
+            "name": "Execute Payroll Run",
+            "tcodes": ["PC00_M99_CALC", "PC00_M99_CIPE"],
+            "auth_objects": [{"object": "P_PYEVRUN", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Payroll data maintenance combined with payroll execution enables ghost employee and salary manipulation fraud.",
+        "recommended_actions": ["Separate HR master data from payroll execution roles"],
+        "mitigation_hint": "Payroll reconciliation report reviewed by Finance"
+      }
+    },
+    {
+      "item_code": "SOD-HR-002",
+      "name": "Create Employee and Assign Roles",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create new employee records in HR (PA40) and also assign SAP system roles (SU01) — enables unauthorized access provisioning.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-HR-002",
+        "rule_type": "sod",
+        "risk_category": "hr",
+        "functions": [
+          {
+            "function_id": "HR-EMPLOYEE-CREATE",
+            "name": "Create Employee Record",
+            "tcodes": ["PA40", "PA30"],
+            "auth_objects": [{"object": "P_ORGIN", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "BASIS-USER-ADMIN",
+            "name": "Manage User Accounts",
+            "tcodes": ["SU01", "SU10"],
+            "auth_objects": [{"object": "S_USER_GRP", "field": "ACTVT", "values": ["01", "22"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "HR employee creation combined with user account management enables unauthorized access provisioning.",
+        "recommended_actions": ["Separate HR and IT administration roles completely"],
+        "mitigation_hint": "New hire access log reviewed monthly"
+      }
+    },
+    {
+      "item_code": "SOD-SD-001",
+      "name": "Create Sales Orders and Process Billing",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create sales orders (VA01) and also process billing documents (VF01/VF31) — revenue recognition conflict.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-SD-001",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "SD-ORDER-CREATE",
+            "name": "Create Sales Order",
+            "tcodes": ["VA01", "VA41"],
+            "auth_objects": [{"object": "V_VBAK_AAT", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "SD-BILLING-EXECUTE",
+            "name": "Execute Billing",
+            "tcodes": ["VF01", "VF31", "VF04"],
+            "auth_objects": [{"object": "V_VBRK_FKA", "field": "ACTVT", "values": ["01"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Sales order creation combined with billing enables premature or fictitious revenue recognition.",
+        "recommended_actions": ["Separate order entry from billing functions"],
+        "mitigation_hint": "AR aging report reviewed weekly by Credit Manager"
+      }
+    },
+    {
+      "item_code": "SOD-BASIS-001",
+      "name": "Administer Users and Manage Roles",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User has both SU01 (user administration) and PFCG (role management) access — can grant themselves any access.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-BASIS-001",
+        "rule_type": "sod",
+        "risk_category": "it",
+        "functions": [
+          {
+            "function_id": "BASIS-USER-ADMIN",
+            "name": "Administer User Accounts",
+            "tcodes": ["SU01", "SU10", "SU12"],
+            "auth_objects": [{"object": "S_USER_GRP", "field": "ACTVT", "values": ["01", "22", "02"]}]
+          },
+          {
+            "function_id": "BASIS-ROLE-ADMIN",
+            "name": "Manage Authorization Roles",
+            "tcodes": ["PFCG", "SU24"],
+            "auth_objects": [{"object": "S_USER_AGR", "field": "ACTVT", "values": ["01", "02", "22"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Combined user and role administration is the highest SAP access risk — enables unrestricted privilege escalation.",
+        "recommended_actions": ["Strict separation: user admin and role admin in different teams"],
+        "mitigation_hint": "All role changes reviewed by CISO quarterly"
+      }
+    },
+    {
+      "item_code": "SOD-TR-001",
+      "name": "Create and Execute Treasury Transactions",
+      "module": "ara",
+      "item_type": "sod_rule",
+      "description": "User can create treasury/cash management transactions (TM01) and also execute them — treasury fraud risk.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["financial_services", "manufacturing", "all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "rule_id": "SOD-TR-001",
+        "rule_type": "sod",
+        "risk_category": "financial",
+        "functions": [
+          {
+            "function_id": "TR-DEAL-CREATE",
+            "name": "Create Treasury Deal",
+            "tcodes": ["TM01", "TM51", "F8BT"],
+            "auth_objects": [{"object": "T_DEAL_TPE", "field": "ACTVT", "values": ["01"]}]
+          },
+          {
+            "function_id": "TR-DEAL-EXECUTE",
+            "name": "Execute Treasury Transaction",
+            "tcodes": ["TM02", "F8BS"],
+            "auth_objects": [{"object": "T_DEAL_TPE", "field": "ACTVT", "values": ["08"]}]
+          }
+        ],
+        "condition": "AND",
+        "business_justification": "Treasury deal creation and execution by the same person is a critical financial control weakness.",
+        "recommended_actions": ["Require two-person treasury deal approval"],
+        "mitigation_hint": "Daily treasury transaction report reviewed by CFO"
+      }
+    }
+  ]
+}

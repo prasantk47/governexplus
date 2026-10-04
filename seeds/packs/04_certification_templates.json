@@ -1,0 +1,153 @@
+{
+  "pack": {
+    "pack_code": "CERT_TEMPLATES_V1",
+    "name": "Access Certification Campaign Templates",
+    "version": "1.0.0",
+    "module": "certification",
+    "description": "Ready-to-launch certification campaign templates: quarterly user access review, role-owner driven review, and firefighter ID recertification. Covers SOX, ISO 27001, and SOC 2 certification requirements.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 3 campaign templates"
+  },
+  "items": [
+    {
+      "item_code": "CERT-TPL-001",
+      "name": "Quarterly User Access Review (UAR)",
+      "module": "certification",
+      "item_type": "certification_template",
+      "description": "Quarterly manager-led user access review. Each manager certifies the access of their direct reports. Flags SoD conflicts, dormant accounts, and privileged access for mandatory review. SOX and SOC 2 aligned.",
+      "compliance_frameworks": ["SOX", "SOC2", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "campaign_type": "user_access_review",
+        "frequency": "quarterly",
+        "schedule": {
+          "trigger": "scheduled",
+          "months": [1, 4, 7, 10],
+          "day_of_month": 1,
+          "duration_days": 21
+        },
+        "reviewer_assignment": {
+          "strategy": "direct_manager",
+          "fallback": "skip_level_manager",
+          "allow_delegate": true,
+          "exclude_self_certification": true
+        },
+        "scope": {
+          "include_systems": ["SAP_ECC", "SAP_S4", "SAP_BTP", "AD", "ALL"],
+          "include_role_types": ["business", "technical", "privileged"],
+          "include_dormant_threshold_days": 90,
+          "include_sod_conflicts": true,
+          "include_privileged_access": true
+        },
+        "decisions": ["certify", "revoke", "modify"],
+        "require_comment_on_certify_if_sod_conflict": true,
+        "require_comment_on_revoke": true,
+        "auto_revoke_on_no_response": false,
+        "escalation": {
+          "reminder_at_days": [7, 14],
+          "escalate_at_days": 18,
+          "escalate_to": "compliance_officer"
+        },
+        "reporting": {
+          "completion_report": true,
+          "exception_report": true,
+          "sod_conflict_report": true
+        }
+      }
+    },
+    {
+      "item_code": "CERT-TPL-002",
+      "name": "Role Owner Access Certification",
+      "module": "certification",
+      "item_type": "certification_template",
+      "description": "Semi-annual role-owner driven certification. Each role owner reviews who holds their role(s) and certifies or revokes membership. Ideal for sensitive roles, privileged profiles, and composite roles.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "campaign_type": "role_ownership_review",
+        "frequency": "semi_annual",
+        "schedule": {
+          "trigger": "scheduled",
+          "months": [1, 7],
+          "day_of_month": 15,
+          "duration_days": 14
+        },
+        "reviewer_assignment": {
+          "strategy": "role_owner",
+          "fallback": "security_team",
+          "allow_delegate": false,
+          "exclude_self_certification": true
+        },
+        "scope": {
+          "include_role_types": ["sensitive", "privileged", "composite", "custom"],
+          "min_user_count": 1,
+          "include_sod_conflicts": true
+        },
+        "decisions": ["certify", "revoke", "request_justification"],
+        "require_comment_on_certify": false,
+        "require_comment_on_revoke": true,
+        "auto_revoke_on_no_response": false,
+        "escalation": {
+          "reminder_at_days": [5, 10],
+          "escalate_at_days": 12,
+          "escalate_to": "ciso"
+        },
+        "reporting": {
+          "completion_report": true,
+          "role_population_report": true
+        }
+      }
+    },
+    {
+      "item_code": "CERT-TPL-003",
+      "name": "Firefighter ID Recertification",
+      "module": "certification",
+      "item_type": "certification_template",
+      "description": "Quarterly recertification of all active Firefighter IDs. Each FF owner certifies continued business need, usage history is reviewed, and unused IDs are flagged for automatic deactivation.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "campaign_type": "firefighter_review",
+        "frequency": "quarterly",
+        "schedule": {
+          "trigger": "scheduled",
+          "months": [1, 4, 7, 10],
+          "day_of_month": 5,
+          "duration_days": 14
+        },
+        "reviewer_assignment": {
+          "strategy": "ff_controller",
+          "fallback": "ciso",
+          "allow_delegate": false,
+          "exclude_self_certification": true
+        },
+        "scope": {
+          "include_ff_status": ["active", "inactive"],
+          "include_usage_stats": true,
+          "unused_threshold_days": 90
+        },
+        "decisions": ["recertify", "deactivate", "modify_scope"],
+        "require_comment_on_recertify": false,
+        "require_comment_on_deactivate": true,
+        "auto_deactivate_unused": true,
+        "auto_deactivate_threshold_days": 90,
+        "escalation": {
+          "reminder_at_days": [5, 10],
+          "escalate_at_days": 12,
+          "escalate_to": "ciso"
+        },
+        "reporting": {
+          "completion_report": true,
+          "ff_usage_report": true,
+          "deactivation_report": true
+        }
+      }
+    }
+  ]
+}

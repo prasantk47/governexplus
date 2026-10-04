@@ -1,0 +1,220 @@
+{
+  "pack": {
+    "pack_code": "SURVEY_BANKS_V1",
+    "name": "GRC Assessment Survey Question Banks",
+    "version": "1.0.0",
+    "module": "survey",
+    "description": "Pre-built survey question banks for GRC assessments: vendor/third-party risk assessment, control self-assessment (CSA), and IT general controls questionnaire. Ready to launch or customize per tenant.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 3 survey banks"
+  },
+  "items": [
+    {
+      "item_code": "SURV-TPRM-001",
+      "name": "Third-Party Risk Assessment Questionnaire",
+      "module": "survey",
+      "item_type": "questionnaire",
+      "description": "Standard vendor/third-party risk assessment covering information security controls, data handling practices, business continuity, compliance, and subcontractor management. Suitable for Tier 1 and Tier 2 vendor assessments.",
+      "compliance_frameworks": ["ISO27001", "SOC2", "GDPR"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "survey_type": "vendor_risk_assessment",
+        "estimated_minutes": 30,
+        "scoring_model": "weighted_average",
+        "sections": [
+          {
+            "section_id": "s1",
+            "title": "Information Security Governance",
+            "weight": 0.20,
+            "questions": [
+              {"id": "s1q1", "text": "Does your organization have a documented Information Security Policy approved by senior management?", "type": "yes_no_na", "weight": 1.0, "required": true},
+              {"id": "s1q2", "text": "Does your organization have a dedicated CISO or equivalent role responsible for information security?", "type": "yes_no_na", "weight": 0.8},
+              {"id": "s1q3", "text": "Is your organization certified against ISO/IEC 27001 or SOC 2?", "type": "multiple_choice", "options": ["ISO 27001 certified", "SOC 2 Type II", "SOC 2 Type I", "In progress", "None"], "weight": 1.0},
+              {"id": "s1q4", "text": "When was your most recent third-party security assessment or penetration test?", "type": "multiple_choice", "options": ["Within 12 months", "12-24 months ago", "More than 24 months ago", "Never"], "weight": 0.9}
+            ]
+          },
+          {
+            "section_id": "s2",
+            "title": "Access Control",
+            "weight": 0.20,
+            "questions": [
+              {"id": "s2q1", "text": "Is multi-factor authentication (MFA) enforced for all users accessing systems that process our data?", "type": "yes_no_na", "weight": 1.0, "required": true},
+              {"id": "s2q2", "text": "Is user access reviewed and recertified at least annually?", "type": "yes_no_na", "weight": 0.9},
+              {"id": "s2q3", "text": "Is access promptly revoked upon employee termination (within 24 hours)?", "type": "yes_no_na", "weight": 1.0},
+              {"id": "s2q4", "text": "Is privileged access (admin accounts) controlled via PAM or equivalent?", "type": "yes_no_na", "weight": 0.8}
+            ]
+          },
+          {
+            "section_id": "s3",
+            "title": "Data Protection",
+            "weight": 0.20,
+            "questions": [
+              {"id": "s3q1", "text": "Is data encrypted at rest using AES-256 or equivalent?", "type": "yes_no_na", "weight": 1.0, "required": true},
+              {"id": "s3q2", "text": "Is data encrypted in transit using TLS 1.2 or higher?", "type": "yes_no_na", "weight": 1.0},
+              {"id": "s3q3", "text": "Do you maintain a data processing register identifying where our data is stored and processed?", "type": "yes_no_na", "weight": 0.8},
+              {"id": "s3q4", "text": "What is your data retention policy for data processed on our behalf?", "type": "text", "max_length": 500}
+            ]
+          },
+          {
+            "section_id": "s4",
+            "title": "Incident Response",
+            "weight": 0.15,
+            "questions": [
+              {"id": "s4q1", "text": "Do you have a documented Incident Response Plan that has been tested within the last 12 months?", "type": "yes_no_na", "weight": 1.0},
+              {"id": "s4q2", "text": "What is your contractual commitment for notifying us of security incidents affecting our data?", "type": "multiple_choice", "options": ["Within 24 hours", "Within 48 hours", "Within 72 hours", "Within 5 business days", "No commitment"], "weight": 1.0},
+              {"id": "s4q3", "text": "Describe your incident response capability (team, tools, and process).", "type": "text", "max_length": 1000}
+            ]
+          },
+          {
+            "section_id": "s5",
+            "title": "Business Continuity",
+            "weight": 0.15,
+            "questions": [
+              {"id": "s5q1", "text": "Do you have a tested Business Continuity Plan (BCP) and Disaster Recovery Plan (DRP)?", "type": "yes_no_na", "weight": 1.0},
+              {"id": "s5q2", "text": "What is your Recovery Time Objective (RTO) for services provided to us?", "type": "multiple_choice", "options": ["< 4 hours", "4-8 hours", "8-24 hours", "1-3 days", "> 3 days", "Not defined"], "weight": 0.9},
+              {"id": "s5q3", "text": "When was your last DR test performed?", "type": "multiple_choice", "options": ["Within 12 months", "12-24 months ago", "More than 24 months ago", "Never"]}
+            ]
+          },
+          {
+            "section_id": "s6",
+            "title": "Subcontractors and Fourth Parties",
+            "weight": 0.10,
+            "questions": [
+              {"id": "s6q1", "text": "Do you use subcontractors or sub-processors that will handle our data?", "type": "yes_no_na", "weight": 0.8},
+              {"id": "s6q2", "text": "If yes, do you perform risk assessments on these subcontractors?", "type": "yes_no_na", "weight": 1.0, "conditional_on": "s6q1=yes"},
+              {"id": "s6q3", "text": "Please list the primary subcontractors/sub-processors involved in our services.", "type": "text", "max_length": 1000, "conditional_on": "s6q1=yes"}
+            ]
+          }
+        ],
+        "scoring_thresholds": {
+          "low_risk": {"min": 80, "label": "Low Risk"},
+          "medium_risk": {"min": 60, "max": 79, "label": "Medium Risk"},
+          "high_risk": {"min": 40, "max": 59, "label": "High Risk"},
+          "critical_risk": {"max": 39, "label": "Critical Risk — Do Not Engage"}
+        }
+      }
+    },
+    {
+      "item_code": "SURV-CSA-001",
+      "name": "Control Self-Assessment (CSA) Survey",
+      "module": "survey",
+      "item_type": "questionnaire",
+      "description": "Annual control self-assessment questionnaire for business unit managers. Covers key COSO control objectives: control environment, risk assessment, control activities, information/communication, and monitoring.",
+      "compliance_frameworks": ["SOX", "SOC2"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "survey_type": "control_self_assessment",
+        "target_audience": "business_unit_managers",
+        "estimated_minutes": 20,
+        "scoring_model": "average",
+        "sections": [
+          {
+            "section_id": "s1",
+            "title": "Control Environment",
+            "questions": [
+              {"id": "s1q1", "text": "Management in my area demonstrates commitment to ethical behavior and integrity.", "type": "likert_5", "scale": ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"], "weight": 1.0},
+              {"id": "s1q2", "text": "Responsibilities for key controls are clearly defined and communicated.", "type": "likert_5", "weight": 1.0},
+              {"id": "s1q3", "text": "Staff receive adequate training on relevant controls and compliance requirements.", "type": "likert_5", "weight": 0.8}
+            ]
+          },
+          {
+            "section_id": "s2",
+            "title": "Risk Assessment",
+            "questions": [
+              {"id": "s2q1", "text": "Key risks in my area are identified and documented.", "type": "likert_5", "weight": 1.0},
+              {"id": "s2q2", "text": "Risk assessments are updated when significant changes occur in my area.", "type": "likert_5", "weight": 0.9},
+              {"id": "s2q3", "text": "I am aware of the top risks in my business area and the controls in place.", "type": "likert_5", "weight": 0.8}
+            ]
+          },
+          {
+            "section_id": "s3",
+            "title": "Control Activities",
+            "questions": [
+              {"id": "s3q1", "text": "Appropriate controls exist to mitigate key risks in my area.", "type": "likert_5", "weight": 1.0},
+              {"id": "s3q2", "text": "Controls are performed consistently and as documented.", "type": "likert_5", "weight": 1.0},
+              {"id": "s3q3", "text": "Segregation of duties is maintained for critical processes in my area.", "type": "likert_5", "weight": 1.0},
+              {"id": "s3q4", "text": "Identify any controls in your area that you believe are not operating effectively.", "type": "text", "max_length": 500}
+            ]
+          },
+          {
+            "section_id": "s4",
+            "title": "Information and Communication",
+            "questions": [
+              {"id": "s4q1", "text": "I receive timely and accurate information needed to perform my control responsibilities.", "type": "likert_5", "weight": 0.8},
+              {"id": "s4q2", "text": "Control deficiencies and issues are communicated to management promptly.", "type": "likert_5", "weight": 0.9}
+            ]
+          },
+          {
+            "section_id": "s5",
+            "title": "Monitoring",
+            "questions": [
+              {"id": "s5q1", "text": "Management monitoring activities (reviews, reconciliations) are performed regularly.", "type": "likert_5", "weight": 0.9},
+              {"id": "s5q2", "text": "Control deficiencies identified are remediated in a timely manner.", "type": "likert_5", "weight": 1.0},
+              {"id": "s5q3", "text": "Describe any significant control weaknesses or gaps you are aware of in your area.", "type": "text", "max_length": 1000, "required": false}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "item_code": "SURV-ITGC-001",
+      "name": "IT General Controls Questionnaire",
+      "module": "survey",
+      "item_type": "questionnaire",
+      "description": "IT manager self-assessment questionnaire covering the four ITGC domains: logical access controls, change management, computer operations, and data backup/recovery. Used for annual ITGC attestation.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "survey_type": "itgc_attestation",
+        "target_audience": "it_managers",
+        "estimated_minutes": 15,
+        "scoring_model": "pass_fail",
+        "sections": [
+          {
+            "section_id": "s1",
+            "title": "Logical Access Controls",
+            "questions": [
+              {"id": "s1q1", "text": "User access is provisioned only upon documented management authorization.", "type": "yes_no_exception", "weight": 1.0, "required": true},
+              {"id": "s1q2", "text": "Terminated user access is revoked within 24 hours.", "type": "yes_no_exception", "weight": 1.0, "required": true},
+              {"id": "s1q3", "text": "Privileged access is reviewed quarterly.", "type": "yes_no_exception", "weight": 1.0},
+              {"id": "s1q4", "text": "User access is reviewed annually (or more frequently for privileged roles).", "type": "yes_no_exception", "weight": 1.0}
+            ]
+          },
+          {
+            "section_id": "s2",
+            "title": "Change Management",
+            "questions": [
+              {"id": "s2q1", "text": "All production changes are authorized via the change management process before implementation.", "type": "yes_no_exception", "weight": 1.0},
+              {"id": "s2q2", "text": "Developers do not have the ability to migrate their own changes to production.", "type": "yes_no_exception", "weight": 1.0},
+              {"id": "s2q3", "text": "Emergency changes follow the documented emergency change procedure.", "type": "yes_no_exception", "weight": 0.9}
+            ]
+          },
+          {
+            "section_id": "s3",
+            "title": "Computer Operations",
+            "questions": [
+              {"id": "s3q1", "text": "Critical batch jobs are monitored for successful completion.", "type": "yes_no_exception", "weight": 0.9},
+              {"id": "s3q2", "text": "Job failures are alerted to operations staff and resolved per documented procedures.", "type": "yes_no_exception", "weight": 0.9},
+              {"id": "s3q3", "text": "System availability is monitored with alerts for threshold breaches.", "type": "yes_no_exception", "weight": 0.8}
+            ]
+          },
+          {
+            "section_id": "s4",
+            "title": "Data Backup and Recovery",
+            "questions": [
+              {"id": "s4q1", "text": "Production system data is backed up daily.", "type": "yes_no_exception", "weight": 1.0},
+              {"id": "s4q2", "text": "Backup recovery has been successfully tested within the last 12 months.", "type": "yes_no_exception", "weight": 1.0},
+              {"id": "s4q3", "text": "Backups are stored in a geographically separate location.", "type": "yes_no_exception", "weight": 0.9}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

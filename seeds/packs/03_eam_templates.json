@@ -1,0 +1,210 @@
+{
+  "pack": {
+    "pack_code": "EAM_TEMPLATES_V1",
+    "name": "Emergency Access Management Templates",
+    "version": "1.0.0",
+    "module": "eam",
+    "description": "Firefighter / Emergency Access Management templates: reason code catalog, log review workflow, and FF ID naming policy. Designed for SAP ECC and S/4HANA firefighter scenarios.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — reason codes, log review workflow, FF naming policy"
+  },
+  "items": [
+    {
+      "item_code": "EAM-RC-001",
+      "name": "Standard Firefighter Reason Code Catalog",
+      "module": "eam",
+      "item_type": "access_policy",
+      "description": "Standard catalog of business-justified reason codes that must be selected when logging into a Firefighter ID. Covers critical incident response, change management, audit support, and emergency batch processing.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "policy_type": "reason_code_catalog",
+        "reason_codes": [
+          {
+            "code": "CIR-001",
+            "label": "Critical Incident Response",
+            "description": "Production system down or critically degraded — requires immediate intervention",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 4
+          },
+          {
+            "code": "CIR-002",
+            "label": "Security Incident Response",
+            "description": "Active security breach, unauthorized access, or data integrity issue under investigation",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 8
+          },
+          {
+            "code": "CHG-001",
+            "label": "Emergency Change",
+            "description": "Approved emergency change request requiring direct system access outside normal channels",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 4
+          },
+          {
+            "code": "CHG-002",
+            "label": "Scheduled Maintenance",
+            "description": "Planned maintenance window — FF access pre-approved by Change Advisory Board",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 8
+          },
+          {
+            "code": "AUD-001",
+            "label": "Audit Support",
+            "description": "External or internal audit evidence gathering requiring access to restricted data",
+            "requires_incident_ticket": false,
+            "max_duration_hours": 2
+          },
+          {
+            "code": "AUD-002",
+            "label": "Compliance Remediation",
+            "description": "Corrective action from audit finding requiring direct data correction under supervision",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 4
+          },
+          {
+            "code": "BAT-001",
+            "label": "Emergency Batch Processing",
+            "description": "Critical batch job failure requiring manual restart or data correction in production",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 2
+          },
+          {
+            "code": "DEV-001",
+            "label": "Production Data Fix",
+            "description": "Approved data correction in production system — requires DBA or system owner co-sign",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 2
+          },
+          {
+            "code": "REG-001",
+            "label": "Regulatory Deadline",
+            "description": "Statutory or regulatory reporting deadline requiring emergency data access or correction",
+            "requires_incident_ticket": false,
+            "max_duration_hours": 8
+          },
+          {
+            "code": "OTH-001",
+            "label": "Other - Management Approved",
+            "description": "Business-justified access not covered by standard codes — requires manager pre-approval documented in ticket",
+            "requires_incident_ticket": true,
+            "max_duration_hours": 2
+          }
+        ],
+        "enforcement": {
+          "require_reason_code_on_login": true,
+          "require_ticket_number_if_flagged": true,
+          "auto_expire_after_max_duration": true,
+          "send_alert_on_use": true,
+          "alert_recipients": ["controller", "ciso", "ff_owner"]
+        }
+      }
+    },
+    {
+      "item_code": "EAM-WF-001",
+      "name": "Firefighter Log Review Workflow",
+      "module": "eam",
+      "item_type": "workflow",
+      "description": "Post-use log review workflow triggered automatically after each firefighter session. Routes activity log to the FF controller for review and sign-off within the configured SLA.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "workflow_type": "firefighter_log_review",
+        "trigger": "session_end",
+        "stages": [
+          {
+            "stage_id": "auto_analysis",
+            "stage_name": "Automated Activity Analysis",
+            "stage_type": "automated",
+            "order": 1,
+            "config": {
+              "action": "analyze_ff_log",
+              "flag_sensitive_tcodes": true,
+              "flag_config_changes": true,
+              "flag_user_admin": true,
+              "flag_financial_posting": true,
+              "risk_score_threshold": 50
+            }
+          },
+          {
+            "stage_id": "controller_review",
+            "stage_name": "Controller Review & Sign-Off",
+            "stage_type": "human",
+            "order": 2,
+            "config": {
+              "approver_type": "ff_controller",
+              "sla_hours": 72,
+              "on_sla_breach": "escalate_to_ciso",
+              "require_comment": true,
+              "allow_delegate": false,
+              "actions": ["approve_log", "flag_violation", "request_explanation"]
+            }
+          },
+          {
+            "stage_id": "violation_handling",
+            "stage_name": "Violation Escalation",
+            "stage_type": "conditional",
+            "order": 3,
+            "config": {
+              "condition": "previous_stage_action == 'flag_violation'",
+              "then": "create_risk_violation",
+              "risk_severity": "high",
+              "notify": ["ciso", "manager", "compliance_officer"]
+            }
+          }
+        ],
+        "sla_hours": 72,
+        "archive_logs_after_days": 365,
+        "require_sign_off_for_sox_compliance": true
+      }
+    },
+    {
+      "item_code": "EAM-POL-001",
+      "name": "Firefighter ID Naming and Provisioning Policy",
+      "module": "eam",
+      "item_type": "access_policy",
+      "description": "Defines naming conventions, provisioning rules, ownership requirements, and periodic review obligations for Firefighter IDs in SAP systems.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "policy_type": "ff_id_governance",
+        "naming_convention": {
+          "prefix": "FF_",
+          "format": "FF_{SYSTEM_CODE}_{SEQUENCE}",
+          "examples": ["FF_PRD_001", "FF_PRD_002", "FF_QA_001"],
+          "max_length": 12,
+          "allowed_characters": "[A-Z0-9_]"
+        },
+        "provisioning_rules": {
+          "require_ff_owner": true,
+          "require_ff_controller": true,
+          "owner_cannot_be_controller": true,
+          "max_firefighters_per_owner": 5,
+          "require_periodic_review_days": 90,
+          "auto_disable_if_not_used_days": 90,
+          "require_business_justification": true
+        },
+        "access_rules": {
+          "max_session_duration_hours": 8,
+          "require_reason_code": true,
+          "require_ticket_reference": true,
+          "dual_control_for_critical_systems": false,
+          "prohibited_during_close_periods": false,
+          "allowed_time_windows": null
+        },
+        "periodic_review": {
+          "frequency_days": 90,
+          "reviewer": "ff_controller",
+          "escalate_overdue_to": "ciso",
+          "actions": ["recertify", "revoke", "modify_scope"]
+        }
+      }
+    }
+  ]
+}

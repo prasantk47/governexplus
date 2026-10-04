@@ -1,0 +1,294 @@
+{
+  "pack": {
+    "pack_code": "ISO27001_ANNEX_A_V1",
+    "name": "ISO/IEC 27001:2022 Annex A Controls",
+    "version": "1.0.0",
+    "module": "process_control",
+    "description": "Key ISO/IEC 27001:2022 Annex A controls relevant to GRC platforms, focusing on access control (A.5.15-A.5.18), identity management (A.5.16), privileged access (A.8.2), and information classification (A.5.12). Mapped to new 2022 control numbering.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 12 ISO 27001:2022 Annex A controls"
+  },
+  "items": [
+    {
+      "item_code": "PC-ISO-5.15",
+      "name": "Access Control Policy (A.5.15)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Rules to control physical and logical access to information and other associated assets shall be established and implemented based on business and information security requirements.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 5.15",
+        "control_category": "Organisational",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive", "Directive"],
+        "cybersecurity_concept": "Protect",
+        "test_procedure": [
+          "Review the documented Access Control Policy and confirm it is approved and current",
+          "Verify the policy covers need-to-know, need-to-use principles",
+          "Confirm policy is communicated to all relevant personnel",
+          "Review access request logs to confirm adherence to policy"
+        ],
+        "evidence_requirements": [
+          "Approved Access Control Policy document",
+          "Policy distribution/acknowledgement records",
+          "Access request and approval logs"
+        ],
+        "key_risk": "Unauthorized access to information and systems",
+        "automated_in_governex": true,
+        "governex_control_point": "ara.access_policy"
+      }
+    },
+    {
+      "item_code": "PC-ISO-5.16",
+      "name": "Identity Management (A.5.16)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "The full life cycle of identities shall be managed. Unique identifiers shall be assigned to individuals and the identity lifecycle (create, maintain, disable, delete) shall be governed by documented procedures.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 5.16",
+        "control_category": "Organisational",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive"],
+        "cybersecurity_concept": "Protect",
+        "test_procedure": [
+          "Verify all users have unique identifiers (no shared accounts)",
+          "Review JML procedures for on-boarding and off-boarding",
+          "Confirm disabled/deleted identities cannot be reactivated without re-approval",
+          "Test that orphaned accounts are detected and reviewed"
+        ],
+        "evidence_requirements": [
+          "Identity lifecycle policy",
+          "Unique identifier assignment records",
+          "Orphaned account review log"
+        ],
+        "key_risk": "Shared or orphaned accounts enabling untracked access",
+        "automated_in_governex": true,
+        "governex_control_point": "jml.identity_lifecycle"
+      }
+    },
+    {
+      "item_code": "PC-ISO-5.17",
+      "name": "Authentication Information (A.5.17)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Allocation and management of authentication information shall be controlled by a management process, including advising personnel on appropriate handling of authentication information.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 5.17",
+        "control_category": "Organisational",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive"],
+        "cybersecurity_concept": "Protect",
+        "requirements": {
+          "min_password_length": 12,
+          "complexity_required": true,
+          "mfa_required_for_privileged": true,
+          "mfa_required_for_remote": true,
+          "password_history": 12,
+          "max_age_days": 90,
+          "lockout_after_attempts": 5
+        },
+        "test_procedure": [
+          "Review password policy settings and compare to minimum requirements",
+          "Verify MFA is enforced for privileged accounts",
+          "Confirm temporary credentials require change at first logon",
+          "Review account lockout configuration"
+        ],
+        "evidence_requirements": [
+          "Password policy configuration screenshot",
+          "MFA enrollment report for privileged accounts",
+          "Account lockout policy evidence"
+        ],
+        "key_risk": "Weak authentication enabling unauthorized account compromise",
+        "automated_in_governex": false,
+        "governex_control_point": null
+      }
+    },
+    {
+      "item_code": "PC-ISO-5.18",
+      "name": "Access Rights (A.5.18)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Access rights to information and other associated assets shall be provisioned, reviewed, modified and removed in accordance with the organization's topic-specific access control policy.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 5.18",
+        "control_category": "Organisational",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive", "Corrective"],
+        "cybersecurity_concept": "Protect",
+        "review_frequency": "annual",
+        "test_procedure": [
+          "Verify formal access provisioning process exists and is followed",
+          "Confirm periodic access reviews are performed (at minimum annually)",
+          "Test that access changes are authorized and logged",
+          "Verify access removal upon role change or termination"
+        ],
+        "evidence_requirements": [
+          "Access provisioning logs",
+          "Periodic access review reports",
+          "Access change authorization records"
+        ],
+        "key_risk": "Excessive access accumulation enabling privilege abuse",
+        "automated_in_governex": true,
+        "governex_control_point": "certification.CERT-TPL-001"
+      }
+    },
+    {
+      "item_code": "PC-ISO-8.2",
+      "name": "Privileged Access Rights (A.8.2)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "The allocation and use of privileged access rights shall be restricted and managed. Users shall only be granted privileged access when needed and appropriate. Regular reviews of privileged access shall be conducted.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 8.2",
+        "control_category": "Technological",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive"],
+        "cybersecurity_concept": "Protect",
+        "review_frequency": "quarterly",
+        "test_procedure": [
+          "Obtain inventory of all privileged accounts across systems",
+          "Verify formal approval exists for each privileged account",
+          "Confirm periodic review performed and approved quarterly",
+          "Verify privileged accounts are not used for routine tasks"
+        ],
+        "evidence_requirements": [
+          "Privileged account inventory",
+          "Approval records for privileged accounts",
+          "Quarterly review sign-offs"
+        ],
+        "key_risk": "Abuse of privileged access to modify systems or extract data",
+        "automated_in_governex": true,
+        "governex_control_point": "eam.ff_governance"
+      }
+    },
+    {
+      "item_code": "PC-ISO-8.3",
+      "name": "Information Access Restriction (A.8.3)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Access to information and application system functions shall be restricted in accordance with the established topic-specific access control policy. Need-to-know and least-privilege principles are enforced.",
+      "compliance_frameworks": ["ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "medium",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 8.3",
+        "control_category": "Technological",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive"],
+        "cybersecurity_concept": "Protect",
+        "test_procedure": [
+          "Review role design for least-privilege adherence",
+          "Test that menu and transaction access is restricted to job function",
+          "Verify sensitive data fields are masked for unauthorized viewers",
+          "Review SoD conflict analysis results"
+        ],
+        "evidence_requirements": [
+          "Role design documentation",
+          "Authorization object configuration",
+          "SoD analysis report"
+        ],
+        "key_risk": "Broad access enabling data exfiltration or unauthorized modification",
+        "automated_in_governex": true,
+        "governex_control_point": "ara.sod_analysis"
+      }
+    },
+    {
+      "item_code": "PC-ISO-5.12",
+      "name": "Classification of Information (A.5.12)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Information shall be classified according to the information security needs of the organization based on confidentiality, integrity, availability requirements, and criticality.",
+      "compliance_frameworks": ["ISO27001", "GDPR"],
+      "industry_tags": ["all"],
+      "severity": "medium",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 5.12",
+        "control_category": "Organisational",
+        "control_type": "preventive",
+        "control_attribute": ["Preventive", "Directive"],
+        "cybersecurity_concept": "Identify",
+        "classification_levels": [
+          {"level": 1, "label": "Public", "description": "Information approved for public release"},
+          {"level": 2, "label": "Internal", "description": "Internal business information — no external disclosure"},
+          {"level": 3, "label": "Confidential", "description": "Sensitive business information — restricted distribution"},
+          {"level": 4, "label": "Restricted", "description": "Highly sensitive — individual need-to-know only (PII, PCI, trade secrets)"}
+        ],
+        "test_procedure": [
+          "Verify classification scheme is documented and approved",
+          "Confirm classification is applied to key information assets",
+          "Review handling procedures for each classification level",
+          "Test that confidential/restricted data has appropriate access controls"
+        ],
+        "evidence_requirements": [
+          "Information classification policy",
+          "Data asset inventory with classifications",
+          "Access control mappings per classification"
+        ],
+        "key_risk": "Inadequate protection of sensitive information due to missing classification",
+        "automated_in_governex": false,
+        "governex_control_point": null
+      }
+    },
+    {
+      "item_code": "PC-ISO-8.15",
+      "name": "Logging (A.8.15)",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Logs that record activities, exceptions, faults and other relevant events shall be produced, stored, protected and analysed. Audit trails for security-relevant events are retained for a minimum of 12 months.",
+      "compliance_frameworks": ["ISO27001", "SOX"],
+      "industry_tags": ["all"],
+      "severity": "medium",
+      "version": "1.0.0",
+      "payload": {
+        "iso_reference": "ISO/IEC 27001:2022 Annex A 8.15",
+        "control_category": "Technological",
+        "control_type": "detective",
+        "control_attribute": ["Detective"],
+        "cybersecurity_concept": "Detect",
+        "retention_days": 365,
+        "log_types": [
+          "Authentication success/failure",
+          "Privileged account activity",
+          "Configuration changes",
+          "Access control changes",
+          "Financial transaction postings"
+        ],
+        "test_procedure": [
+          "Verify audit logging is enabled for all security-relevant events",
+          "Confirm logs are retained for minimum 12 months",
+          "Test that logs are protected from modification/deletion",
+          "Review log monitoring alerts and response procedures"
+        ],
+        "evidence_requirements": [
+          "Logging configuration documentation",
+          "Log retention policy",
+          "Log integrity protection evidence (WORM or digital signing)"
+        ],
+        "key_risk": "Inability to detect or investigate unauthorized activities",
+        "automated_in_governex": true,
+        "governex_control_point": "audit.activity_log"
+      }
+    }
+  ]
+}

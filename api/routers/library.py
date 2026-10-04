@@ -2,7 +2,10 @@
 Template Library Router
 =======================
 Endpoints for browsing the global template library, activating items for a tenant,
-managing activations, copy-on-write customization, and reviewing pending updates.
+managing activations, copy-on-write customization, reviewing pending updates,
+pack import/export, and the Pack Builder.
+
+All endpoints are gated behind the TEMPLATE_LIBRARY feature flag.
 """
 
 import uuid
@@ -10,15 +13,22 @@ import logging
 import hashlib
 import json
 from datetime import datetime
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from typing import Optional, List
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
 from db.database import get_db
-from db.models.template_library import TemplatePack, TemplateItem, TenantItemActivation
+from db.models.template_library import TemplatePack, TemplatePackVersion, TemplateItem, TenantItemActivation
 from api.dependencies import get_current_user
 from core.library.seeder import seed_library
+from core.feature_flags import flags
+
+
+def _check_library_enabled():
+    """Raise 503 if the TEMPLATE_LIBRARY feature flag is off."""
+    if not flags.TEMPLATE_LIBRARY:
+        raise HTTPException(status_code=503, detail="Template Library feature is disabled")
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,6 +51,7 @@ async def list_packs(
     status: Optional[str] = None,
     module: Optional[str] = None,
     db: Session = Depends(get_db),
+    _: None = Depends(_check_library_enabled),
 ):
     q = db.query(TemplatePack)
     if status:
@@ -459,4 +470,207 @@ async def get_library_stats(
         "pending_updates": pending_updates,
         "adoption_rate": round(active_for_tenant / total_items * 100, 1) if total_items else 0,
         "by_module": {m: c for m, c in by_module},
+    }
+
+
+# ---------------------------------------------------------------------------
+# PACK IMPORT  (admin only — uploads a versioned pack)
+# ---------------------------------------------------------------------------
+
+@router.post("/packs/import")
+async def import_pack(
+    body: dict,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _: None = Depends(_check_library_enabled),
+):
+    """
+    Import a versioned pack JSON.  Admin only.
+
+    Body: the full pack dict {"pack": {...}, "items": [...]}
+    Set dry_run=true in the body to validate without writing.
+    """
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    dry_run = body.pop("dry_run", False)
+
+    def _run_import(pack_data: dict, dry: bool):
+        from db.database import db_manager
+        from core.library.importer import import_pack as do_import
+        s = db_manager.get_session()
+        try:
+            result = do_import(pack_data, s, dry_run=dry)
+            logger.info("Pack import result: %s", result)
+        finally:
+            s.close()
+
+    if dry_run:
+        from core.library.importer import import_pack as do_import
+        result = do_import(body, db, dry_run=True)
+        return result
+
+    background_tasks.add_task(_run_import, body, False)
+    return {"status": "import_started", "pack_code": body.get("pack", {}).get("pack_code")}
+
+
+@router.post("/packs/import-file")
+async def import_pack_from_seeds(
+    body: dict = Body(default={}),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _: None = Depends(_check_library_enabled),
+):
+    """
+    Re-run the full seeds/packs/ import (admin only, idempotent).
+    Useful after a release upgrade to pick up new or updated packs.
+    """
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    def _run():
+        from db.database import db_manager
+        from core.library.importer import import_all_packs
+        import os
+        seeds_dir = os.path.join(os.path.dirname(__file__), "..", "..", "seeds", "packs")
+        s = db_manager.get_session()
+        try:
+            results = import_all_packs(seeds_dir, s)
+            logger.info("import_all_packs results: %s", results)
+        finally:
+            s.close()
+
+    background_tasks.add_task(_run)
+    return {"status": "import_started"}
+
+
+# ---------------------------------------------------------------------------
+# PACK EXPORT  (Pack Builder — tenant-admin only)
+# ---------------------------------------------------------------------------
+
+@router.post("/packs/export")
+async def export_pack(
+    body: dict,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+    current_user=Depends(get_current_user),
+    _: None = Depends(_check_library_enabled),
+):
+    """
+    Export selected active items as a portable pack JSON.
+
+    Body:
+      pack_code     str   required — code for the exported pack
+      pack_name     str   required
+      version       str   default "1.0.0"
+      item_ids      list  required — activation IDs or template item IDs to include
+      description   str   optional
+      author        str   optional
+    """
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Tenant admin only")
+
+    pack_code = body.get("pack_code") or ""
+    if not pack_code:
+        raise HTTPException(status_code=400, detail="pack_code required")
+    item_ids = body.get("item_ids", [])
+    if not item_ids:
+        raise HTTPException(status_code=400, detail="item_ids required")
+
+    # Resolve template items via activations
+    activations = (
+        db.query(TenantItemActivation)
+        .filter(
+            TenantItemActivation.tenant_id == tenant_id,
+            TenantItemActivation.is_active == True,
+            TenantItemActivation.template_item_id.in_(item_ids),
+        )
+        .all()
+    )
+    # Also try direct template item IDs
+    direct_item_ids = [i for i in item_ids if i not in {a.template_item_id for a in activations}]
+    items_from_activations = [a.template_item for a in activations if a.template_item]
+    direct_items = (
+        db.query(TemplateItem)
+        .filter(TemplateItem.id.in_(direct_item_ids))
+        .all()
+        if direct_item_ids else []
+    )
+    all_items = {i.id: i for i in items_from_activations + direct_items}
+
+    pack_items = []
+    for act in activations:
+        item = act.template_item
+        if not item:
+            continue
+        effective = act.copy_payload if act.copy_payload else item.payload
+        pack_items.append({
+            "item_code": item.item_code,
+            "name": item.name,
+            "description": item.description,
+            "module": item.module,
+            "item_type": item.item_type,
+            "compliance_frameworks": item.compliance_frameworks or [],
+            "industry_tags": item.industry_tags or [],
+            "payload": effective,
+            "version": item.version,
+            "severity": item.severity,
+        })
+    for item in direct_items:
+        pack_items.append({
+            "item_code": item.item_code,
+            "name": item.name,
+            "description": item.description,
+            "module": item.module,
+            "item_type": item.item_type,
+            "compliance_frameworks": item.compliance_frameworks or [],
+            "industry_tags": item.industry_tags or [],
+            "payload": item.payload,
+            "version": item.version,
+            "severity": item.severity,
+        })
+
+    return {
+        "pack": {
+            "pack_code": pack_code,
+            "name": body.get("pack_name", pack_code),
+            "version": body.get("version", "1.0.0"),
+            "module": "all",
+            "description": body.get("description"),
+            "author": current_user.get("sub"),
+            "changelog": f"Exported by {current_user.get('sub')} on {datetime.utcnow().isoformat()}",
+        },
+        "items": pack_items,
+    }
+
+
+# ---------------------------------------------------------------------------
+# PACK BUILDER — list and manage custom packs for this tenant
+# ---------------------------------------------------------------------------
+
+@router.get("/pack-builder")
+async def list_custom_packs(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+    _: None = Depends(_check_library_enabled),
+):
+    """List all custom packs created by this tenant."""
+    packs = (
+        db.query(TemplatePack)
+        .filter(TemplatePack.author == f"tenant:{tenant_id}")
+        .order_by(TemplatePack.created_at.desc())
+        .all()
+    )
+    return {"packs": [p.to_dict() for p in packs], "total": len(packs)}
+
+
+@router.get("/flags")
+async def get_feature_flags(_: None = None):
+    """Return current feature-flag state (public, no auth required)."""
+    return {
+        "TEMPLATE_LIBRARY": flags.TEMPLATE_LIBRARY,
+        "TEMPLATE_LIBRARY_COW": flags.TEMPLATE_LIBRARY_COPY_ON_WRITE,
+        "TEMPLATE_LIBRARY_AUTO_ACTIVATE": flags.TEMPLATE_LIBRARY_AUTO_ACTIVATE_STARTER,
     }

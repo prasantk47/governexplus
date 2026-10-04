@@ -1,0 +1,321 @@
+{
+  "pack": {
+    "pack_code": "SOX_ITGC_V1",
+    "name": "SOX IT General Controls Pack",
+    "version": "1.0.0",
+    "module": "process_control",
+    "description": "SOX Section 302/404 IT General Controls covering logical access, change management, computer operations, and data backup/recovery. Mapped to PCAOB AS 2201 control objectives.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 15 SOX ITGC process controls"
+  },
+  "items": [
+    {
+      "item_code": "PC-SOX-LA-001",
+      "name": "User Access Provisioning Control",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Access to production systems is provisioned only upon management authorization. New access requests require documented business justification and manager approval before activation.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Logical Access — Provisioning",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "preventive",
+        "control_frequency": "per_event",
+        "control_owner_role": "it_security",
+        "test_procedure": [
+          "Select a sample of new user accounts created during the period",
+          "Obtain evidence of management authorization for each selected account",
+          "Verify that access provisioned matches the authorized access request",
+          "Confirm no access was granted prior to authorization"
+        ],
+        "evidence_requirements": [
+          "Access request ticket with manager approval",
+          "User account creation log with timestamp",
+          "Role assignment record matching request"
+        ],
+        "key_risk": "Unauthorized system access leading to fraud or data breach",
+        "automated_in_governex": true,
+        "governex_control_point": "ara.workflow.manager_approval"
+      }
+    },
+    {
+      "item_code": "PC-SOX-LA-002",
+      "name": "User Access Termination Control",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Access is promptly revoked upon employee termination or role change. HR-triggered de-provisioning occurs within 24 hours of termination date. Periodic reviews identify orphaned accounts.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Logical Access — Termination",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "preventive",
+        "control_frequency": "per_event",
+        "control_owner_role": "it_security",
+        "test_procedure": [
+          "Obtain HR termination listing for the period",
+          "Compare termination dates to system account disable/delete dates",
+          "Identify any accounts not disabled within 24 hours of termination",
+          "Review access for transferred employees for timely role changes"
+        ],
+        "evidence_requirements": [
+          "HR termination report",
+          "Account disable/lock log with timestamp",
+          "JML workflow completion records"
+        ],
+        "sla_hours": 24,
+        "key_risk": "Terminated employee retaining system access enabling unauthorized transactions",
+        "automated_in_governex": true,
+        "governex_control_point": "jml.termination_workflow"
+      }
+    },
+    {
+      "item_code": "PC-SOX-LA-003",
+      "name": "Privileged Access Review",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Privileged and super-user access is reviewed quarterly. Basis and rationale for privileged access is re-justified by control owners. Unused privileged IDs are revoked.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Logical Access — Privileged Access",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "detective",
+        "control_frequency": "quarterly",
+        "control_owner_role": "ciso",
+        "test_procedure": [
+          "Obtain listing of all privileged accounts (SAP_ALL, basis admins, DB admins)",
+          "Verify each privileged account has a documented and approved business justification",
+          "Confirm quarterly review was performed and approved by CISO or designee",
+          "Test that unused privileged accounts have been disabled"
+        ],
+        "evidence_requirements": [
+          "Privileged access inventory report",
+          "Quarterly review sign-off by CISO",
+          "Evidence of remediation for removed accounts"
+        ],
+        "key_risk": "Excessive privileged access enabling unauthorized changes or data extraction",
+        "automated_in_governex": true,
+        "governex_control_point": "certification.CERT-TPL-002"
+      }
+    },
+    {
+      "item_code": "PC-SOX-LA-004",
+      "name": "Segregation of Duties Monitoring",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Incompatible duties are identified and monitored via continuous SoD rule execution. Conflicts are reviewed and either mitigated or accepted with documented management approval.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Logical Access — Segregation of Duties",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "detective",
+        "control_frequency": "continuous",
+        "control_owner_role": "compliance_officer",
+        "test_procedure": [
+          "Verify SoD ruleset covers key financial process conflicts (AP/AR, GL, payroll)",
+          "Review open SoD violations for timely remediation or documented risk acceptance",
+          "Confirm mitigating controls are operating effectively for accepted conflicts",
+          "Test that new access assignments trigger SoD conflict checks"
+        ],
+        "evidence_requirements": [
+          "SoD violation report with remediation status",
+          "Risk acceptance approvals for unmitigated conflicts",
+          "Mitigation control testing evidence"
+        ],
+        "key_risk": "User ability to initiate and approve transactions enabling fraud",
+        "automated_in_governex": true,
+        "governex_control_point": "ara.sod_check"
+      }
+    },
+    {
+      "item_code": "PC-SOX-LA-005",
+      "name": "Emergency Access (Firefighter) Control",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Emergency/Firefighter access is controlled, logged, and reviewed. FF sessions are time-boxed, require reason codes, and all activity is reviewed by the FF controller within 72 hours.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Logical Access — Emergency Access",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "compensating",
+        "control_frequency": "per_event",
+        "control_owner_role": "ciso",
+        "test_procedure": [
+          "Obtain listing of all FF sessions during the period",
+          "Verify each session has a valid reason code and incident ticket",
+          "Confirm log review was completed by controller within 72 hours",
+          "Review any flagged sessions for violation disposition"
+        ],
+        "evidence_requirements": [
+          "FF session log with reason codes",
+          "Controller review sign-offs",
+          "Incident tickets referenced in sessions",
+          "Violation disposition records"
+        ],
+        "key_risk": "Uncontrolled superuser access enabling unauthorized transactions",
+        "automated_in_governex": true,
+        "governex_control_point": "eam.log_review"
+      }
+    },
+    {
+      "item_code": "PC-SOX-CM-001",
+      "name": "Change Management Authorization",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Changes to production systems (SAP transport, configuration, custom code) are authorized via the Change Advisory Board (CAB) before implementation. Emergency changes follow expedited approval process.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Change Management — Authorization",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "preventive",
+        "control_frequency": "per_event",
+        "control_owner_role": "change_manager",
+        "test_procedure": [
+          "Select a sample of production changes (transports) during the period",
+          "Obtain CAB approval documentation for each selected change",
+          "Verify that transport moved to production only after authorization",
+          "For emergency changes, confirm expedited approval process was followed"
+        ],
+        "evidence_requirements": [
+          "Change request with CAB approval sign-off",
+          "Transport log showing approval-to-import sequence",
+          "Emergency change exception approvals"
+        ],
+        "key_risk": "Unauthorized code or configuration changes affecting financial processing",
+        "automated_in_governex": false,
+        "governex_control_point": null
+      }
+    },
+    {
+      "item_code": "PC-SOX-CM-002",
+      "name": "Segregation of Duties in Change Management",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Developers do not have the ability to migrate their own changes to production. Import authorization is restricted to a separate transport administrator role.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Change Management — Developer SoD",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "preventive",
+        "control_frequency": "per_event",
+        "control_owner_role": "it_security",
+        "test_procedure": [
+          "Obtain listing of users with SAP transport import authorization (S_TRANSPRT) in production",
+          "Confirm none of these users also have developer roles (S_DEVELOP) in production",
+          "Select sample of transports and confirm importer differs from developer",
+          "Review any exceptions and confirm compensating controls are in place"
+        ],
+        "evidence_requirements": [
+          "Role assignment matrix: developers vs. transport admins in PRD",
+          "Transport log with developer ID vs. import ID per transport",
+          "Exception list with management approval"
+        ],
+        "key_risk": "Developer self-promoting unauthorized code to production",
+        "automated_in_governex": true,
+        "governex_control_point": "ara.sod_rules.SOD-BASIS-001"
+      }
+    },
+    {
+      "item_code": "PC-SOX-CO-001",
+      "name": "Batch Job Monitoring",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Critical financial batch jobs (period-end close, payroll, AP payment runs) are monitored for successful completion. Failures trigger immediate alerts and documented resolution procedures.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "medium",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Computer Operations — Batch Monitoring",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "detective",
+        "control_frequency": "daily",
+        "control_owner_role": "it_operations",
+        "critical_jobs": [
+          "Accounts Payable Payment Run (F110)",
+          "Accounts Receivable Dunning (F150)",
+          "General Ledger Period Close (FAGLGVTR)",
+          "Payroll Run (PC00_M99_CALC)",
+          "Asset Depreciation Run (AFAB)"
+        ],
+        "test_procedure": [
+          "Obtain batch job monitoring logs for critical financial jobs",
+          "Verify monitoring alerts are configured for job failures",
+          "Review failed jobs during period and confirm timely resolution",
+          "Confirm re-runs were authorized and completed successfully"
+        ],
+        "evidence_requirements": [
+          "Batch job completion logs (success/failure with timestamp)",
+          "Incident tickets for failed jobs",
+          "Re-run authorization and completion confirmation"
+        ],
+        "key_risk": "Undetected batch job failure causing incomplete financial records",
+        "automated_in_governex": false,
+        "governex_control_point": null
+      }
+    },
+    {
+      "item_code": "PC-SOX-BR-001",
+      "name": "Data Backup and Recovery Testing",
+      "module": "process_control",
+      "item_type": "control",
+      "description": "Production SAP database backups are performed daily and tested quarterly. Recovery procedures are documented and RTO/RPO targets are validated through periodic restore tests.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "medium",
+      "version": "1.0.0",
+      "payload": {
+        "control_objective": "Backup and Recovery",
+        "pcaob_reference": "AS 2201",
+        "coso_component": "Control Activities",
+        "control_type": "corrective",
+        "control_frequency": "quarterly_test",
+        "control_owner_role": "it_operations",
+        "rto_hours": 4,
+        "rpo_hours": 24,
+        "test_procedure": [
+          "Obtain backup completion logs for the period — verify daily success",
+          "Confirm quarterly restore test was performed and documented",
+          "Verify restore test results met RTO/RPO targets",
+          "Confirm backups are stored offsite or in geographically separate environment"
+        ],
+        "evidence_requirements": [
+          "Daily backup success/failure logs",
+          "Quarterly restore test results report",
+          "Offsite backup confirmation"
+        ],
+        "key_risk": "Inability to recover financial data following system failure",
+        "automated_in_governex": false,
+        "governex_control_point": null
+      }
+    }
+  ]
+}

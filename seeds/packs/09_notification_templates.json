@@ -1,0 +1,257 @@
+{
+  "pack": {
+    "pack_code": "NOTIFICATION_TEMPLATES_V1",
+    "name": "GRC Notification Templates",
+    "version": "1.0.0",
+    "module": "shared",
+    "description": "Email and in-app notification templates for all core GRC workflows: access requests, SoD violations, certification campaigns, firefighter alerts, risk escalations, and JML events. Supports variable substitution.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 12 notification templates"
+  },
+  "items": [
+    {
+      "item_code": "NOTIF-ARM-REQUEST",
+      "name": "Access Request — Pending Approval",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to approvers when a new access request requires their action. Includes request summary, requester details, access requested, and direct approval link.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "access_request.pending_approval",
+        "recipient_type": "approver",
+        "priority": "normal",
+        "subject": "Action Required: Access Request from {{requester_name}}",
+        "body_html": "<p>Dear {{approver_name}},</p><p>An access request requires your approval.</p><table><tr><td><strong>Requester:</strong></td><td>{{requester_name}} ({{requester_email}})</td></tr><tr><td><strong>Access Requested:</strong></td><td>{{role_name}} in {{system_name}}</td></tr><tr><td><strong>Business Justification:</strong></td><td>{{business_justification}}</td></tr><tr><td><strong>Risk Level:</strong></td><td>{{risk_level}}</td></tr><tr><td><strong>SLA Deadline:</strong></td><td>{{sla_deadline}}</td></tr></table><p><a href=\"{{approval_link}}\">Review and Approve/Reject</a></p>",
+        "variables": ["approver_name", "requester_name", "requester_email", "role_name", "system_name", "business_justification", "risk_level", "sla_deadline", "approval_link"],
+        "sla_hours": 48
+      }
+    },
+    {
+      "item_code": "NOTIF-ARM-APPROVED",
+      "name": "Access Request — Approved",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to the requester when their access request has been fully approved and provisioning is complete.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "access_request.approved",
+        "recipient_type": "requester",
+        "priority": "normal",
+        "subject": "Your Access Request Has Been Approved — {{role_name}}",
+        "body_html": "<p>Dear {{requester_name}},</p><p>Your access request has been approved and provisioned.</p><table><tr><td><strong>Access Granted:</strong></td><td>{{role_name}} in {{system_name}}</td></tr><tr><td><strong>Effective Date:</strong></td><td>{{effective_date}}</td></tr><tr><td><strong>Expiry Date:</strong></td><td>{{expiry_date}}</td></tr><tr><td><strong>Approved By:</strong></td><td>{{approver_name}}</td></tr></table><p>Please note this access is subject to periodic review and may be revoked if no longer required.</p>",
+        "variables": ["requester_name", "role_name", "system_name", "effective_date", "expiry_date", "approver_name"]
+      }
+    },
+    {
+      "item_code": "NOTIF-ARM-REJECTED",
+      "name": "Access Request — Rejected",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to the requester when their access request has been rejected, with the approver's reason.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "access_request.rejected",
+        "recipient_type": "requester",
+        "priority": "normal",
+        "subject": "Access Request Rejected — {{role_name}}",
+        "body_html": "<p>Dear {{requester_name}},</p><p>Your access request has been rejected.</p><table><tr><td><strong>Access Requested:</strong></td><td>{{role_name}} in {{system_name}}</td></tr><tr><td><strong>Rejected By:</strong></td><td>{{rejector_name}}</td></tr><tr><td><strong>Reason:</strong></td><td>{{rejection_reason}}</td></tr></table><p>If you believe this is in error, please contact your manager or the security team.</p>",
+        "variables": ["requester_name", "role_name", "system_name", "rejector_name", "rejection_reason"]
+      }
+    },
+    {
+      "item_code": "NOTIF-SOD-VIOLATION",
+      "name": "SoD Violation — New Conflict Detected",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to the risk/compliance team and the user's manager when a new SoD conflict is detected. Requires prompt review and remediation or formal risk acceptance.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "sod.violation_detected",
+        "recipient_type": ["compliance_officer", "manager"],
+        "priority": "high",
+        "subject": "ALERT: SoD Violation Detected — {{user_name}}",
+        "body_html": "<p>A Segregation of Duties conflict has been detected and requires your immediate attention.</p><table><tr><td><strong>User:</strong></td><td>{{user_name}} ({{user_id}})</td></tr><tr><td><strong>Conflict:</strong></td><td>{{conflict_name}}</td></tr><tr><td><strong>Severity:</strong></td><td>{{severity}}</td></tr><tr><td><strong>Conflicting Roles:</strong></td><td>{{role_list}}</td></tr><tr><td><strong>Detected:</strong></td><td>{{detection_date}}</td></tr></table><p>Required action: Review the conflict within 5 business days and either remediate or submit a formal risk acceptance.</p><p><a href=\"{{violation_link}}\">View Violation Details</a></p>",
+        "variables": ["user_name", "user_id", "conflict_name", "severity", "role_list", "detection_date", "violation_link"],
+        "sla_days": 5
+      }
+    },
+    {
+      "item_code": "NOTIF-CERT-CAMPAIGN-OPEN",
+      "name": "Certification Campaign — Review Tasks Assigned",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to reviewers when a new certification campaign opens and tasks are assigned to them. Includes campaign details, item count, and deadline.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "certification.campaign_opened",
+        "recipient_type": "reviewer",
+        "priority": "normal",
+        "subject": "Action Required: {{campaign_name}} — {{item_count}} items to review",
+        "body_html": "<p>Dear {{reviewer_name}},</p><p>The <strong>{{campaign_name}}</strong> certification campaign has started and you have review tasks assigned.</p><table><tr><td><strong>Campaign:</strong></td><td>{{campaign_name}}</td></tr><tr><td><strong>Items to Review:</strong></td><td>{{item_count}}</td></tr><tr><td><strong>Deadline:</strong></td><td>{{campaign_deadline}}</td></tr></table><p>Please complete your reviews before the deadline. Incomplete reviews will be escalated to your manager.</p><p><a href=\"{{campaign_link}}\">Start Reviewing</a></p>",
+        "variables": ["reviewer_name", "campaign_name", "item_count", "campaign_deadline", "campaign_link"]
+      }
+    },
+    {
+      "item_code": "NOTIF-CERT-REMINDER",
+      "name": "Certification Campaign — Reminder",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Reminder sent to reviewers with outstanding items as the campaign deadline approaches.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "certification.campaign_reminder",
+        "recipient_type": "reviewer",
+        "priority": "high",
+        "subject": "REMINDER: {{days_remaining}} days left — {{pending_count}} items pending in {{campaign_name}}",
+        "body_html": "<p>Dear {{reviewer_name}},</p><p>This is a reminder that you have <strong>{{pending_count}} outstanding review items</strong> in <strong>{{campaign_name}}</strong>.</p><p>Deadline: <strong>{{campaign_deadline}}</strong> ({{days_remaining}} days remaining)</p><p>Incomplete reviews will be automatically escalated to {{escalation_contact}} if not completed by the deadline.</p><p><a href=\"{{campaign_link}}\">Complete Your Reviews Now</a></p>",
+        "variables": ["reviewer_name", "campaign_name", "pending_count", "campaign_deadline", "days_remaining", "escalation_contact", "campaign_link"]
+      }
+    },
+    {
+      "item_code": "NOTIF-EAM-SESSION-ALERT",
+      "name": "Firefighter Session — Real-Time Alert",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Immediate alert sent to the FF controller and CISO when a Firefighter session begins. Enables real-time oversight.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "eam.session_started",
+        "recipient_type": ["ff_controller", "ciso"],
+        "priority": "urgent",
+        "subject": "ALERT: Firefighter Session Started — {{ff_id}} by {{user_name}}",
+        "body_html": "<p><strong>A Firefighter session has just been initiated.</strong></p><table><tr><td><strong>Firefighter ID:</strong></td><td>{{ff_id}}</td></tr><tr><td><strong>Used By:</strong></td><td>{{user_name}} ({{user_id}})</td></tr><tr><td><strong>System:</strong></td><td>{{system_name}} / {{client}}</td></tr><tr><td><strong>Reason Code:</strong></td><td>{{reason_code}} — {{reason_description}}</td></tr><tr><td><strong>Incident Ticket:</strong></td><td>{{incident_ticket}}</td></tr><tr><td><strong>Session Start:</strong></td><td>{{session_start}}</td></tr><tr><td><strong>Max Duration:</strong></td><td>{{max_duration_hours}} hours</td></tr></table><p>The session log will be available for review within 30 minutes of session end.</p>",
+        "variables": ["ff_id", "user_name", "user_id", "system_name", "client", "reason_code", "reason_description", "incident_ticket", "session_start", "max_duration_hours"]
+      }
+    },
+    {
+      "item_code": "NOTIF-EAM-LOG-REVIEW",
+      "name": "Firefighter Log Review — Action Required",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Sent to the FF controller after a session ends, requesting review and sign-off of the activity log within 72 hours.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "eam.session_ended",
+        "recipient_type": "ff_controller",
+        "priority": "high",
+        "subject": "Action Required: Review FF Log — {{ff_id}} Session {{session_id}}",
+        "body_html": "<p>Dear {{controller_name}},</p><p>A Firefighter session has ended and requires your review within <strong>72 hours</strong> (by {{review_deadline}}).</p><table><tr><td><strong>Firefighter ID:</strong></td><td>{{ff_id}}</td></tr><tr><td><strong>Used By:</strong></td><td>{{user_name}}</td></tr><tr><td><strong>Session Duration:</strong></td><td>{{duration_minutes}} minutes</td></tr><tr><td><strong>Transactions Executed:</strong></td><td>{{transaction_count}}</td></tr><tr><td><strong>Flagged Activities:</strong></td><td>{{flagged_count}}</td></tr></table><p><a href=\"{{review_link}}\">Review Session Log</a></p>",
+        "variables": ["controller_name", "ff_id", "user_name", "session_id", "review_deadline", "duration_minutes", "transaction_count", "flagged_count", "review_link"],
+        "sla_hours": 72
+      }
+    },
+    {
+      "item_code": "NOTIF-JML-ONBOARD",
+      "name": "JML — New Joiner Access Ready",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Welcome notification to new employees when their initial access provisioning is complete.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email",
+        "trigger_event": "jml.onboard_complete",
+        "recipient_type": "new_joiner",
+        "priority": "normal",
+        "subject": "Welcome to {{company_name}} — Your Access is Ready",
+        "body_html": "<p>Dear {{employee_name}},</p><p>Welcome to {{company_name}}! Your system access has been provisioned based on your role: <strong>{{job_title}}</strong> in <strong>{{department}}</strong>.</p><p>Your accounts have been created in the following systems:</p><ul>{{system_list}}</ul><p>Please log in and change your temporary password within 24 hours. For any access issues, contact the IT helpdesk at {{helpdesk_email}}.</p>",
+        "variables": ["employee_name", "company_name", "job_title", "department", "system_list", "helpdesk_email"]
+      }
+    },
+    {
+      "item_code": "NOTIF-JML-OFFBOARD",
+      "name": "JML — Offboarding Access Revoked",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Confirmation sent to HR and the departing employee's manager when offboarding access revocation is complete.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "jml.offboard_complete",
+        "recipient_type": ["hr", "manager"],
+        "priority": "normal",
+        "subject": "Offboarding Complete — {{employee_name}} access revoked",
+        "body_html": "<p>This is confirmation that the offboarding process for <strong>{{employee_name}}</strong> has been completed.</p><table><tr><td><strong>Employee:</strong></td><td>{{employee_name}} ({{employee_id}})</td></tr><tr><td><strong>Termination Date:</strong></td><td>{{termination_date}}</td></tr><tr><td><strong>Access Revoked:</strong></td><td>{{revocation_timestamp}}</td></tr><tr><td><strong>Systems Processed:</strong></td><td>{{system_count}} systems</td></tr></table><p>All active sessions have been terminated and accounts disabled. Asset return status: {{asset_return_status}}.</p>",
+        "variables": ["employee_name", "employee_id", "termination_date", "revocation_timestamp", "system_count", "asset_return_status"]
+      }
+    },
+    {
+      "item_code": "NOTIF-RISK-ESCALATION",
+      "name": "Risk Escalation — High/Critical Risk Identified",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Escalation alert sent to CISO and Compliance Officer when a high or critical risk is opened or the risk score exceeds the appetite threshold.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "risk.exceeds_appetite",
+        "recipient_type": ["ciso", "compliance_officer"],
+        "priority": "urgent",
+        "subject": "ESCALATION: {{severity}} Risk — {{risk_name}}",
+        "body_html": "<p>A <strong>{{severity}}</strong> risk has been identified that exceeds the organization's risk appetite and requires immediate attention.</p><table><tr><td><strong>Risk:</strong></td><td>{{risk_name}}</td></tr><tr><td><strong>Category:</strong></td><td>{{risk_category}}</td></tr><tr><td><strong>Inherent Score:</strong></td><td>{{inherent_score}}/25</td></tr><tr><td><strong>Risk Owner:</strong></td><td>{{risk_owner}}</td></tr><tr><td><strong>Identified:</strong></td><td>{{identification_date}}</td></tr></table><p>Required action: Assign mitigation controls or submit formal risk acceptance within 5 business days.</p><p><a href=\"{{risk_link}}\">View Risk Details</a></p>",
+        "variables": ["severity", "risk_name", "risk_category", "inherent_score", "risk_owner", "identification_date", "risk_link"],
+        "sla_days": 5
+      }
+    },
+    {
+      "item_code": "NOTIF-TPRM-ASSESSMENT-DUE",
+      "name": "TPRM — Vendor Assessment Due",
+      "module": "shared",
+      "item_type": "notification",
+      "description": "Reminder sent to the vendor relationship manager when a third-party risk assessment is due for renewal.",
+      "compliance_frameworks": ["ISO27001", "SOC2"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "notification_type": "email_and_in_app",
+        "trigger_event": "tprm.assessment_due",
+        "recipient_type": "vendor_manager",
+        "priority": "normal",
+        "subject": "Action Required: Vendor Assessment Due — {{vendor_name}}",
+        "body_html": "<p>Dear {{manager_name}},</p><p>The third-party risk assessment for <strong>{{vendor_name}}</strong> is due for renewal.</p><table><tr><td><strong>Vendor:</strong></td><td>{{vendor_name}}</td></tr><tr><td><strong>Risk Tier:</strong></td><td>{{risk_tier}}</td></tr><tr><td><strong>Last Assessment:</strong></td><td>{{last_assessment_date}}</td></tr><tr><td><strong>Due Date:</strong></td><td>{{due_date}}</td></tr></table><p>Please initiate a new assessment or confirm the existing assessment is still valid.</p><p><a href=\"{{assessment_link}}\">Start Assessment</a></p>",
+        "variables": ["manager_name", "vendor_name", "risk_tier", "last_assessment_date", "due_date", "assessment_link"]
+      }
+    }
+  ]
+}

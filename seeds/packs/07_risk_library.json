@@ -1,0 +1,362 @@
+{
+  "pack": {
+    "pack_code": "RISK_LIBRARY_V1",
+    "name": "Enterprise Risk Library — SAP/ERP Focus",
+    "version": "1.0.0",
+    "module": "risk_management",
+    "description": "Curated risk scenarios, a 5x5 risk scoring model, and Key Risk Indicators (KRIs) for SAP/ERP environments. Covers access risk, financial process risk, compliance risk, operational risk, and third-party risk.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — scoring model, 8 risk scenarios, 10 KRIs"
+  },
+  "items": [
+    {
+      "item_code": "RISK-MODEL-5X5",
+      "name": "5x5 Risk Scoring Matrix",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Standard 5x5 risk scoring model with likelihood (1-5) and impact (1-5) scales. Produces inherent risk score 1-25 with RAG status thresholds. Used as the default scoring model for all risk assessments.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "model_type": "scoring_matrix",
+        "dimensions": {
+          "likelihood": {
+            "scale": 5,
+            "labels": {
+              "1": "Rare — less than once per 5 years",
+              "2": "Unlikely — once per 2-5 years",
+              "3": "Possible — once per year",
+              "4": "Likely — multiple times per year",
+              "5": "Almost Certain — monthly or more"
+            }
+          },
+          "impact": {
+            "scale": 5,
+            "labels": {
+              "1": "Negligible — no material financial or reputational impact",
+              "2": "Minor — limited financial impact (<$50K), localized",
+              "3": "Moderate — significant impact ($50K–$500K), departmental",
+              "4": "Major — large impact ($500K–$5M), enterprise-wide",
+              "5": "Catastrophic — critical impact (>$5M), existential threat"
+            }
+          }
+        },
+        "score_formula": "likelihood * impact",
+        "thresholds": {
+          "low": {"min": 1, "max": 4, "color": "green", "label": "Low"},
+          "medium": {"min": 5, "max": 9, "color": "yellow", "label": "Medium"},
+          "high": {"min": 10, "max": 16, "color": "orange", "label": "High"},
+          "critical": {"min": 17, "max": 25, "color": "red", "label": "Critical"}
+        },
+        "residual_score_requires_controls": true,
+        "risk_appetite_threshold": 9
+      }
+    },
+    {
+      "item_code": "RISK-SCN-001",
+      "name": "Unauthorized Financial Posting",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Risk that a user with conflicting access (e.g., ability to create and approve vendor invoices) posts unauthorized or fraudulent financial transactions. Primary SoD risk in financial processes.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "risk_category": "Access Risk",
+        "risk_subcategory": "Segregation of Duties",
+        "inherent_likelihood": 3,
+        "inherent_impact": 5,
+        "inherent_score": 15,
+        "related_sod_rules": ["SOD-FI-001", "SOD-FI-002", "SOD-FI-003"],
+        "threat_actors": ["insider_malicious", "insider_error"],
+        "affected_processes": ["Accounts Payable", "Accounts Receivable", "General Ledger"],
+        "typical_mitigations": [
+          "Segregate AP invoice creation from payment approval",
+          "Dual control for payments above threshold",
+          "Real-time SoD monitoring and alerting",
+          "Periodic reconciliation of vendor master changes"
+        ],
+        "regulatory_impact": ["SOX 302/404 material weakness if not controlled"],
+        "kri_codes": ["KRI-SOD-001", "KRI-SOD-002"]
+      }
+    },
+    {
+      "item_code": "RISK-SCN-002",
+      "name": "Privileged Access Abuse",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Risk that a user with SAP_ALL or excessive BASIS authorization uses privileged access to bypass controls, extract data, or modify system configuration without detection.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "risk_category": "Access Risk",
+        "risk_subcategory": "Privileged Access",
+        "inherent_likelihood": 2,
+        "inherent_impact": 5,
+        "inherent_score": 10,
+        "related_sod_rules": ["SOD-BASIS-001"],
+        "threat_actors": ["insider_malicious", "external_attacker"],
+        "affected_processes": ["System Administration", "All Financial Processes"],
+        "typical_mitigations": [
+          "Remove SAP_ALL from all non-emergency accounts",
+          "Implement Firefighter for emergency privileged access",
+          "Mandatory log review for all FF sessions",
+          "Privileged access quarterly recertification"
+        ],
+        "regulatory_impact": ["SOX 404 — significant deficiency or material weakness"],
+        "kri_codes": ["KRI-PRIV-001", "KRI-PRIV-002"]
+      }
+    },
+    {
+      "item_code": "RISK-SCN-003",
+      "name": "Vendor Master Fraud",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Risk that a user can both create/modify vendor master data and initiate/approve payment runs, enabling fraudulent vendor creation and payment diversion.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "risk_category": "Fraud Risk",
+        "risk_subcategory": "Vendor Fraud",
+        "inherent_likelihood": 3,
+        "inherent_impact": 4,
+        "inherent_score": 12,
+        "related_sod_rules": ["SOD-FI-001", "SOD-FI-003"],
+        "threat_actors": ["insider_malicious"],
+        "affected_processes": ["Accounts Payable", "Vendor Management"],
+        "typical_mitigations": [
+          "Separate vendor master maintenance from payment authorization",
+          "Email confirmation to existing vendor on bank detail changes",
+          "Approval workflow for new vendor activation",
+          "Periodic vendor master audit for dormant/duplicate vendors"
+        ],
+        "regulatory_impact": ["Financial loss", "SOX 302 representation risk"],
+        "kri_codes": ["KRI-VEND-001"]
+      }
+    },
+    {
+      "item_code": "RISK-SCN-004",
+      "name": "Unauthorized Configuration Change",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Risk that a developer or basis consultant makes unauthorized changes to SAP configuration or custom code in production, bypassing the change management process.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "risk_category": "Change Management Risk",
+        "risk_subcategory": "Unauthorized Change",
+        "inherent_likelihood": 3,
+        "inherent_impact": 4,
+        "inherent_score": 12,
+        "related_sod_rules": ["SOD-BASIS-001"],
+        "threat_actors": ["insider_malicious", "insider_error"],
+        "affected_processes": ["IT Change Management", "All Business Processes"],
+        "typical_mitigations": [
+          "Remove developer access from production client",
+          "Transport management system with mandatory approval",
+          "Segregate developer from transport administrator role",
+          "Automated detection of direct production changes"
+        ],
+        "regulatory_impact": ["SOX CM control failure"],
+        "kri_codes": ["KRI-CM-001"]
+      }
+    },
+    {
+      "item_code": "RISK-SCN-005",
+      "name": "Data Breach via Excessive Access",
+      "module": "risk_management",
+      "item_type": "risk_scenario",
+      "description": "Risk that users with broad, unreviewed access to sensitive data (PII, PCI, financial records) exfiltrate data, either maliciously or through phishing compromise.",
+      "compliance_frameworks": ["GDPR", "ISO27001", "SOC2"],
+      "industry_tags": ["all"],
+      "severity": "critical",
+      "version": "1.0.0",
+      "payload": {
+        "risk_category": "Data Risk",
+        "risk_subcategory": "Data Breach",
+        "inherent_likelihood": 3,
+        "inherent_impact": 5,
+        "inherent_score": 15,
+        "threat_actors": ["insider_malicious", "external_attacker"],
+        "affected_processes": ["HR — Employee Data", "Finance — Customer Data", "CRM"],
+        "typical_mitigations": [
+          "Regular access recertification with data owner review",
+          "Field-level authorization for sensitive data (GDPR fields)",
+          "Data loss prevention (DLP) monitoring",
+          "Anomaly detection on bulk data extraction"
+        ],
+        "regulatory_impact": ["GDPR Article 83 fine up to 4% global turnover", "Customer notification obligation"],
+        "kri_codes": ["KRI-DATA-001"]
+      }
+    },
+    {
+      "item_code": "KRI-SOD-001",
+      "name": "Open SoD Violations — Count",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Number of active SoD violations without an accepted mitigation or risk acceptance. Target: zero critical, fewer than 5 high per business unit.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "count",
+        "measurement_unit": "violations",
+        "measurement_frequency": "weekly",
+        "data_source": "ara.sod_violations",
+        "thresholds": {
+          "green": {"max": 5, "description": "Within tolerance"},
+          "amber": {"min": 6, "max": 20, "description": "Elevated — review required"},
+          "red": {"min": 21, "description": "Exceeded — immediate action"}
+        },
+        "target_value": 0,
+        "owner_role": "compliance_officer",
+        "escalation_at": "amber",
+        "trend_direction": "lower_is_better"
+      }
+    },
+    {
+      "item_code": "KRI-SOD-002",
+      "name": "SoD Violations Remediated — % 30-Day",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Percentage of SoD violations identified in the last 30 days that have been remediated or formally accepted. Target: >90% within 30 days.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "percentage",
+        "measurement_unit": "percent",
+        "measurement_frequency": "monthly",
+        "data_source": "ara.sod_violations",
+        "thresholds": {
+          "green": {"min": 90, "description": "On target"},
+          "amber": {"min": 70, "max": 89, "description": "Below target"},
+          "red": {"max": 69, "description": "Significantly below target"}
+        },
+        "target_value": 95,
+        "owner_role": "compliance_officer",
+        "escalation_at": "amber",
+        "trend_direction": "higher_is_better"
+      }
+    },
+    {
+      "item_code": "KRI-PRIV-001",
+      "name": "Accounts with SAP_ALL — Count",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Number of active user accounts with SAP_ALL authorization in production. Target: zero (only emergency FF IDs with compensating controls).",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "count",
+        "measurement_unit": "accounts",
+        "measurement_frequency": "weekly",
+        "data_source": "ara.user_roles",
+        "filter": "role_code == 'SAP_ALL' AND account_type != 'firefighter'",
+        "thresholds": {
+          "green": {"max": 0, "description": "No unauthorized SAP_ALL"},
+          "amber": {"min": 1, "max": 3, "description": "Requires immediate justification"},
+          "red": {"min": 4, "description": "Critical — remediation required"}
+        },
+        "target_value": 0,
+        "owner_role": "ciso",
+        "escalation_at": "amber",
+        "trend_direction": "lower_is_better"
+      }
+    },
+    {
+      "item_code": "KRI-PRIV-002",
+      "name": "Overdue FF Log Reviews — Count",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Number of Firefighter sessions whose log review is overdue (not completed within 72 hours). Target: zero.",
+      "compliance_frameworks": ["SOX"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "count",
+        "measurement_unit": "sessions",
+        "measurement_frequency": "daily",
+        "data_source": "eam.ff_sessions",
+        "filter": "review_status == 'pending' AND session_end < NOW() - INTERVAL '72 hours'",
+        "thresholds": {
+          "green": {"max": 0, "description": "All reviews current"},
+          "amber": {"min": 1, "max": 3, "description": "Some overdue — escalate"},
+          "red": {"min": 4, "description": "Multiple overdue — SOX risk"}
+        },
+        "target_value": 0,
+        "owner_role": "ciso",
+        "escalation_at": "green_breach",
+        "trend_direction": "lower_is_better"
+      }
+    },
+    {
+      "item_code": "KRI-ACCESS-001",
+      "name": "Access Review Completion Rate",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Percentage of access certification items completed on time in the last campaign. Target: >95% completion before campaign deadline.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "percentage",
+        "measurement_unit": "percent",
+        "measurement_frequency": "per_campaign",
+        "data_source": "certification.campaigns",
+        "thresholds": {
+          "green": {"min": 95, "description": "On target"},
+          "amber": {"min": 80, "max": 94, "description": "Below target — follow-up required"},
+          "red": {"max": 79, "description": "Significantly below — escalate to CISO"}
+        },
+        "target_value": 98,
+        "owner_role": "compliance_officer",
+        "escalation_at": "amber",
+        "trend_direction": "higher_is_better"
+      }
+    },
+    {
+      "item_code": "KRI-TERM-001",
+      "name": "Termination Access Removal SLA Compliance",
+      "module": "risk_management",
+      "item_type": "kri",
+      "description": "Percentage of terminated employee accounts disabled within the 24-hour SLA. Target: 100%. Any breach is a potential SOX control failure.",
+      "compliance_frameworks": ["SOX", "ISO27001"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "kri_type": "percentage",
+        "measurement_unit": "percent",
+        "measurement_frequency": "monthly",
+        "data_source": "jml.termination_events",
+        "filter": "event_type == 'termination'",
+        "sla_hours": 24,
+        "thresholds": {
+          "green": {"min": 100, "description": "100% SLA met"},
+          "amber": {"min": 95, "max": 99, "description": "Near miss — review process"},
+          "red": {"max": 94, "description": "SLA breach — immediate investigation"}
+        },
+        "target_value": 100,
+        "owner_role": "it_security",
+        "escalation_at": "amber",
+        "trend_direction": "higher_is_better"
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ venv/
 .env
 .env.local
 .env.*.local
+server.env
 
 # Database
 *.db

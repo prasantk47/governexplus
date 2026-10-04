@@ -1,0 +1,195 @@
+{
+  "pack": {
+    "pack_code": "ARM_WORKFLOWS_V1",
+    "name": "Access Request Workflow Templates",
+    "version": "1.0.0",
+    "module": "ara",
+    "description": "Standard multi-stage approval workflow templates for access request management. Covers low-risk auto-approval through multi-tier manager/role-owner/security review chains.",
+    "author": "GovernexPlus",
+    "changelog": "Initial release — 4 workflow templates covering the full approval spectrum"
+  },
+  "items": [
+    {
+      "item_code": "ARM-WF-001",
+      "name": "Auto-Approve Low-Risk Access",
+      "module": "ara",
+      "item_type": "workflow",
+      "description": "Single-stage workflow that auto-approves access requests where the calculated risk score is below the configured threshold (default: 20). Suitable for read-only roles and informational access.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "workflow_type": "access_request",
+        "stages": [
+          {
+            "stage_id": "risk_check",
+            "stage_name": "Automated Risk Check",
+            "stage_type": "automated",
+            "order": 1,
+            "config": {
+              "action": "auto_approve_if_low_risk",
+              "risk_threshold": 20,
+              "on_pass": "approve",
+              "on_fail": "escalate_to_manager"
+            }
+          }
+        ],
+        "sla_hours": 0,
+        "auto_revoke_days": 90,
+        "notification_on_approve": true,
+        "notification_on_reject": true,
+        "allow_request_justification": true,
+        "require_business_justification": false
+      }
+    },
+    {
+      "item_code": "ARM-WF-002",
+      "name": "Manager Approval Only",
+      "module": "ara",
+      "item_type": "workflow",
+      "description": "Single-stage manager approval workflow. The requestor's direct manager receives an approval task. Suitable for standard business role requests with moderate risk.",
+      "compliance_frameworks": [],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "workflow_type": "access_request",
+        "stages": [
+          {
+            "stage_id": "manager_approval",
+            "stage_name": "Manager Approval",
+            "stage_type": "human",
+            "order": 1,
+            "config": {
+              "approver_type": "direct_manager",
+              "approver_fallback": "skip_level_manager",
+              "sla_hours": 48,
+              "on_sla_breach": "escalate",
+              "allow_delegate": true
+            }
+          }
+        ],
+        "sla_hours": 48,
+        "auto_revoke_days": 180,
+        "notification_on_approve": true,
+        "notification_on_reject": true,
+        "allow_request_justification": true,
+        "require_business_justification": true
+      }
+    },
+    {
+      "item_code": "ARM-WF-003",
+      "name": "Manager then Role Owner Approval",
+      "module": "ara",
+      "item_type": "workflow",
+      "description": "Two-stage approval workflow: requestor's manager approves first, then the role owner/data owner approves. Recommended for sensitive roles and critical data access.",
+      "compliance_frameworks": ["SOX", "SOC2"],
+      "industry_tags": ["all"],
+      "severity": null,
+      "version": "1.0.0",
+      "payload": {
+        "workflow_type": "access_request",
+        "stages": [
+          {
+            "stage_id": "manager_approval",
+            "stage_name": "Manager Approval",
+            "stage_type": "human",
+            "order": 1,
+            "config": {
+              "approver_type": "direct_manager",
+              "approver_fallback": "skip_level_manager",
+              "sla_hours": 48,
+              "on_sla_breach": "escalate",
+              "allow_delegate": true
+            }
+          },
+          {
+            "stage_id": "role_owner_approval",
+            "stage_name": "Role Owner Approval",
+            "stage_type": "human",
+            "order": 2,
+            "config": {
+              "approver_type": "role_owner",
+              "approver_fallback": "security_team",
+              "sla_hours": 48,
+              "on_sla_breach": "escalate",
+              "allow_delegate": false
+            }
+          }
+        ],
+        "sla_hours": 96,
+        "auto_revoke_days": 365,
+        "notification_on_approve": true,
+        "notification_on_reject": true,
+        "allow_request_justification": true,
+        "require_business_justification": true
+      }
+    },
+    {
+      "item_code": "ARM-WF-004",
+      "name": "Full Security Review Chain",
+      "module": "ara",
+      "item_type": "workflow",
+      "description": "Three-stage approval chain: manager → role owner → security team. Required for privileged access, SAP_ALL, sensitive financial authorizations, and any role flagged as high-risk by the SoD engine.",
+      "compliance_frameworks": ["SOX", "SOC2", "ISO27001", "GDPR"],
+      "industry_tags": ["all"],
+      "severity": "high",
+      "version": "1.0.0",
+      "payload": {
+        "workflow_type": "access_request",
+        "stages": [
+          {
+            "stage_id": "manager_approval",
+            "stage_name": "Manager Approval",
+            "stage_type": "human",
+            "order": 1,
+            "config": {
+              "approver_type": "direct_manager",
+              "approver_fallback": "skip_level_manager",
+              "sla_hours": 24,
+              "on_sla_breach": "escalate",
+              "allow_delegate": false
+            }
+          },
+          {
+            "stage_id": "role_owner_approval",
+            "stage_name": "Role Owner Approval",
+            "stage_type": "human",
+            "order": 2,
+            "config": {
+              "approver_type": "role_owner",
+              "approver_fallback": "security_team",
+              "sla_hours": 24,
+              "on_sla_breach": "escalate",
+              "allow_delegate": false
+            }
+          },
+          {
+            "stage_id": "security_review",
+            "stage_name": "Security Team Review",
+            "stage_type": "human",
+            "order": 3,
+            "config": {
+              "approver_type": "security_team",
+              "approver_fallback": "ciso",
+              "sla_hours": 24,
+              "on_sla_breach": "reject",
+              "allow_delegate": false,
+              "require_comment": true,
+              "sod_conflict_check": true,
+              "sensitive_access_list": ["SAP_ALL", "SAP_NEW", "S_TCODE_ALL"]
+            }
+          }
+        ],
+        "sla_hours": 72,
+        "auto_revoke_days": 365,
+        "notification_on_approve": true,
+        "notification_on_reject": true,
+        "allow_request_justification": true,
+        "require_business_justification": true,
+        "require_risk_acceptance": true
+      }
+    }
+  ]
+}

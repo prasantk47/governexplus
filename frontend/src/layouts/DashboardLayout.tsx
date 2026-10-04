@@ -329,6 +329,7 @@ const navigation: NavItem[] = [
       { name: 'Activation Wizard', href: '/library/wizard', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
       { name: 'Active Content', href: '/library/active', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
       { name: 'Update Review', href: '/library/updates', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
+      { name: 'Pack Builder', href: '/library/pack-builder', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
     ],
   },
   {

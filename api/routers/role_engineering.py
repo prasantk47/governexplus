@@ -662,3 +662,146 @@ async def get_role_engineering_statistics():
         "business_roles": business_role_manager.get_statistics(),
         "analyzer": role_analyzer.get_statistics()
     }
+
+
+# =============================================================================
+# Design-time Risk Check & Role Mining
+# =============================================================================
+
+class RoleRiskCheckRequest(BaseModel):
+    permissions: List[str] = Field(default_factory=list, description="Permission/T-code strings to check")
+    system: str = Field(default="SAP", description="Source system identifier")
+    role_name: Optional[str] = Field(default=None, description="Proposed role name (optional)")
+
+
+class RoleMiningRequest(BaseModel):
+    department: Optional[str] = Field(default=None, description="Department to mine roles for")
+    threshold: float = Field(default=0.70, ge=0.0, le=1.0, description="Similarity threshold for clustering")
+    min_users: int = Field(default=2, ge=1, description="Minimum users sharing permissions to form a cluster")
+    system: str = Field(default="SAP", description="Source system identifier")
+
+
+@router.post("/roles/risk-check", summary="Design-time SoD risk check for a proposed role")
+async def roles_risk_check(body: RoleRiskCheckRequest):
+    """
+    Check a proposed set of permissions/T-codes for SoD conflicts before the role is created.
+    """
+    from core.rules import RuleEngine
+    from core.rules.models import Entitlement, UserAccess
+
+    engine = RuleEngine()
+
+    entitlements = []
+    for perm in body.permissions:
+        parts = perm.split(":")
+        if len(parts) >= 3:
+            entitlements.append(
+                Entitlement(system=parts[0], auth_object=parts[1], field=parts[2], value=parts[3] if len(parts) > 3 else "*")
+            )
+        elif len(parts) == 2:
+            entitlements.append(
+                Entitlement(system=body.system, auth_object=parts[0], field="TCD", value=parts[1])
+            )
+        else:
+            entitlements.append(
+                Entitlement(system=body.system, auth_object="S_TCODE", field="TCD", value=perm)
+            )
+
+    if not entitlements:
+        return {
+            "proposed_role": body.role_name,
+            "system": body.system,
+            "permissions_checked": 0,
+            "violations": [],
+            "violation_count": 0,
+            "risk_level": "low",
+            "is_clean": True,
+            "recommendations": [],
+        }
+
+    proposed_user = UserAccess(
+        user_id=f"__proposed__{body.role_name or 'role'}",
+        username="__proposed__",
+        full_name="Proposed Role Check",
+        department="",
+        entitlements=entitlements,
+    )
+
+    violations_objs = engine.evaluate_user(proposed_user)
+    violations = [
+        {
+            "violation_id": v.violation_id,
+            "rule_id": v.rule_id,
+            "rule_name": v.rule_name,
+            "severity": v.severity.name.lower() if hasattr(v.severity, "name") else str(v.severity),
+            "description": v.description,
+        }
+        for v in violations_objs
+    ]
+
+    risk_level = (
+        "critical" if any(v["severity"] == "critical" for v in violations) else
+        "high" if any(v["severity"] == "high" for v in violations) else
+        "medium" if violations else "low"
+    )
+
+    return {
+        "proposed_role": body.role_name,
+        "system": body.system,
+        "permissions_checked": len(body.permissions),
+        "violations": violations,
+        "violation_count": len(violations),
+        "risk_level": risk_level,
+        "is_clean": len(violations) == 0,
+        "recommendations": [
+            f"Remove conflicting permission group: {v['rule_name']}"
+            for v in violations[:5]
+        ],
+    }
+
+
+@router.post("/roles/mining", summary="Mine role patterns from user access data")
+async def roles_mining(body: RoleMiningRequest):
+    """
+    Analyse existing user-permission assignments to discover natural role clusters.
+    """
+    from core.role_intelligence import RoleIntelligenceEngine
+    from core.tenant import get_current_tenant
+
+    ctx = get_current_tenant()
+    tenant_id = ctx.tenant_id if ctx else "default"
+
+    engine = RoleIntelligenceEngine(tenant_id=tenant_id)
+    overview = engine.get_overview()
+
+    clusters = []
+    try:
+        consolidation_data = engine.get_consolidation_candidates(threshold=body.threshold)
+        groups = consolidation_data.get("consolidation_groups", [])
+        for i, group in enumerate(groups):
+            roles_in_group = group.get("roles", [])
+            if len(roles_in_group) < body.min_users:
+                continue
+            dept_suffix = f"_{body.department.replace(' ', '_').upper()}" if body.department else ""
+            clusters.append({
+                "cluster_id": f"MINED-{i + 1:03d}",
+                "proposed_role_name": f"Z_MINED{dept_suffix}_{i + 1:03d}",
+                "user_count": group.get("total_users", len(roles_in_group)),
+                "source_roles": [r.get("role_id", r) if isinstance(r, dict) else r for r in roles_in_group[:10]],
+                "similarity_score": group.get("similarity_score", body.threshold),
+                "department": body.department,
+                "system": body.system,
+            })
+    except Exception:
+        pass
+
+    return {
+        "department": body.department,
+        "system": body.system,
+        "threshold": body.threshold,
+        "min_users": body.min_users,
+        "clusters_found": len(clusters),
+        "proposed_roles": clusters,
+        "total_roles_analyzed": overview.get("total_roles", 0),
+        "mining_status": "completed",
+    }

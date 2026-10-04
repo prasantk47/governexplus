@@ -4,7 +4,12 @@ Reporting & Analytics API Router
 Endpoints for report generation, templates, and scheduling.
 """
 
+import csv
+import io
+import json as _json
+
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 from datetime import datetime
@@ -74,7 +79,7 @@ async def list_reports(
     try:
         type_enum = ReportType(report_type) if report_type else None
         reports = reporting_engine.list_reports(type_enum, generated_by, from_date, to_date)
-        return {"total": len(reports), "reports": [r.to_dict() for r in reports]}
+        return {"total": len(reports), "items": [r.to_dict() for r in reports]}
     except Exception:
         return {"total": 0, "reports": []}
 
@@ -90,18 +95,54 @@ async def get_report(report_id: str):
 
 @router.get("/reports/{report_id}/download")
 async def download_report(report_id: str):
-    """Download report content"""
+    """Download report content as a file"""
     report = reporting_engine.get_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    # In production, this would return the actual file
-    return {
-        "report_id": report_id,
-        "filename": f"{report.name}.{report.format.value}",
-        "content_type": _get_content_type(report.format),
-        "download_url": f"/api/reports/{report_id}/content"
-    }
+    filename = f"{report.name or report_id}.{report.format.value}"
+    content_type = _get_content_type(report.format)
+
+    if report.format == ReportFormat.CSV:
+        # Flatten report data into CSV rows
+        output = io.StringIO()
+        data_payload = report.data or {}
+        # Try to find a list of rows in the data dict
+        rows = None
+        for v in data_payload.values():
+            if isinstance(v, list) and len(v) > 0:
+                rows = v
+                break
+        if rows and isinstance(rows[0], dict):
+            writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+        else:
+            # Fallback: write summary as CSV
+            writer = csv.writer(output)
+            for k, v in (report.summary or {}).items():
+                writer.writerow([k, v])
+        return Response(
+            content=output.getvalue(),
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    elif report.format == ReportFormat.JSON:
+        content = _json.dumps({"report_id": report_id, "name": report.name,
+                                "data": report.data, "summary": report.summary}, indent=2)
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    else:
+        # For PDF/Excel/HTML: return JSON representation with metadata header
+        content = _json.dumps(report.to_dict(), indent=2)
+        return Response(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{report_id}.json"'},
+        )
 
 
 def _get_content_type(format: ReportFormat) -> str:

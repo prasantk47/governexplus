@@ -43,13 +43,21 @@ export function ReportViewer() {
 
   const { data: executionsData } = useQuery<ReportExecution[]>({
     queryKey: ['report-executions', reportId],
-    queryFn: () => reportsApi.execute(reportId!).then((res) => res.data?.executions || res.data || []),
+    queryFn: () => reportsApi.list().then((res) => res.data?.items || res.data?.reports || res.data || []),
     enabled: !!reportId,
   });
 
   const { data: previewData } = useQuery({
     queryKey: ['report-preview', reportId],
-    queryFn: () => reportsApi.execute(reportId!, { preview: true }).then((res) => res.data?.data || res.data || []),
+    queryFn: () => reportsApi.get(reportId!).then((res) => {
+      const d = res.data?.data || res.data || {};
+      // Return first array found in data, or empty
+      if (Array.isArray(d)) return d;
+      for (const v of Object.values(d)) {
+        if (Array.isArray(v)) return v as any[];
+      }
+      return [];
+    }),
     enabled: !!reportId,
   });
 
@@ -66,7 +74,7 @@ export function ReportViewer() {
     setIsRunning(true);
     const toastId = toast.loading('Generating report...');
     try {
-      await api.post(`/reporting/reports/${reportId || report.id}/execute`);
+      await api.post('/reporting/generate', { template_id: reportId || report.id, format: report.format || 'json' }, { params: { generated_by: 'user' } });
       toast.success('Report generation started successfully', { id: toastId });
     } catch (error) {
       toast.error('Failed to run report. Please try again.', { id: toastId });

@@ -687,6 +687,26 @@ app.include_router(
     tags=["Survey Engine"], dependencies=_require_auth,
 )
 
+# ── Template Library — global content library with per-tenant activation ─────
+from api.routers import library as library_router
+
+app.include_router(
+    library_router.router, prefix="/library",
+    tags=["Template Library"], dependencies=_require_auth,
+)
+
+# Seed the template library on startup (idempotent)
+@app.on_event("startup")
+async def _seed_template_library():
+    try:
+        from db.session import SessionLocal
+        from core.library.seeder import seed_library
+        with SessionLocal() as s:
+            result = seed_library(s)
+            logger.info("Template library seeder: %s", result)
+    except Exception as e:
+        logger.warning("Template library seeder failed (non-fatal): %s", e)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

@@ -217,6 +217,13 @@ from .extended_modules import (
     SurveyAnswer,
 )
 
+from .template_library import (
+    TemplatePack,
+    TemplatePackVersion,
+    TemplateItem,
+    TenantItemActivation,
+)
+
 __all__ = [
     # Core
     "Base",
@@ -428,4 +435,9 @@ __all__ = [
     "SurveyDistribution",
     "SurveyDistributionStatus",
     "SurveyAnswer",
+    # Template Library
+    "TemplatePack",
+    "TemplatePackVersion",
+    "TemplateItem",
+    "TenantItemActivation",
 ]

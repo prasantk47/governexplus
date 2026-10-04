@@ -36,6 +36,7 @@ import {
   MegaphoneIcon,
   ClipboardDocumentCheckIcon,
   CpuChipIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -317,6 +318,18 @@ const navigation: NavItem[] = [
     href: '/ml',
     icon: CpuChipIcon,
     permissions: [PERMISSIONS.VIEW_DASHBOARD],
+  },
+  {
+    name: 'Content Library',
+    href: '/library',
+    icon: BookOpenIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
+    children: [
+      { name: 'Browse Library', href: '/library/content', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
+      { name: 'Activation Wizard', href: '/library/wizard', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
+      { name: 'Active Content', href: '/library/active', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
+      { name: 'Update Review', href: '/library/updates', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
+    ],
   },
   {
     name: 'Settings',

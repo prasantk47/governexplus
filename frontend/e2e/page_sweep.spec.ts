@@ -19,7 +19,7 @@ import { getToken, apiGet, apiPost } from './helpers';
 // TC-PAGE-001: Dashboard
 test('TC-PAGE-001: Dashboard stats endpoint returns data', async () => {
   const token = await getToken('P02');
-  const { status } = await apiGet('/dashboard', token);
+  const { status } = await apiGet('/dashboard/stats', token);
   expect(status).toBe(200);
 });
 

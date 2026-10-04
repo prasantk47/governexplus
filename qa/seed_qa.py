@@ -54,6 +54,26 @@ def seed_via_db() -> None:
     Session = sessionmaker(bind=engine)
     db = Session()
 
+    # Ensure the QA tenant record exists (TenantManager requires it at startup)
+    try:
+        import datetime
+        db.execute(
+            text("""
+                INSERT INTO tenants (id, name, slug, status, tier, max_users,
+                    modules_enabled, settings, is_deleted, created_at, updated_at)
+                VALUES (:id, :name, :slug, 'active', 'enterprise', 500,
+                    '["all"]', '{}', false, :now, :now)
+                ON CONFLICT (id) DO NOTHING
+            """),
+            {"id": tenant_id, "name": "GovernexPlus QA Tenant", "slug": tenant_id,
+             "now": datetime.datetime.utcnow()},
+        )
+        db.commit()
+        print(f"  Tenant {tenant_id} ensured")
+    except Exception as exc:
+        db.rollback()
+        print(f"  Tenant insert warning: {exc}")
+
     inserted = 0
     updated = 0
     errors = []

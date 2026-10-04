@@ -21,9 +21,9 @@ import { getToken, apiGet, apiPost, assertAllowed, assertDenied, assertPostDenie
 test.describe('J13 — RBAC Enforcement Matrix', () => {
 
   // TC-J13-001: P16 Viewer can GET dashboard
-  test('TC-J13-001: P16 Viewer GET /dashboard → 200', async () => {
+  test('TC-J13-001: P16 Viewer GET /dashboard/stats → 200', async () => {
     const token = await getToken('P16');
-    await assertAllowed('/dashboard', token);
+    await assertAllowed('/dashboard/stats', token);
   });
 
   // TC-J13-002: P16 Viewer cannot submit access requests

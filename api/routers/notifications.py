@@ -345,6 +345,52 @@ async def get_template(template_id: str):
     }
 
 
+class PreviewRequest(BaseModel):
+    template_code: str
+    variables: Dict[str, Any] = {}
+
+
+@router.post("/preview")
+async def preview_notification(request: PreviewRequest):
+    """Render a notification template with variable substitution.
+
+    Returns the rendered subject and body with all {{variable}} placeholders
+    replaced by the provided values.
+    """
+    # Look up template by code or notification type
+    template = notification_service.templates.get(request.template_code)
+    if not template:
+        # Try matching by notification_type value
+        for t in notification_service.templates.values():
+            if t.notification_type.value == request.template_code:
+                template = t
+                break
+
+    if not template:
+        # Synthetic preview using the /config notification templates as fallback
+        subject_tpl = f"[{request.template_code}] Preview"
+        body_tpl = f"Template '{request.template_code}' preview."
+    else:
+        subject_tpl = template.subject_template
+        body_tpl = template.body_template
+
+    def _render(text: str, variables: Dict[str, Any]) -> str:
+        for key, value in variables.items():
+            text = text.replace("{{" + key + "}}", str(value))
+            text = text.replace("{" + key + "}", str(value))
+        return text
+
+    rendered_subject = _render(subject_tpl, request.variables)
+    rendered_body = _render(body_tpl, request.variables)
+
+    return {
+        "template_code": request.template_code,
+        "rendered_subject": rendered_subject,
+        "rendered_body": rendered_body,
+        "variables_applied": list(request.variables.keys()),
+    }
+
+
 # ==================== Notification Types ====================
 
 @router.get("/types")

@@ -8,7 +8,7 @@ Provides:
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import logging
 import io
@@ -24,6 +24,7 @@ from db.models.risk import RiskViolation
 from db.models.audit import AccessRequestLog, CertificationCampaignLog
 from db.models.firefighter import FirefighterRequest, FirefighterSession
 from core.export import PPTXExportService
+from api.dependencies import get_current_user
 
 PPTX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -193,6 +194,7 @@ async def get_dashboard_summary(
 # =============================================================================
 
 REPORT_CATALOG = {
+    # Legacy RPT-* IDs
     "RPT-001": {"id": "RPT-001", "name": "SoD Violations Summary", "format": "pdf"},
     "RPT-002": {"id": "RPT-002", "name": "User Access Review", "format": "excel"},
     "RPT-003": {"id": "RPT-003", "name": "Certification Campaign Status", "format": "pdf"},
@@ -201,6 +203,122 @@ REPORT_CATALOG = {
     "RPT-006": {"id": "RPT-006", "name": "Access Request History", "format": "csv"},
     "RPT-007": {"id": "RPT-007", "name": "Role Assignment Matrix", "format": "excel"},
     "RPT-008": {"id": "RPT-008", "name": "Compliance Summary Report", "format": "pdf"},
+    # ARA / SoD (001-015)
+    "sod-violations": {"id": "sod-violations", "name": "SoD Violations Summary", "format": "pdf", "module": "ara"},
+    "sod-violations-by-rule": {"id": "sod-violations-by-rule", "name": "Violations by Rule", "format": "pdf", "module": "ara"},
+    "sod-violations-by-user": {"id": "sod-violations-by-user", "name": "Violations by User", "format": "pdf", "module": "ara"},
+    "sod-violations-trend": {"id": "sod-violations-trend", "name": "Violations Trend", "format": "pdf", "module": "ara"},
+    "mitigation-effectiveness": {"id": "mitigation-effectiveness", "name": "Mitigation Effectiveness", "format": "pdf", "module": "ara"},
+    "open-vs-remediated": {"id": "open-vs-remediated", "name": "Open vs Remediated", "format": "pdf", "module": "ara"},
+    "role-sod-risk": {"id": "role-sod-risk", "name": "Role-Level SoD Risk", "format": "pdf", "module": "ara"},
+    "sod-ruleset-coverage": {"id": "sod-ruleset-coverage", "name": "SoD Ruleset Coverage", "format": "pdf", "module": "ara"},
+    "top-violated-rules": {"id": "top-violated-rules", "name": "Top Violated Rules", "format": "pdf", "module": "ara"},
+    "cross-system-sod": {"id": "cross-system-sod", "name": "Cross-System SoD", "format": "pdf", "module": "ara"},
+    "sod-simulation": {"id": "sod-simulation", "name": "SoD Simulation", "format": "pdf", "module": "ara"},
+    "access-risk-by-department": {"id": "access-risk-by-department", "name": "Risk by Department", "format": "pdf", "module": "ara"},
+    "orphaned-accounts": {"id": "orphaned-accounts", "name": "Orphaned Accounts", "format": "pdf", "module": "ara"},
+    "dormant-users": {"id": "dormant-users", "name": "Dormant Users", "format": "pdf", "module": "ara"},
+    "access-pattern-anomalies": {"id": "access-pattern-anomalies", "name": "Access Anomalies", "format": "pdf", "module": "ara"},
+    # ARM (016-023)
+    "pending-approvals-aging": {"id": "pending-approvals-aging", "name": "Pending Approvals Aging", "format": "pdf", "module": "arm"},
+    "request-volume": {"id": "request-volume", "name": "Request Volume", "format": "pdf", "module": "arm"},
+    "approval-sla": {"id": "approval-sla", "name": "Approval SLA", "format": "pdf", "module": "arm"},
+    "rejection-analysis": {"id": "rejection-analysis", "name": "Rejection Analysis", "format": "pdf", "module": "arm"},
+    "auto-approved-vs-manual": {"id": "auto-approved-vs-manual", "name": "Auto vs Manual", "format": "pdf", "module": "arm"},
+    "provisioning-lag": {"id": "provisioning-lag", "name": "Provisioning Lag", "format": "pdf", "module": "arm"},
+    "requests-by-role": {"id": "requests-by-role", "name": "Requests by Role", "format": "pdf", "module": "arm"},
+    "high-risk-requests": {"id": "high-risk-requests", "name": "High-Risk Requests", "format": "pdf", "module": "arm"},
+    # EAM (024-031)
+    "ff-activity": {"id": "ff-activity", "name": "FF Activity Log", "format": "pdf", "module": "eam"},
+    "ff-usage-by-id": {"id": "ff-usage-by-id", "name": "FF Usage by ID", "format": "pdf", "module": "eam"},
+    "ff-controller-signoff": {"id": "ff-controller-signoff", "name": "Controller Sign-Off", "format": "pdf", "module": "eam"},
+    "ff-overdue-reviews": {"id": "ff-overdue-reviews", "name": "Overdue Reviews", "format": "pdf", "module": "eam"},
+    "ff-session-duration": {"id": "ff-session-duration", "name": "Session Duration", "format": "pdf", "module": "eam"},
+    "ff-transactions": {"id": "ff-transactions", "name": "Transactions by Session", "format": "pdf", "module": "eam"},
+    "ff-critical-tcodes": {"id": "ff-critical-tcodes", "name": "Critical Tcodes", "format": "pdf", "module": "eam"},
+    "ff-id-inventory": {"id": "ff-id-inventory", "name": "FF ID Inventory", "format": "pdf", "module": "eam"},
+    # Certification (032-039)
+    "certification-completion": {"id": "certification-completion", "name": "Campaign Completion", "format": "pdf", "module": "certification"},
+    "certification-by-reviewer": {"id": "certification-by-reviewer", "name": "By Reviewer", "format": "pdf", "module": "certification"},
+    "overdue-certifications": {"id": "overdue-certifications", "name": "Overdue Certs", "format": "pdf", "module": "certification"},
+    "certification-revocations": {"id": "certification-revocations", "name": "Revocations", "format": "pdf", "module": "certification"},
+    "certification-comparison": {"id": "certification-comparison", "name": "Campaign Comparison", "format": "pdf", "module": "certification"},
+    "self-certification": {"id": "self-certification", "name": "Self-Certification", "format": "pdf", "module": "certification"},
+    "sod-in-certifications": {"id": "sod-in-certifications", "name": "SoD in Certs", "format": "pdf", "module": "certification"},
+    "certification-coverage": {"id": "certification-coverage", "name": "Cert Coverage", "format": "pdf", "module": "certification"},
+    # JML (040-047)
+    "jml-hire-sla": {"id": "jml-hire-sla", "name": "New Hire SLA", "format": "pdf", "module": "jml"},
+    "jml-termination-sla": {"id": "jml-termination-sla", "name": "Termination SLA", "format": "pdf", "module": "jml"},
+    "jml-transfer-recert": {"id": "jml-transfer-recert", "name": "Transfer Re-Cert", "format": "pdf", "module": "jml"},
+    "jml-orphaned-post-transfer": {"id": "jml-orphaned-post-transfer", "name": "Orphaned Post-Transfer", "format": "pdf", "module": "jml"},
+    "jml-event-volume": {"id": "jml-event-volume", "name": "JML Event Volume", "format": "pdf", "module": "jml"},
+    "jml-role-mapping": {"id": "jml-role-mapping", "name": "Role Mapping by Job", "format": "pdf", "module": "jml"},
+    "jml-dept-profile": {"id": "jml-dept-profile", "name": "Department Profile", "format": "pdf", "module": "jml"},
+    "jml-compliance-score": {"id": "jml-compliance-score", "name": "JML Compliance Score", "format": "pdf", "module": "jml"},
+    # BRM (048-053)
+    "role-inventory": {"id": "role-inventory", "name": "Role Inventory", "format": "pdf", "module": "brm"},
+    "role-assignment": {"id": "role-assignment", "name": "Role Assignment", "format": "pdf", "module": "brm"},
+    "role-comparison": {"id": "role-comparison", "name": "Role Comparison", "format": "pdf", "module": "brm"},
+    "composite-role-usage": {"id": "composite-role-usage", "name": "Composite Role Usage", "format": "pdf", "module": "brm"},
+    "role-mining": {"id": "role-mining", "name": "Role Mining", "format": "pdf", "module": "brm"},
+    "role-cleanup": {"id": "role-cleanup", "name": "Role Clean-Up", "format": "pdf", "module": "brm"},
+    # Risk Management (054-065)
+    "risk-register": {"id": "risk-register", "name": "Risk Register", "format": "pdf", "module": "risk"},
+    "risk-heatmap": {"id": "risk-heatmap", "name": "Risk Heatmap", "format": "pdf", "module": "risk"},
+    "risk-by-category": {"id": "risk-by-category", "name": "Risk by Category", "format": "pdf", "module": "risk"},
+    "risk-trend": {"id": "risk-trend", "name": "Risk Trend", "format": "pdf", "module": "risk"},
+    "kri-dashboard": {"id": "kri-dashboard", "name": "KRI Dashboard", "format": "pdf", "module": "risk"},
+    "kri-breaches": {"id": "kri-breaches", "name": "KRI Breaches", "format": "pdf", "module": "risk"},
+    "incident-log": {"id": "incident-log", "name": "Incident Log", "format": "pdf", "module": "risk"},
+    "risk-by-owner": {"id": "risk-by-owner", "name": "Risk by Owner", "format": "pdf", "module": "risk"},
+    "top-risks": {"id": "top-risks", "name": "Top 10 Risks", "format": "pdf", "module": "risk"},
+    "residual-risk": {"id": "residual-risk", "name": "Residual Risk", "format": "pdf", "module": "risk"},
+    "risk-treatment": {"id": "risk-treatment", "name": "Risk Treatment", "format": "pdf", "module": "risk"},
+    "risk-appetite": {"id": "risk-appetite", "name": "Risk Appetite", "format": "pdf", "module": "risk"},
+    # Process Control (066-073)
+    "control-inventory": {"id": "control-inventory", "name": "Control Inventory", "format": "pdf", "module": "controls"},
+    "control-testing": {"id": "control-testing", "name": "Control Test Results", "format": "pdf", "module": "controls"},
+    "deficiency-tracker": {"id": "deficiency-tracker", "name": "Deficiency Tracker", "format": "pdf", "module": "controls"},
+    "control-effectiveness": {"id": "control-effectiveness", "name": "Control Effectiveness", "format": "pdf", "module": "controls"},
+    "overdue-tests": {"id": "overdue-tests", "name": "Overdue Tests", "format": "pdf", "module": "controls"},
+    "deficiency-aging": {"id": "deficiency-aging", "name": "Deficiency Aging", "format": "pdf", "module": "controls"},
+    "ccm-monitoring": {"id": "ccm-monitoring", "name": "CCM Monitoring", "format": "pdf", "module": "controls"},
+    "sox-itgc-coverage": {"id": "sox-itgc-coverage", "name": "SOX ITGC Coverage", "format": "pdf", "module": "controls"},
+    # Audit Management (074-079)
+    "audit-plan": {"id": "audit-plan", "name": "Audit Plan Status", "format": "pdf", "module": "audit"},
+    "audit-findings": {"id": "audit-findings", "name": "Audit Findings", "format": "pdf", "module": "audit"},
+    "finding-closure": {"id": "finding-closure", "name": "Finding Closure Rate", "format": "pdf", "module": "audit"},
+    "audit-engagement": {"id": "audit-engagement", "name": "Audit Engagement", "format": "pdf", "module": "audit"},
+    "findings-by-risk": {"id": "findings-by-risk", "name": "Findings by Risk", "format": "pdf", "module": "audit"},
+    "outstanding-remediation": {"id": "outstanding-remediation", "name": "Outstanding Remediation", "format": "pdf", "module": "audit"},
+    # Compliance (080-083)
+    "framework-coverage": {"id": "framework-coverage", "name": "Framework Coverage", "format": "pdf", "module": "compliance"},
+    "compliance-posture": {"id": "compliance-posture", "name": "Compliance Posture", "format": "pdf", "module": "compliance"},
+    "policy-attestation": {"id": "policy-attestation", "name": "Policy Attestation", "format": "pdf", "module": "compliance"},
+    "compliance-gaps": {"id": "compliance-gaps", "name": "Compliance Gaps", "format": "pdf", "module": "compliance"},
+    # TPRM (084-089)
+    "vendor-inventory": {"id": "vendor-inventory", "name": "Vendor Inventory", "format": "pdf", "module": "tprm"},
+    "assessment-completion": {"id": "assessment-completion", "name": "Assessment Completion", "format": "pdf", "module": "tprm"},
+    "vendor-risk-distribution": {"id": "vendor-risk-distribution", "name": "Vendor Risk Distribution", "format": "pdf", "module": "tprm"},
+    "fourth-party-risk": {"id": "fourth-party-risk", "name": "Fourth-Party Risk", "format": "pdf", "module": "tprm"},
+    "overdue-reassessments": {"id": "overdue-reassessments", "name": "Overdue Reassessments", "format": "pdf", "module": "tprm"},
+    "vendor-sla": {"id": "vendor-sla", "name": "Vendor SLA", "format": "pdf", "module": "tprm"},
+    # BCM (090-093)
+    "bia-summary": {"id": "bia-summary", "name": "BIA Summary", "format": "pdf", "module": "bcm"},
+    "bcm-plan-test": {"id": "bcm-plan-test", "name": "BCM Plan Test", "format": "pdf", "module": "bcm"},
+    "rto-rpo": {"id": "rto-rpo", "name": "RTO/RPO Achievement", "format": "pdf", "module": "bcm"},
+    "critical-assets": {"id": "critical-assets", "name": "Critical Assets", "format": "pdf", "module": "bcm"},
+    # Fraud (094-097)
+    "fraud-alerts": {"id": "fraud-alerts", "name": "Fraud Alerts", "format": "pdf", "module": "fraud"},
+    "fraud-cases": {"id": "fraud-cases", "name": "Fraud Cases", "format": "pdf", "module": "fraud"},
+    "fraud-rule-effectiveness": {"id": "fraud-rule-effectiveness", "name": "Fraud Rule Effectiveness", "format": "pdf", "module": "fraud"},
+    "alert-to-case": {"id": "alert-to-case", "name": "Alert-to-Case Rate", "format": "pdf", "module": "fraud"},
+    # Survey (098-099)
+    "survey-responses": {"id": "survey-responses", "name": "Survey Responses", "format": "pdf", "module": "survey"},
+    "survey-completion": {"id": "survey-completion", "name": "Survey Completion", "format": "pdf", "module": "survey"},
+    # Template Library (100-101)
+    "library-adoption": {"id": "library-adoption", "name": "Library Adoption", "format": "pdf", "module": "library"},
+    "pack-import-history": {"id": "pack-import-history", "name": "Pack Import History", "format": "pdf", "module": "library"},
 }
 
 
@@ -596,9 +714,26 @@ async def download_report(report_id: str):
     })
 
 
+_REPORTS_ALLOWED_ROLES = {
+    "platform_admin", "tenant_admin", "admin", "super_admin",
+    "ciso", "compliance_officer", "risk_manager",
+    "security_admin", "it_security",
+    "internal_auditor", "external_auditor",
+    "control_owner", "sox_owner",
+    "process_owner", "firefighter_controller", "firefighter_owner",
+    "role_owner", "risk_owner", "mitigation_monitor",
+}
+
+
 @router.get("/{report_id}")
-async def get_report(report_id: str):
+async def get_report(
+    report_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
     """Get report details."""
+    caller_roles = set(current_user.get("roles", []) or [current_user.get("role", "")])
+    if not (caller_roles & _REPORTS_ALLOWED_ROLES):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to access reports")
     if report_id not in REPORT_CATALOG:
         raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
     return REPORT_CATALOG[report_id]

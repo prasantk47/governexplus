@@ -5,6 +5,7 @@ The engine uses in-memory mock users and roles — no DB setup required.
 """
 
 import pytest
+from datetime import date
 
 from core.troubleshooter.engine import (
     AccessTroubleshooter,
@@ -18,12 +19,117 @@ from core.troubleshooter.engine import (
     get_diagnosis_history,
     TRANSACTION_KB,
     FIORI_KB,
+    _MockUser,
+    _MockRole,
+    _UserStatus,
+    _KB_USERS_CACHE,
+    _KB_ROLES_CACHE,
+    _KB_LOADED_TENANTS,
 )
+
+# ---------------------------------------------------------------------------
+# Seed KB caches with test personas so the engine works without a DB
+# ---------------------------------------------------------------------------
+
+_TEST_TENANT = "tenant_default"
+
+_TEST_USERS: dict = {
+    "JDOE": _MockUser(
+        user_id="JDOE",
+        display_name="John Doe",
+        status=_UserStatus.ACTIVE,
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2099, 12, 31),
+        user_group="FI",
+        roles=["Z_FI_AP_CLERK"],
+        department="Finance",
+    ),
+    "MGARCIA": _MockUser(
+        user_id="MGARCIA",
+        display_name="Maria Garcia",
+        status=_UserStatus.ACTIVE,
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2021, 12, 31),  # expired
+        user_group="HR",
+        roles=["Z_HR_TIME_CLERK"],
+        department="Human Resources",
+    ),
+    "PCHANG": _MockUser(
+        user_id="PCHANG",
+        display_name="Patricia Chang",
+        status=_UserStatus.ACTIVE,
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2099, 12, 31),
+        user_group="BASIS",
+        roles=["Z_BASIS_ADMIN"],
+        department="IT Basis",
+    ),
+    "NOBODY123": _MockUser(
+        user_id="NOBODY123",
+        display_name="",
+        status=_UserStatus.INACTIVE,
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2020, 12, 31),
+        user_group="",
+        roles=[],
+        department="",
+    ),
+}
+
+_TEST_ROLES: dict = {
+    "Z_FI_AP_CLERK": _MockRole(
+        role_name="Z_FI_AP_CLERK",
+        description="AP Clerk",
+        transactions=["FB01", "FB60", "FK01", "FBL1N"],
+        auth_objects={"F_BKPF_BUK": {"BUKRS": ["1000"], "ACTVT": ["01", "02", "03"]}},
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2099, 12, 31),
+        transported_to=["PRD", "QAS", "DEV"],
+    ),
+    "Z_HR_TIME_CLERK": _MockRole(
+        role_name="Z_HR_TIME_CLERK",
+        description="HR Time Clerk",
+        transactions=["PT40", "PA20", "CAT2"],
+        auth_objects={"P_ORGIN": {"INFTY": ["0007"], "ACTVT": ["01", "02"]}},
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2099, 12, 31),
+        transported_to=["DEV", "QAS"],  # NOT transported to PRD — transport gap
+    ),
+    "Z_BASIS_ADMIN": _MockRole(
+        role_name="Z_BASIS_ADMIN",
+        description="Basis Administration",
+        transactions=["STMS", "SM50", "SM66", "RZ10", "PFCG"],
+        auth_objects={
+            "S_ADMI_FCD": {"S_ADMI_FCD": ["*"]},
+            "S_TRANSPRT": {
+                "ACTVT": ["01", "02", "43"],
+                "TTYPE": ["K", "W", "T"],
+            },
+        },
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2099, 12, 31),
+        transported_to=["PRD", "QAS", "DEV"],
+    ),
+}
+
+
+def _seed_kb():
+    """Populate in-memory KB caches with test personas."""
+    _KB_USERS_CACHE[_TEST_TENANT] = _TEST_USERS
+    _KB_ROLES_CACHE[_TEST_TENANT] = _TEST_ROLES
+    _KB_LOADED_TENANTS.add(_TEST_TENANT)
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def seed_kb():
+    """Seed KB before every test and clear transport gap state."""
+    _seed_kb()
+    yield
+
 
 @pytest.fixture
 def engine():

@@ -115,6 +115,7 @@ from api.routers import migration_copilot
 from api.routers import notification_delivery, model_user, mitigation_monitoring
 # SMTP configuration (per-tenant email settings)
 from api.routers import smtp_config as smtp_config_router
+from api.routers import config as config_router
 # GRC Intelligence Engine (the brain)
 from api.routers import grc_intelligence
 # Internationalisation
@@ -234,7 +235,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    redirect_slashes=False,
 )
 
 # CORS middleware — restricted to configured origins
@@ -566,6 +568,10 @@ app.include_router(
 app.include_router(
     smtp_config_router.router, prefix="/settings",
     tags=["SMTP Configuration"], dependencies=_require_auth,
+)
+app.include_router(
+    config_router.router, prefix="/config",
+    tags=["Platform Configuration"], dependencies=_require_auth,
 )
 app.include_router(
     model_user.router, prefix="/model-user", tags=["Model User & Templates"],

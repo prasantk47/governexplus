@@ -208,9 +208,10 @@ class TestRoleDetermination:
         assert token_resp.user.role == "end_user"
 
     def test_security_dept_user_gets_security_admin(self, auth_service, test_user, db_session):
-        # Change username to something neutral, set security department
+        # user_type is authoritative for role determination (department heuristic removed per DEF-009 fix)
         test_user.username = "secuser"
         test_user.department = "IT Security"
+        test_user.user_type = "security_admin"
         db_session.commit()
 
         token_resp, _ = auth_service.authenticate(

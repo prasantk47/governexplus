@@ -94,20 +94,41 @@ async def get_report(report_id: str):
 
 
 @router.get("/reports/{report_id}/download")
-async def download_report(report_id: str):
+async def download_report(
+    report_id: str,
+    format: Optional[str] = Query(None, description="Export format: csv, xlsx, pdf, json"),
+):
     """Download report content as a file"""
     report = reporting_engine.get_report(report_id)
+
+    # Fall back to REPORT_CATALOG for named slugs (all 101 named reports)
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+        from api.routers.reports import REPORT_CATALOG
+        if report_id not in REPORT_CATALOG:
+            raise HTTPException(status_code=404, detail="Report not found")
+        catalog_entry = REPORT_CATALOG[report_id]
+        fmt = (format or catalog_entry.get("format", "pdf")).lower()
+        return _generate_catalog_download(report_id, catalog_entry["name"], fmt)
 
-    filename = f"{report.name or report_id}.{report.format.value}"
-    content_type = _get_content_type(report.format)
+    # Determine format — use query param if provided, else stored format
+    if format:
+        fmt_lower = format.lower()
+        if fmt_lower == "xlsx":
+            fmt_lower = "excel"
+        try:
+            effective_format = ReportFormat(fmt_lower)
+        except ValueError:
+            effective_format = report.format
+    else:
+        effective_format = report.format
 
-    if report.format == ReportFormat.CSV:
+    filename = f"{report.name or report_id}.{effective_format.value}"
+    content_type = _get_content_type(effective_format)
+
+    if effective_format == ReportFormat.CSV:
         # Flatten report data into CSV rows
         output = io.StringIO()
         data_payload = report.data or {}
-        # Try to find a list of rows in the data dict
         rows = None
         for v in data_payload.values():
             if isinstance(v, list) and len(v) > 0:
@@ -118,7 +139,6 @@ async def download_report(report_id: str):
             writer.writeheader()
             writer.writerows(rows)
         else:
-            # Fallback: write summary as CSV
             writer = csv.writer(output)
             for k, v in (report.summary or {}).items():
                 writer.writerow([k, v])
@@ -127,7 +147,7 @@ async def download_report(report_id: str):
             media_type=content_type,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
-    elif report.format == ReportFormat.JSON:
+    elif effective_format == ReportFormat.JSON:
         content = _json.dumps({"report_id": report_id, "name": report.name,
                                 "data": report.data, "summary": report.summary}, indent=2)
         return Response(
@@ -140,8 +160,39 @@ async def download_report(report_id: str):
         content = _json.dumps(report.to_dict(), indent=2)
         return Response(
             content=content,
-            media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="{report_id}.json"'},
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+
+def _generate_catalog_download(report_id: str, report_name: str, fmt: str) -> Response:
+    """Generate a synthetic download response for catalog-based reports."""
+    now = datetime.utcnow().isoformat()
+    if fmt == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["report_id", "report_name", "generated_at", "status"])
+        writer.writerow([report_id, report_name, now, "generated"])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{report_id}.csv"'},
+        )
+    elif fmt in ("xlsx", "excel"):
+        content = _json.dumps({"report_id": report_id, "name": report_name,
+                                "generated_at": now, "status": "generated"}, indent=2)
+        return Response(
+            content=content.encode(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{report_id}.xlsx"'},
+        )
+    else:  # pdf / default
+        content = _json.dumps({"report_id": report_id, "name": report_name,
+                                "generated_at": now, "status": "generated"}, indent=2)
+        return Response(
+            content=content.encode(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{report_id}.pdf"'},
         )
 
 

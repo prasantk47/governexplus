@@ -126,6 +126,16 @@ def list_policies(
     return {"total": len(policies), "policies": [p.to_dict() for p in policies]}
 
 
+@router.get("/policies/{id}")
+def get_policy(
+    id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Get a single JML policy by ID."""
+    return _policy_or_404(db, id, tenant_id).to_dict()
+
+
 @router.post("/policies", status_code=201)
 def create_policy(
     body: PolicyCreate,

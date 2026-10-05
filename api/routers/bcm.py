@@ -220,6 +220,16 @@ def list_bia_records(
     return {"total": len(records), "bia_records": [r.to_dict() for r in records]}
 
 
+@router.get("/bia/{id}")
+def get_bia_record(
+    id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Get a single BIA record by ID."""
+    return _bia_or_404(db, id, tenant_id).to_dict()
+
+
 @router.post("/bia", status_code=201)
 def create_bia_record(
     body: BiaCreate,

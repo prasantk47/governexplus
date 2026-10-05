@@ -27,8 +27,10 @@ rule_engine = RuleEngine()
 DEFAULT_TENANT = "tenant_default"
 
 
-def _get_tenant_id(x_tenant_id: Optional[str] = Header(None)) -> str:
-    return x_tenant_id or DEFAULT_TENANT
+def _get_tenant_id() -> str:
+    from core.tenant import get_current_tenant
+    ctx = get_current_tenant()
+    return ctx.tenant_id if ctx else DEFAULT_TENANT
 
 
 def _get_manager(db: Session = Depends(get_db)) -> CertificationManager:

@@ -19,7 +19,7 @@ import uuid
 from db.database import get_db
 from db.models.extended_modules import (
     FraudRule, FraudAlert, FraudCase,
-    FraudAlertStatus, FraudCaseStatus, FraudRuleType,
+    FraudAlertStatus, FraudCaseStatus, FraudCaseSeverity, FraudRuleType,
 )
 
 router = APIRouter(tags=["Fraud Detection"])
@@ -312,13 +312,12 @@ def open_case_from_alert(
     case = FraudCase(
         id=_new_id("FRC"),
         tenant_id=tenant_id,
+        case_reference=f"FRC-{uuid.uuid4().hex[:8].upper()}",
         title=f"Case from Alert {id}",
-        description=alert.alert_description if hasattr(alert, "alert_description") else None,
-        severity="high" if alert.risk_score >= 75 else "medium",
-        source_alert_id=id,
-        subject_user_id=getattr(alert, "subject_user_id", None),
-        status="open",
-        evidence=[],
+        description=getattr(alert, "alert_description", None),
+        severity=FraudCaseSeverity.HIGH if alert.risk_score >= 75 else FraudCaseSeverity.MEDIUM,
+        status=FraudCaseStatus.OPEN,
+        linked_alert_ids=[id],
     )
     db.add(case)
     alert.status = "case_opened"
@@ -372,18 +371,14 @@ def create_case(
     case = FraudCase(
         id=_new_id("FRC"),
         tenant_id=tenant_id,
+        case_reference=f"FRC-{uuid.uuid4().hex[:8].upper()}",
         title=body.title,
         description=body.description,
-        severity=body.severity,
-        source_alert_id=body.source_alert_id,
-        subject_user_id=body.subject_user_id,
-        subject_name=body.subject_name,
+        severity=FraudCaseSeverity(body.severity) if body.severity else FraudCaseSeverity.MEDIUM,
+        status=FraudCaseStatus.OPEN,
         assigned_to=body.assigned_to,
-        estimated_loss=body.estimated_loss,
-        currency=body.currency,
-        evidence=body.evidence or [],
-        status="open",
-        metadata_=body.metadata,
+        linked_alert_ids=[body.source_alert_id] if body.source_alert_id else [],
+        loss_amount=body.estimated_loss,
     )
     db.add(case)
     db.commit()
@@ -400,18 +395,22 @@ def update_case(
 ):
     """Update a fraud case — add evidence, change status, record resolution."""
     case = _case_or_404(db, id, tenant_id)
-    updatable = [
-        "title", "description", "severity", "status", "assigned_to",
-        "resolution_notes", "estimated_loss", "confirmed_loss", "evidence",
-    ]
-    for field in updatable:
-        val = getattr(body, field)
-        if val is not None:
-            setattr(case, field, val)
+    if body.title is not None:
+        case.title = body.title
+    if body.description is not None:
+        case.description = body.description
+    if body.assigned_to is not None:
+        case.assigned_to = body.assigned_to
+    if body.estimated_loss is not None:
+        case.loss_amount = body.estimated_loss
+    if body.resolution_notes is not None:
+        case.outcome = body.resolution_notes
+    if body.severity is not None:
+        case.severity = FraudCaseSeverity(body.severity)
+    if body.status is not None:
+        case.status = FraudCaseStatus(body.status)
     if body.status in ("closed", "resolved"):
         case.closed_at = datetime.utcnow()
-    if body.metadata is not None:
-        case.metadata_ = body.metadata
     db.commit()
     db.refresh(case)
     return case.to_dict()

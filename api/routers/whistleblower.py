@@ -18,7 +18,10 @@ import uuid
 import secrets
 
 from db.database import get_db
-from db.models.extended_modules import WhistleblowerCase, WhistleblowerMessage, WhistleblowerStatus
+from db.models.extended_modules import (
+    WhistleblowerCase, WhistleblowerMessage, WhistleblowerStatus,
+    WhistleblowerCategory, WhistleblowerPriority, WhistleblowerSender,
+)
 
 router = APIRouter(tags=["Whistleblower Intake"])
 
@@ -35,6 +38,12 @@ def _get_tenant_id() -> str:
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+def _parse_priority(raw: Optional[str]) -> WhistleblowerPriority:
+    priority_map = {"urgent": "HIGH", "high": "HIGH", "normal": "MEDIUM", "medium": "MEDIUM", "low": "LOW"}
+    mapped = priority_map.get((raw or "normal").lower(), "MEDIUM")
+    return WhistleblowerPriority(mapped)
 
 
 def _generate_case_reference() -> str:
@@ -149,10 +158,10 @@ def submit_case(
         id=_new_id("WBC"),
         tenant_id=tenant_id,
         case_reference=case_reference,
-        category=body.category,
+        category=WhistleblowerCategory(body.category) if body.category else WhistleblowerCategory.OTHER,
         summary=body.title,
         details=body.description,
-        priority=body.priority or "normal",
+        priority=_parse_priority(body.priority),
         is_anonymous=body.is_anonymous,
         submitter_email=None if body.is_anonymous else body.submitter_email,
         status=WhistleblowerStatus.OPEN,
@@ -249,10 +258,8 @@ def add_message(
         id=_new_id("WBMSG"),
         tenant_id=tenant_id,
         case_id=case.id,
-        sender_type="investigator",
-        message_body=body.message_body,
-        is_visible_to_submitter=body.is_visible_to_submitter,
-        attachment_refs=body.attachment_refs or [],
+        sender=WhistleblowerSender.INVESTIGATOR,
+        message_text=body.message_body,
         sent_at=datetime.utcnow(),
     )
     db.add(message)
@@ -299,27 +306,25 @@ def track_case(
     """
     case = _case_by_reference(db, case_reference, tenant_id)
 
-    # Only return messages flagged as visible to the submitter
     messages = db.query(WhistleblowerMessage).filter(
         WhistleblowerMessage.case_id == case.id,
         WhistleblowerMessage.tenant_id == tenant_id,
-        WhistleblowerMessage.is_visible_to_submitter == True,
     ).order_by(WhistleblowerMessage.sent_at.asc()).all()
 
     return {
         "case_reference": case_reference,
-        "status": case.status,
-        "category": case.category,
-        "priority": case.priority,
+        "status": case.status.value if hasattr(case.status, "value") else case.status,
+        "category": case.category.value if hasattr(case.category, "value") else case.category,
+        "priority": case.priority.value if hasattr(case.priority, "value") else case.priority,
         "submitted_at": case.submitted_at.isoformat() if case.submitted_at else None,
         "last_updated": case.updated_at.isoformat() if hasattr(case, "updated_at") and case.updated_at else None,
         "messages_from_investigator": [
             {
                 "sent_at": m.sent_at.isoformat(),
-                "message": m.message_body,
+                "message": m.message_text,
             }
             for m in messages
-            if m.sender_type == "investigator"
+            if m.sender == WhistleblowerSender.INVESTIGATOR
         ],
     }
 
@@ -338,7 +343,7 @@ def anonymous_reply(
     grants access to add messages.
     """
     case = _case_by_reference(db, case_reference, tenant_id)
-    if case.status == "closed":
+    if case.status == WhistleblowerStatus.CLOSED:
         raise HTTPException(
             status_code=400,
             detail="This case is closed. New messages cannot be added.",
@@ -347,10 +352,8 @@ def anonymous_reply(
         id=_new_id("WBMSG"),
         tenant_id=tenant_id,
         case_id=case.id,
-        sender_type="submitter",
-        message_body=body.message_body,
-        is_visible_to_submitter=True,
-        attachment_refs=body.additional_attachments or [],
+        sender=WhistleblowerSender.SUBMITTER,
+        message_text=body.message_body,
         sent_at=datetime.utcnow(),
     )
     db.add(message)

@@ -393,6 +393,10 @@ function AppRoutes() {
 
       </Route>
 
+      {/* Public Whistleblower Routes (no auth required) */}
+      <Route path="/whistleblower/submit" element={<WhistleblowerIntake />} />
+      <Route path="/whistleblower/intake" element={<WhistleblowerIntake />} />
+
       {/* Super Admin Portal Routes */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/login" element={<AdminLogin />} />

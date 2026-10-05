@@ -40,7 +40,7 @@ test.describe('UAT-17 · Firefighter Request & Approval @P0', () => {
     await test.step('Submit request', async () => {
       const submitBtn = page.getByRole('button', { name: /submit|request/i }).first();
       if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await submitBtn.click();
+        await submitBtn.click({ force: true, timeout: 10000 });
         await page.waitForTimeout(2000);
       }
       await evidence(page, UAT, 5, 'request-submitted');

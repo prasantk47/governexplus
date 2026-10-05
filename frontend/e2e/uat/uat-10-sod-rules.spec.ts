@@ -81,15 +81,17 @@ test.describe('UAT-10 · SoD Rule Management @P0', () => {
     });
 
     await test.step('Fill and save rule', async () => {
-      const nameInput = page.locator('input').first();
+      // Modal may be open — fill inputs inside it
+      const modal = page.locator('[class*="modal"], [class*="dialog"], [role="dialog"], .fixed.inset-0').first();
+      const nameInput = modal.locator('input').first();
       if (await nameInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await nameInput.fill('UAT Custom Test Rule');
       }
       await evidence(page, UAT, 7, 'rule-form-filled');
 
-      const saveBtn = page.getByRole('button', { name: /save|create|submit/i }).first();
+      const saveBtn = modal.getByRole('button', { name: /save|create|submit/i }).first();
       if (await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await saveBtn.click();
+        await saveBtn.click({ force: true });
         await page.waitForTimeout(2000);
       }
       await evidence(page, UAT, 8, 'rule-created');

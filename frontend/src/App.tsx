@@ -370,10 +370,9 @@ function AppRoutes() {
         <Route path="/bcm/plans" element={<BcmPlans />} />
         <Route path="/bcm/activations" element={<IncidentActivation />} />
 
-        {/* Whistleblower */}
+        {/* Whistleblower (inbox is protected; intake/submit are public — see below) */}
         <Route path="/whistleblower" element={<WhistleblowerInbox />} />
         <Route path="/whistleblower/inbox" element={<WhistleblowerInbox />} />
-        <Route path="/whistleblower/intake" element={<WhistleblowerIntake />} />
         {/* Template Library */}
         <Route path="/library" element={<ContentLibrary />} />
         <Route path="/library/content" element={<ContentLibrary />} />

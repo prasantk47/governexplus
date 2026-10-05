@@ -1,0 +1,986 @@
+GET /
+POST /access-lifecycle/cart
+GET DELETE /access-lifecycle/cart/{cart_id}
+POST /access-lifecycle/cart/{cart_id}/check-conflicts
+GET /access-lifecycle/cart/{cart_id}/estimate
+POST /access-lifecycle/cart/{cart_id}/items
+DELETE /access-lifecycle/cart/{cart_id}/items/{item_id}
+GET /access-lifecycle/cart/{cart_id}/recommendations
+POST /access-lifecycle/cart/{cart_id}/submit
+GET /access-lifecycle/catalog
+GET /access-lifecycle/catalog/search
+GET /access-lifecycle/catalog/{role_id}
+GET /access-reports/auth-object-roles/{auth_object_id}
+GET /access-reports/auth-objects
+GET /access-reports/critical-transactions
+GET /access-reports/tcode-roles/{tcode}
+GET /access-reports/transaction-usage
+GET /access-reports/user-access/{user_id}
+POST GET /access-requests/
+GET /access-requests/approvals/pending
+GET /access-requests/catalog/roles
+GET /access-requests/catalog/roles/{role_id}
+GET /access-requests/my-access
+GET /access-requests/my-requests
+POST /access-requests/preview-risk
+GET /access-requests/statistics
+GET /access-requests/statistics/sla
+GET /access-requests/{request_id}
+POST /access-requests/{request_id}/approve/{step_id}
+POST /access-requests/{request_id}/assign-mitigation
+POST /access-requests/{request_id}/bulk-approve
+POST /access-requests/{request_id}/cancel
+PUT /access-requests/{request_id}/modify-items
+POST /access-requests/{request_id}/submit
+GET /admin/dashboard/stats
+POST /admin/login
+POST /admin/logout
+GET /admin/modules
+GET POST /admin/tenants
+GET PUT DELETE /admin/tenants/{tenant_id}
+POST /admin/tenants/{tenant_id}/activate
+POST /admin/tenants/{tenant_id}/suspend
+GET POST /admin/tenants/{tenant_id}/users
+DELETE /admin/tenants/{tenant_id}/users/{user_id}
+GET /admin/tiers
+GET /admin/verify
+GET /ai/anomaly/alerts
+PUT /ai/anomaly/alerts/{alert_id}
+POST /ai/anomaly/analyze
+GET /ai/anomaly/summary
+GET /ai/anomaly/user/{user_id}/score
+GET /ai/capabilities
+POST /ai/chat
+GET /ai/chat/stats/{user_id}
+GET /ai/chat/suggestions/{user_id}
+POST /ai/grc/assist-assessment
+POST /ai/grc/draft-finding
+POST /ai/grc/draft-management-response
+POST /ai/grc/draft-risk-description
+POST /ai/grc/generate-summary
+POST /ai/grc/query
+POST /ai/grc/recommend-remediation
+POST /ai/grc/suggest-audit-focus
+POST /ai/grc/suggest-controls
+POST /ai/grc/suggest-kri-thresholds
+POST /ai/query
+GET /ai/query/suggestions/{user_id}
+POST /ai/remediation/plan
+GET /ai/remediation/quick/{risk_type}
+POST /ai/risk/analyze
+GET /ai/risk/compare/{user_id}
+GET /ai/risk/department/{department}
+POST /ai/risk/feedback/false-positive
+POST /ai/roles/design
+POST /ai/roles/mine
+GET /ai/roles/suggestions
+GET /approvals/
+GET /approvals/{approval_id}
+POST /approvals/{approval_id}/approve
+POST /approvals/{approval_id}/forward
+POST /approvals/{approval_id}/reject
+GET POST /approver-management/
+GET /approver-management/stats
+GET /approver-management/types
+GET PUT DELETE /approver-management/{approver_id}
+POST /approver-management/{approver_id}/clear-ooo
+POST /approver-management/{approver_id}/set-ooo
+POST /approver-management/{approver_id}/toggle-availability
+GET /audit-evidence/categories
+POST /audit-evidence/collect
+POST /audit-evidence/export
+GET /audit-evidence/packages
+GET /audit-evidence/packages/{package_id}
+GET /audit-evidence/summary
+POST /audit-management/actions/escalate
+GET /audit-management/actions/overdue
+PUT /audit-management/actions/{action_id}
+PUT /audit-management/actions/{action_id}/close
+GET /audit-management/auditors/{auditor_id}/utilization
+GET /audit-management/committee-report
+GET /audit-management/dashboard
+POST GET /audit-management/dimensions
+POST GET /audit-management/engagements
+GET PUT /audit-management/engagements/{engagement_id}
+PUT /audit-management/engagements/{engagement_id}/advance
+POST /audit-management/engagements/{engagement_id}/announce
+GET /audit-management/engagements/{engagement_id}/announcements
+POST /audit-management/engagements/{engagement_id}/findings
+PUT /audit-management/engagements/{engagement_id}/opinion
+POST GET /audit-management/engagements/{engagement_id}/procedures
+POST /audit-management/engagements/{engagement_id}/pull-evidence
+GET /audit-management/engagements/{engagement_id}/report
+POST /audit-management/engagements/{engagement_id}/time
+GET /audit-management/engagements/{engagement_id}/time-summary
+POST GET /audit-management/engagements/{engagement_id}/workpapers
+POST GET /audit-management/entities
+PUT /audit-management/entities/{entity_id}
+POST /audit-management/entities/{entity_id}/compute-risk
+GET /audit-management/findings
+PUT /audit-management/findings/{finding_id}
+POST /audit-management/findings/{finding_id}/actions
+GET /audit-management/findings/{finding_id}/check-repeat
+POST /audit-management/findings/{finding_id}/link-control
+POST /audit-management/findings/{finding_id}/link-risk
+POST /audit-management/findings/{finding_id}/link-violation
+PUT /audit-management/findings/{finding_id}/management-response
+POST GET /audit-management/plans
+POST /audit-management/plans/generate-risk-based
+GET PUT /audit-management/plans/{plan_id}
+PUT /audit-management/plans/{plan_id}/approve
+POST /audit-management/plans/{plan_id}/roll-forward
+PUT /audit-management/plans/{plan_id}/submit
+PUT /audit-management/procedures/{procedure_id}
+PUT /audit-management/procedures/{procedure_id}/complete
+POST /audit-management/procedures/{procedure_id}/pull-evidence
+PUT /audit-management/procedures/{procedure_id}/review
+POST GET /audit-management/resources
+GET /audit-management/resources/available
+PUT /audit-management/resources/{auditor_id}
+POST /audit-management/work-programs
+GET /audit-management/work-programs/templates
+POST /audit-management/work-programs/{program_id}/clone
+PUT /audit-management/workpapers/{workpaper_id}
+PUT /audit-management/workpapers/{workpaper_id}/review
+PUT /audit-management/workpapers/{workpaper_id}/submit-review
+GET /audit/export/csv
+GET /audit/logs
+GET /audit/logs/actions
+GET /audit/logs/target/{target_type}/{target_id}
+GET /audit/logs/user/{user_id}
+POST /audit/reports/compliance
+GET /audit/reports/firefighter
+GET /audit/reports/summary
+POST /auth/login
+POST /auth/logout
+POST /auth/mfa/disable
+POST /auth/mfa/setup
+POST /auth/mfa/verify
+POST /auth/mfa/verify-setup
+GET /auth/oidc/callback
+GET /auth/oidc/login
+GET /auth/profile
+POST /auth/refresh
+POST /auth/saml/acs
+GET /auth/saml/login
+GET /auth/saml/metadata
+GET /auth/saml/sls
+GET /auth/status
+POST /auth/verify
+GET POST /bcm/activations
+PUT /bcm/activations/{id}
+GET POST /bcm/bia
+GET PUT /bcm/bia/{id}
+GET /bcm/dashboard
+GET POST /bcm/exercises
+PUT /bcm/exercises/{id}
+GET POST /bcm/plans
+GET PUT /bcm/plans/{id}
+POST GET /certification/campaigns
+GET /certification/campaigns/{campaign_id}
+POST /certification/campaigns/{campaign_id}/bulk-certify
+POST /certification/campaigns/{campaign_id}/check-escalation
+POST /certification/campaigns/{campaign_id}/execute-revocations
+POST /certification/campaigns/{campaign_id}/generate-app-owner-items
+POST /certification/campaigns/{campaign_id}/generate-compliance-items
+POST /certification/campaigns/{campaign_id}/generate-items
+POST /certification/campaigns/{campaign_id}/generate-role-owner-items
+GET /certification/campaigns/{campaign_id}/items
+POST /certification/campaigns/{campaign_id}/items/{item_id}/decision
+POST GET /certification/campaigns/{campaign_id}/items/{item_id}/evidence
+POST /certification/campaigns/{campaign_id}/start
+GET /certification/campaigns/{campaign_id}/statistics
+GET /certification/my-reviews
+GET /certification/reviewer-workload
+GET /certification/statistics
+GET /config/feature-flags
+POST /config/feature-flags/{flag}
+GET /config/notification-templates
+POST GET /config/notification-templates/{code}
+POST GET /config/rbac/grants
+POST GET /config/sla
+POST GET /config/workflows/{workflow_type}
+POST GET /control-objectives/
+GET /control-objectives/coverage
+GET PUT /control-objectives/{objective_id}
+POST /control-objectives/{objective_id}/link-controls
+POST /control-objectives/{objective_id}/link-risks
+GET /controls-monitoring/alerts
+GET /controls-monitoring/controls/{control_id}/backing-status
+PUT /controls-monitoring/controls/{control_id}/link
+GET /controls-monitoring/expired
+GET /controls-monitoring/expiring
+GET /controls-monitoring/health
+GET /controls-monitoring/ineffective
+POST /controls-monitoring/run-check
+POST /controls-monitoring/schedule
+GET /controls-monitoring/unassigned
+GET /controls-monitoring/unlinked-report
+POST /cross-system/analyze-all
+GET /cross-system/conflicts
+POST /cross-system/conflicts/{conflict_id}/accept
+POST /cross-system/conflicts/{conflict_id}/mitigate
+POST /cross-system/conflicts/{conflict_id}/resolve
+POST /cross-system/correlate
+POST /cross-system/correlate/auto
+GET /cross-system/correlation-rules
+POST GET /cross-system/identities
+GET /cross-system/identities/by-email/{email}
+GET /cross-system/identities/{identity_id}
+POST /cross-system/identities/{identity_id}/access
+POST /cross-system/identities/{identity_id}/accounts
+POST /cross-system/identities/{identity_id}/analyze-sod
+GET /cross-system/identities/{identity_id}/unified-access
+GET /cross-system/statistics
+GET /cross-system/system-types
+GET /cross-system/systems
+GET /cross-system/systems/statistics
+POST /custom-tcode/analyze
+GET /custom-tcode/risks
+GET /custom-tcode/sod-suggestions/{tcode}
+GET /custom-tcode/summary
+GET /custom-tcode/transactions
+GET /custom-tcode/transactions/{tcode}
+GET /dashboard/alerts
+GET POST /dashboard/dashboards
+GET /dashboard/dashboards/{dashboard_id}
+GET /dashboard/dashboards/{dashboard_id}/data
+GET /dashboard/health
+GET /dashboard/metrics
+GET /dashboard/metrics/category/{category}
+POST /dashboard/metrics/record
+GET /dashboard/metrics/{metric_id}
+GET /dashboard/metrics/{metric_id}/timeseries
+GET /dashboard/reports/kpi
+GET /dashboard/reports/trends
+GET /dashboard/stats
+GET /dashboard/summary/access
+GET /dashboard/summary/certification
+GET /dashboard/summary/executive
+GET /dashboard/summary/firefighter
+GET /dashboard/summary/risk
+GET /digital-twin/predict-repeat-findings
+GET /digital-twin/root-causes
+GET /digital-twin/snapshot
+POST /digital-twin/what-if/user-move
+POST /drift/compare
+GET /drift/roles/{role_id}
+GET /drift/scan
+GET /drift/summary
+GET /drift/systems
+POST /evidence-agent/assess-control
+POST /evidence-agent/collect
+GET /evidence-agent/requirements
+GET /fiori/apps
+GET /fiori/apps/{app_id}
+GET /fiori/catalogs
+GET /fiori/catalogs/{catalog_id}
+POST /fiori/diagnose
+GET /fiori/services
+POST /fiori/trace
+POST GET /frameworks/
+PUT DELETE /frameworks/requirements/{requirement_id}
+GET PUT /frameworks/{framework_id}
+POST GET /frameworks/{framework_id}/requirements
+GET /fraud/alerts
+GET /fraud/alerts/{id}
+POST /fraud/alerts/{id}/open-case
+PUT /fraud/alerts/{id}/status
+GET POST /fraud/cases
+GET PUT /fraud/cases/{id}
+GET /fraud/dashboard
+GET POST /fraud/rules
+PUT DELETE /fraud/rules/{id}
+GET /governex/behavior/approver/{approver_id}
+POST /governex/behavior/record-approval
+GET /governex/behavior/report
+GET /governex/dashboard
+GET /governex/effectiveness/approval-quality
+GET /governex/effectiveness/controls
+GET /governex/effectiveness/dashboard
+GET /governex/effectiveness/mitigations
+POST /governex/effectiveness/record-approval
+POST /governex/explain/approval
+GET /governex/explain/audit-package/{entity_type}/{entity_id}
+POST /governex/explain/user-risk
+POST /governex/explain/violation
+POST /governex/identity/add-access
+POST /governex/identity/create
+GET /governex/identity/dormant
+GET /governex/identity/ghosts
+GET /governex/identity/hygiene-dashboard
+GET /governex/identity/{identity_id}/risk
+POST /governex/intent/create
+GET /governex/intent/stats
+GET /governex/intent/templates
+GET /governex/intent/{intent_id}
+POST /governex/intent/{intent_id}/approve
+POST /governex/intent/{intent_id}/link-request
+POST /governex/intent/{original_id}/reuse
+GET /grc-intelligence/attention
+GET /grc-intelligence/audit-risk-scores
+GET /grc-intelligence/dashboard/{role}
+POST /grc-intelligence/explain
+POST /grc-intelligence/fix-preview
+GET /grc-intelligence/health
+POST /grc-intelligence/investigate
+POST /grc-intelligence/recommend
+GET /grc/dashboard
+GET /grc/risk-control-matrix
+GET /health
+GET /i18n/locales
+GET /i18n/{locale}
+GET /i18n/{locale}/{key}
+GET /identity-correlation/anomalies
+GET /identity-correlation/clusters
+GET /identity-correlation/clusters/{cluster_id}
+POST /identity-correlation/correlate/{user_id}
+GET /identity-correlation/cross-system-risk
+POST /identity-correlation/merge
+GET /identity-correlation/orphans
+GET /identity-correlation/overview
+GET /info
+GET POST /integrations/ad-sap-mappings
+POST /integrations/ad-sap-mappings/sync
+DELETE /integrations/ad-sap-mappings/{mapping_id}
+GET /integrations/automation/history
+GET /integrations/automation/jobs
+POST /integrations/automation/jobs/{job_name}/run
+GET /integrations/connector-types
+GET POST /integrations/connectors
+GET PUT DELETE /integrations/connectors/{connector_id}
+GET /integrations/connectors/{connector_id}/assignments
+POST /integrations/connectors/{connector_id}/connect
+POST /integrations/connectors/{connector_id}/disconnect
+GET /integrations/connectors/{connector_id}/export-config
+GET /integrations/connectors/{connector_id}/roles
+GET /integrations/connectors/{connector_id}/roles/{role_id}
+GET /integrations/connectors/{connector_id}/status
+POST /integrations/connectors/{connector_id}/sync
+GET /integrations/connectors/{connector_id}/sync/history
+GET /integrations/connectors/{connector_id}/sync/status
+POST /integrations/connectors/{connector_id}/test
+GET /integrations/connectors/{connector_id}/users
+GET /integrations/connectors/{connector_id}/users/{user_id}
+GET /integrations/health
+POST /integrations/import-config
+GET /integrations/metrics
+GET /jml/birthright-matrix
+GET /jml/dashboard
+GET POST /jml/events
+GET /jml/events/{id}
+POST /jml/events/{id}/process
+POST /jml/events/{id}/retry
+GET POST /jml/policies
+GET PUT DELETE /jml/policies/{id}
+POST /library/activate-bulk
+GET /library/active-content
+GET /library/flags
+GET /library/items
+GET /library/items/{item_id}
+POST /library/items/{item_id}/activate
+POST /library/items/{item_id}/customize
+POST /library/items/{item_id}/deactivate
+GET /library/items/{item_id}/diff
+POST /library/items/{item_id}/review-update
+GET /library/pack-builder
+GET /library/packs
+POST /library/packs/export
+POST /library/packs/import
+POST /library/packs/import-file
+GET /library/pending-updates
+POST /library/seed
+GET /library/stats
+GET /mass-admin/jobs
+GET /mass-admin/jobs/{job_id}
+GET /mass-admin/operations
+POST /mass-admin/preview
+POST /mass-admin/roles/assign
+POST /mass-admin/roles/mass-change
+POST /mass-admin/roles/owner
+POST /mass-admin/roles/remove
+POST /mass-admin/users/import
+POST /mass-admin/users/lock
+POST /mass-admin/users/unlock
+GET /migration-copilot/analyze
+POST /migration-copilot/migrate-role
+GET /migration-copilot/readiness-report
+GET /migration/auth-changes
+GET /migration/fiori-requirements
+GET /migration/overview
+POST /migration/plan
+POST /migration/roles/assessment
+GET /migration/roles/{role_id}/assessment
+GET /migration/simplification-items
+POST /migration/simulate
+GET /migration/transactions/mapping
+GET /migration/transactions/obsolete
+POST /migration/user-impact
+POST /mitigation/assignments
+GET /mitigation/assignments/check-mitigation
+GET /mitigation/assignments/risk/{risk_id}
+GET /mitigation/assignments/user/{user_id}
+POST /mitigation/assignments/{assignment_id}/approve
+POST /mitigation/assignments/{assignment_id}/attest
+POST /mitigation/assignments/{assignment_id}/monitor
+POST /mitigation/assignments/{assignment_id}/revoke
+GET /mitigation/attestations/pending
+GET /mitigation/attestations/summary
+POST GET /mitigation/controls
+GET /mitigation/controls/types
+GET PUT /mitigation/controls/{control_id}
+POST /mitigation/controls/{control_id}/approve
+POST /mitigation/controls/{control_id}/deprecate
+POST /mitigation/controls/{control_id}/effectiveness
+GET /mitigation/controls/{control_id}/effectiveness/trend
+GET /mitigation/coverage
+GET /mitigation/monitoring/schedule
+GET /mitigation/recommend/{risk_id}
+GET /mitigation/statistics
+GET /mobile/approvals
+POST /mobile/approvals/bulk-action
+GET /mobile/approvals/{item_id}
+POST /mobile/approvals/{item_id}/action
+GET /mobile/dashboard
+GET /mobile/firefighter/active-sessions
+POST /mobile/firefighter/quick-request
+GET /mobile/notifications
+POST /mobile/notifications/mark-all-read
+POST /mobile/notifications/{notification_id}/read
+GET /mobile/profile
+GET /mobile/profile/my-access
+GET /mobile/quick-actions
+POST /mobile/sync/offline-actions
+GET /mobile/sync/pending-items
+POST /model-user/compare
+POST /model-user/generate-request
+GET /model-user/model/{user_id}
+GET POST /model-user/templates
+GET DELETE /model-user/templates/{template_id}
+POST /model-user/templates/{template_id}/apply
+GET /notification-delivery/history
+GET PUT /notification-delivery/preferences/{user_id}
+POST /notification-delivery/retry
+POST /notification-delivery/send
+POST /notification-delivery/send-bulk
+GET /notification-delivery/status/{notification_id}
+GET /notification-delivery/templates
+GET /notifications/
+POST /notifications/approval-required
+POST /notifications/certification-due
+GET /notifications/channels
+POST /notifications/firefighter-started
+POST /notifications/mark-all-read
+POST /notifications/mark-read
+GET PUT /notifications/preferences/{user_id}
+POST /notifications/preview
+POST /notifications/request-approved
+POST /notifications/request-rejected
+POST /notifications/risk-violation
+POST /notifications/send
+GET /notifications/stats
+GET /notifications/templates
+GET /notifications/templates/{template_id}
+GET /notifications/types
+GET /notifications/unread-count
+GET /notifications/{notification_id}
+POST /notifications/{notification_id}/read
+GET POST /org-rules/org-rules
+POST /org-rules/org-rules/evaluate
+GET /org-rules/org-rules/hierarchy
+GET PUT /org-rules/org-rules/roles/{role_id}/restrictions
+GET /org-rules/org-rules/users/{user_id}/context
+POST /org-rules/org-rules/validate-assignment
+GET PUT DELETE /org-rules/org-rules/{rule_id}
+GET /org/tree
+POST GET /org/units
+GET PUT DELETE /org/units/{unit_id}
+POST GET /policies/
+GET /policies/due-review
+GET PUT /policies/{policy_id}
+POST /policies/{policy_id}/acknowledge
+GET /policies/{policy_id}/acknowledgments
+PUT /policies/{policy_id}/approve
+PUT /policies/{policy_id}/archive
+PUT /policies/{policy_id}/publish
+PUT /policies/{policy_id}/retire
+PUT /policies/{policy_id}/submit
+GET /privileged-access/audit/sessions
+GET /privileged-access/firefighters
+GET /privileged-access/firefighters/{firefighter_id}/status
+GET /privileged-access/monitoring/alerts
+POST /privileged-access/monitoring/alerts/bulk-acknowledge
+GET /privileged-access/monitoring/alerts/unacknowledged
+POST /privileged-access/monitoring/alerts/{alert_id}/acknowledge
+POST /privileged-access/monitoring/check-expiring-sessions
+GET /privileged-access/monitoring/dashboard
+GET /privileged-access/monitoring/policy-config
+GET /privileged-access/monitoring/reports/session-summary/{session_id}
+GET /privileged-access/monitoring/restricted-codes
+POST /privileged-access/monitoring/sessions/register
+GET /privileged-access/monitoring/sessions/{session_id}/activities
+POST /privileged-access/monitoring/sessions/{session_id}/activity
+GET /privileged-access/monitoring/sessions/{session_id}/risk
+POST /privileged-access/monitoring/sessions/{session_id}/snapshot
+GET /privileged-access/monitoring/sessions/{session_id}/timeline
+POST /privileged-access/monitoring/sessions/{session_id}/unregister
+GET /privileged-access/monitoring/statistics
+GET /privileged-access/reason-codes
+GET /privileged-access/reason-codes/{code}
+POST GET /privileged-access/requests
+GET /privileged-access/requests/pending
+GET /privileged-access/requests/{request_id}
+POST /privileged-access/requests/{request_id}/approve
+POST /privileged-access/requests/{request_id}/reject
+GET /privileged-access/reviews/pending
+GET /privileged-access/sessions
+GET /privileged-access/sessions/active
+GET /privileged-access/sessions/{session_id}
+GET /privileged-access/sessions/{session_id}/activities
+POST /privileged-access/sessions/{session_id}/activity
+GET /privileged-access/sessions/{session_id}/audit-evidence
+GET /privileged-access/sessions/{session_id}/audit-evidence/export
+GET /privileged-access/sessions/{session_id}/controller-review
+POST /privileged-access/sessions/{session_id}/controller-review/complete
+POST /privileged-access/sessions/{session_id}/controller-review/start
+GET /privileged-access/sessions/{session_id}/credentials
+POST /privileged-access/sessions/{session_id}/end
+POST /privileged-access/sessions/{session_id}/extend
+POST /privileged-access/sessions/{session_id}/review
+POST /privileged-access/sessions/{session_id}/revoke
+GET /privileged-access/statistics
+GET POST /process-control/ccm-rules
+POST /process-control/ccm-rules/validate
+POST /process-control/ccm-rules/{rule_id}/execute
+GET /process-control/ccm/dashboard
+POST /process-control/ccm/run-all
+POST /process-control/ccm/sod-bridge
+POST GET /process-control/controls
+GET PUT /process-control/controls/{control_id}
+GET /process-control/controls/{control_id}/audit-package
+POST DELETE /process-control/controls/{control_id}/framework-mappings
+GET /process-control/controls/{control_id}/frameworks
+PUT /process-control/controls/{control_id}/retire
+POST GET /process-control/controls/{control_id}/tests
+GET /process-control/dashboard
+POST GET /process-control/deficiencies
+PUT /process-control/deficiencies/{deficiency_id}
+PUT /process-control/deficiencies/{deficiency_id}/remediate
+PUT /process-control/deficiencies/{deficiency_id}/verify
+POST GET /process-control/evidence
+GET /process-control/evidence/{evidence_id}
+PUT /process-control/evidence/{evidence_id}/legal-hold
+GET /process-control/frameworks/{framework_id}/coverage
+POST /process-control/self-assessment-campaigns
+GET /process-control/self-assessments/pending
+PUT /process-control/self-assessments/{assessment_id}/submit
+POST /process-control/signoffs
+GET /process-control/signoffs/hierarchy
+GET /process-control/signoffs/pending
+PUT /process-control/signoffs/{certification_id}/submit
+PUT /process-control/tests/{test_id}/result
+GET /provisioning/connector-types
+GET POST /provisioning/connectors
+POST /provisioning/connectors/execute
+GET DELETE /provisioning/connectors/{connector_id}
+POST /provisioning/connectors/{connector_id}/connect
+POST /provisioning/connectors/{connector_id}/disconnect
+GET /provisioning/connectors/{connector_id}/roles
+POST /provisioning/connectors/{connector_id}/test
+GET /provisioning/connectors/{connector_id}/users
+GET /provisioning/connectors/{connector_id}/users/{user_id}
+GET /provisioning/connectors/{connector_id}/users/{user_id}/roles
+POST /provisioning/provision/deprovision
+POST /provisioning/provision/roles/assign
+POST /provisioning/provision/roles/revoke
+POST /provisioning/provision/user
+POST /provisioning/queue/start
+GET /provisioning/queue/status
+POST /provisioning/queue/stop
+GET /provisioning/queue/tasks
+DELETE /provisioning/queue/tasks/{task_id}
+POST /provisioning/queue/tasks/{task_id}/retry
+GET /provisioning/tasks
+GET /provisioning/tasks/{task_id}
+POST /provisioning/tasks/{task_id}/cancel
+POST GET /questionnaires/
+POST GET /questionnaires/questions
+PUT /questionnaires/questions/{question_id}
+GET /questionnaires/responses/pending
+PUT /questionnaires/responses/{response_id}/review
+PUT /questionnaires/responses/{response_id}/submit
+GET /questionnaires/{questionnaire_id}
+POST /questionnaires/{questionnaire_id}/clone
+POST GET /questionnaires/{questionnaire_id}/responses
+POST /repo-sync/repo-sync/cancel
+GET /repo-sync/repo-sync/dashboard
+GET /repo-sync/repo-sync/sync-types
+GET /repo-sync/repo-sync/systems
+GET /repo-sync/repo-sync/systems/{system_id}/history
+PUT /repo-sync/repo-sync/systems/{system_id}/schedule
+GET /repo-sync/repo-sync/systems/{system_id}/status
+POST /repo-sync/repo-sync/systems/{system_id}/sync/authorizations
+POST /repo-sync/repo-sync/systems/{system_id}/sync/full
+POST /repo-sync/repo-sync/systems/{system_id}/sync/roles
+POST /repo-sync/repo-sync/systems/{system_id}/sync/usage
+POST /repo-sync/repo-sync/systems/{system_id}/sync/users
+GET /reporting/analytics/summary
+GET /reporting/analytics/usage
+POST /reporting/generate
+POST /reporting/quick/compliance
+POST /reporting/quick/executive-summary
+POST /reporting/quick/sod-violations
+POST /reporting/quick/user-access
+GET /reporting/reports
+GET /reporting/reports/{report_id}
+GET /reporting/reports/{report_id}/download
+GET POST /reporting/schedules
+GET DELETE /reporting/schedules/{schedule_id}
+POST /reporting/schedules/{schedule_id}/run
+PUT /reporting/schedules/{schedule_id}/toggle
+GET POST /reporting/templates
+GET PUT DELETE /reporting/templates/{template_id}
+GET /reports/dashboard-summary
+GET /reports/export/audit-report/{engagement_id}
+GET /reports/export/control-report
+GET /reports/export/grc-executive
+GET /reports/export/risk-report
+GET /reports/{report_id}
+GET /reports/{report_id}/download
+POST /reports/{report_id}/run
+POST /retention/apply
+PUT /retention/legal-hold/{evidence_id}
+GET POST /retention/policies
+GET /retention/report
+GET /risk-intelligence/analytics/control-effectiveness
+GET /risk-intelligence/analytics/departments
+GET /risk-intelligence/analytics/distribution
+GET /risk-intelligence/analytics/economic-exposure
+GET /risk-intelligence/analytics/forecast
+GET /risk-intelligence/analytics/heatmap/role-severity
+GET /risk-intelligence/analytics/heatmap/user-category
+GET /risk-intelligence/analytics/leaderboard/roles
+GET /risk-intelligence/analytics/leaderboard/users
+POST /risk-intelligence/analytics/record-control-event
+POST /risk-intelligence/analytics/remediation-roi
+GET /risk-intelligence/analytics/summary
+POST /risk-intelligence/analytics/trend
+POST /risk-intelligence/analyze/batch
+POST /risk-intelligence/analyze/role/{role_id}
+POST /risk-intelligence/analyze/user
+GET /risk-intelligence/behavioral/anomalies
+POST /risk-intelligence/behavioral/record-usage
+GET /risk-intelligence/behavioral/score/{user_id}
+POST /risk-intelligence/mitigation/assign
+GET /risk-intelligence/mitigation/assignments/{risk_id}
+GET POST /risk-intelligence/mitigation/controls
+GET /risk-intelligence/mitigation/exceptions
+POST /risk-intelligence/mitigation/exceptions/approve
+POST /risk-intelligence/mitigation/exceptions/request
+POST /risk-intelligence/simulate/access
+POST /risk-intelligence/simulate/role-change
+GET POST /risk-intelligence/sod/rules
+GET DELETE /risk-intelligence/sod/rules/{rule_id}
+PUT /risk-intelligence/sod/rules/{rule_id}/toggle
+POST GET /risk-management/appetites
+POST /risk-management/assessment-campaigns
+PUT /risk-management/assessments/{assessment_id}/review
+PUT /risk-management/assessments/{assessment_id}/submit
+GET /risk-management/heatmap
+POST GET /risk-management/incidents
+PUT /risk-management/incidents/{incident_id}
+POST /risk-management/incidents/{incident_id}/link-risk
+POST /risk-management/kris
+GET /risk-management/kris/dashboard
+GET /risk-management/kris/{kri_id}/history
+POST /risk-management/kris/{kri_id}/measurements
+GET /risk-management/overdue-reviews
+PUT /risk-management/responses/{response_id}/status
+GET /risk-management/risk-control-coverage
+POST GET /risk-management/risks
+GET PUT DELETE /risk-management/risks/{risk_id}
+GET /risk-management/risks/{risk_id}/appetite-check
+POST GET /risk-management/risks/{risk_id}/assessments
+POST /risk-management/risks/{risk_id}/recompute-coverage
+POST GET /risk-management/risks/{risk_id}/responses
+POST /risk-management/risks/{risk_id}/review-attestation
+GET /risk-management/top-risks
+GET /risk-management/trends
+POST /risk-rules/analyze
+GET /risk-rules/builtin
+POST /risk-rules/builtin/bulk-toggle
+POST /risk-rules/builtin/{rule_id}/clone
+PUT /risk-rules/builtin/{rule_id}/toggle
+GET /risk-rules/business-processes
+GET /risk-rules/coverage
+GET POST /risk-rules/custom
+GET /risk-rules/custom/export
+POST /risk-rules/custom/import
+GET /risk-rules/custom/stats
+PUT DELETE /risk-rules/custom/{rule_id}
+GET /risk-rules/effective
+GET /risk-rules/export
+GET /risk-rules/functions
+GET /risk-rules/functions/{function_id}
+GET /risk-rules/risk-levels
+GET /risk-rules/rules
+GET /risk-rules/rules/gdpr-relevant
+GET /risk-rules/rules/sox-relevant
+GET /risk-rules/rules/{rule_id}
+POST /risk-rules/simulate
+GET /risk-rules/stats
+POST GET /risk-scenarios/objectives
+PUT /risk-scenarios/objectives/{objective_id}
+POST /risk-scenarios/objectives/{objective_id}/link-risks
+POST GET /risk-scenarios/opportunities
+PUT /risk-scenarios/opportunities/{opportunity_id}
+PUT /risk-scenarios/opportunities/{opportunity_id}/realize
+POST GET /risk-scenarios/scenarios
+GET PUT /risk-scenarios/scenarios/{scenario_id}
+POST /risk-scenarios/scenarios/{scenario_id}/simulate
+GET /risk-scenarios/scenarios/{scenario_id}/simulations
+POST /risk/analyze/batch
+POST /risk/analyze/role/{role_id}
+POST /risk/analyze/user
+GET /risk/org-ranking
+GET /risk/rules
+GET /risk/rules/statistics
+GET /risk/rules/{rule_id}
+POST /risk/simulate/add-role
+GET /risk/violations
+POST /role-intelligence/analyze
+GET /role-intelligence/consolidation
+GET /role-intelligence/duplicates
+GET /role-intelligence/health
+GET /role-intelligence/health/{role_id}
+GET /role-intelligence/naming-issues
+GET /role-intelligence/overview
+GET /role-intelligence/similarity/{role_a}/{role_b}
+GET /role-intelligence/unused
+POST /role-methodology/roles/reaffirmation-campaign
+PUT /role-methodology/roles/{role_id}/methodology-stage
+PUT GET /role-methodology/roles/{role_id}/prerequisites
+GET /role-methodology/roles/{role_id}/reaffirmation-status
+GET /role-redesign/analyze
+GET /role-redesign/executive-summary
+POST /role-redesign/propose-split
+POST /role-redesign/roles/mining
+POST /role-redesign/roles/risk-check
+POST /role-studio/analyze/compare
+POST /role-studio/analyze/conflicts
+POST /role-studio/analyze/gaps
+GET /role-studio/analyze/optimizations
+GET /role-studio/analyze/role/{role_id}/usage
+GET /role-studio/analyze/similar/{role_id}
+POST /role-studio/analyze/user-sod
+POST GET /role-studio/business-roles
+GET /role-studio/business-roles/popular
+GET /role-studio/business-roles/user/{user_id}/assignments
+GET /role-studio/business-roles/{role_id}
+POST /role-studio/business-roles/{role_id}/assign
+POST /role-studio/business-roles/{role_id}/technical-mappings
+GET /role-studio/business-roles/{role_id}/technical-roles
+GET /role-studio/catalog
+GET /role-studio/catalog/categories
+POST GET /role-studio/roles
+POST /role-studio/roles/composite
+POST /role-studio/roles/derived
+POST /role-studio/roles/mining
+POST /role-studio/roles/risk-check
+GET /role-studio/roles/suggest-name
+GET /role-studio/roles/templates
+POST /role-studio/roles/validate-name
+GET /role-studio/roles/{role_id}
+POST /role-studio/roles/{role_id}/activate
+POST /role-studio/roles/{role_id}/approve
+GET /role-studio/roles/{role_id}/documentation
+POST /role-studio/roles/{role_id}/permissions
+DELETE /role-studio/roles/{role_id}/permissions/{permission_id}
+POST /role-studio/roles/{role_id}/simulate
+POST /role-studio/roles/{role_id}/submit
+POST /role-studio/roles/{role_id}/test
+POST /role-studio/roles/{role_id}/transactions
+POST /role-studio/roles/{role_id}/versions
+GET /role-studio/roles/{role_id}/versions/compare
+GET /role-studio/statistics
+GET POST /security-controls/controls
+GET /security-controls/controls/business-areas
+GET /security-controls/controls/categories
+GET PUT DELETE /security-controls/controls/{control_id}
+POST /security-controls/controls/{control_id}/evaluate
+GET POST /security-controls/controls/{control_id}/mappings
+GET /security-controls/dashboard
+POST /security-controls/evaluate/batch
+POST /security-controls/evaluate/parameters
+GET /security-controls/evaluations
+GET /security-controls/evaluations/report/{system_id}
+POST GET /security-controls/exceptions
+POST /security-controls/exceptions/{exception_id}/approve
+GET /security-controls/export
+POST /security-controls/import
+POST /security-controls/import/file
+GET /security-controls/import/template
+POST /security-controls/seed-defaults
+GET /security-controls/systems
+GET /security-controls/systems/{system_id}
+GET /security-controls/templates
+POST /security-controls/templates/{control_id}/adopt
+GET PUT DELETE /settings/smtp
+POST /settings/smtp/test
+GET /setup/
+GET /setup/config/export
+POST /setup/config/import
+GET POST /setup/connections
+POST /setup/connections/{connection_id}/test
+POST /setup/finalize
+GET /setup/help
+GET /setup/progress
+POST /setup/quick-setup
+GET /setup/steps
+GET /setup/steps/next
+GET /setup/steps/{step_id}
+POST /setup/steps/{step_id}/auto-complete
+POST /setup/steps/{step_id}/complete
+POST /setup/steps/{step_id}/skip
+POST /setup/steps/{step_id}/start
+GET /setup/summary
+GET /setup/templates
+POST /setup/templates/apply
+GET /setup/templates/{template_id}
+POST GET /subprocesses/
+GET /subprocesses/tree
+GET PUT DELETE /subprocesses/{subprocess_id}
+POST /subprocesses/{subprocess_id}/link-controls
+POST /subprocesses/{subprocess_id}/link-risks
+GET POST /surveys/
+GET /surveys/dashboard
+GET POST /surveys/respond/{distribution_id}
+GET PUT DELETE /surveys/{id}
+GET /surveys/{id}/analytics
+POST /surveys/{id}/distribute
+GET /surveys/{id}/distributions
+GET /surveys/{id}/responses
+POST GET /tenants/
+GET /tenants/info
+GET /tenants/onboarding/{session_id}
+POST /tenants/onboarding/{session_id}/skip
+POST /tenants/onboarding/{session_id}/step
+GET /tenants/plans
+POST /tenants/signup
+GET /tenants/tiers
+POST /tenants/verify-email
+GET PUT DELETE /tenants/{tenant_id}
+POST /tenants/{tenant_id}/activate
+GET /tenants/{tenant_id}/billing
+GET /tenants/{tenant_id}/data-residency
+POST /tenants/{tenant_id}/downgrade
+GET /tenants/{tenant_id}/invoices
+POST /tenants/{tenant_id}/invoices/generate
+GET /tenants/{tenant_id}/isolation
+GET /tenants/{tenant_id}/limits/check
+POST /tenants/{tenant_id}/reactivate
+POST /tenants/{tenant_id}/rotate-keys
+POST GET DELETE /tenants/{tenant_id}/subscription
+POST /tenants/{tenant_id}/subscription/change-plan
+POST /tenants/{tenant_id}/suspend
+POST /tenants/{tenant_id}/upgrade
+GET /tenants/{tenant_id}/usage
+POST /tenants/{tenant_id}/usage/record
+GET /tenants/{tenant_id}/usage/trend
+POST /timeline/investigate
+GET /timeline/recent
+GET /timeline/role/{role_id}
+GET /timeline/user/{user_id}
+GET /timeline/user/{user_id}/changes
+POST /tprm/assessments
+PUT /tprm/assessments/{id}
+GET POST /tprm/contracts
+GET /tprm/dashboard
+POST /tprm/issues
+PUT /tprm/issues/{id}
+GET POST /tprm/vendors
+GET PUT /tprm/vendors/{id}
+GET /tprm/vendors/{id}/assessments
+GET /tprm/vendors/{id}/contracts
+GET /tprm/vendors/{id}/issues
+GET /transport/conflicts
+GET /transport/dashboard
+GET /transport/pending
+GET POST /transport/transports
+GET /transport/transports/{transport_id}
+GET /transport/transports/{transport_id}/chain
+GET /transport/transports/{transport_id}/dependencies
+PUT /transport/transports/{transport_id}/import
+POST /troubleshooter/batch-diagnose
+GET /troubleshooter/common-issues
+POST /troubleshooter/diagnose
+GET /troubleshooter/history
+GET /troubleshooter/transactions
+GET /troubleshooter/transactions/{tcode}/requirements
+GET /upgrade/affected-roles
+POST /upgrade/analyze
+GET /upgrade/deprecated/{version}
+GET /upgrade/new-requirements/{version}
+GET /upgrade/remediation-plan
+POST /upgrade/simulate
+GET /upgrade/versions
+GET /user-profiles/
+POST /user-profiles/bulk/lookup
+GET /user-profiles/by-email/{email}
+GET /user-profiles/by-employee-id/{employee_id}
+GET /user-profiles/external-users
+GET /user-profiles/high-risk
+GET /user-profiles/inactive-users
+GET /user-profiles/inactive-users/summary
+GET /user-profiles/requiring-certification
+GET /user-profiles/statistics
+GET /user-profiles/{user_id}
+GET /user-profiles/{user_id}/access-summary
+GET /user-profiles/{user_id}/data-sources
+GET /user-profiles/{user_id}/direct-reports
+GET /user-profiles/{user_id}/manager-chain
+GET /user-profiles/{user_id}/request-context
+GET /user-profiles/{user_id}/risk-profile
+POST /user-profiles/{user_id}/risk/update
+GET /user-profiles/{user_id}/summary
+POST /user-profiles/{user_id}/sync/hr
+POST /user-profiles/{user_id}/sync/sap
+GET POST /users/
+GET /users/departments
+GET /users/dormant
+GET /users/stats
+GET PUT DELETE /users/{user_id}
+GET /users/{user_id}/entitlements
+POST /users/{user_id}/recalculate-risk
+GET /users/{user_id}/risk-profile
+GET POST /users/{user_id}/roles
+DELETE /users/{user_id}/roles/{role_id}
+GET /users/{user_id}/transactions
+GET /whistleblower/cases
+GET PUT /whistleblower/cases/{id}
+POST GET /whistleblower/cases/{id}/messages
+GET /whistleblower/dashboard
+POST /whistleblower/submit
+GET /whistleblower/track/{case_reference}
+POST /whistleblower/track/{case_reference}/reply
+GET POST /workflows/
+GET POST /workflows/agent-rules
+GET /workflows/agent-rules/types
+GET /workflows/agent-rules/{rule_id}
+POST /workflows/builder/export
+GET /workflows/builder/palette
+POST /workflows/builder/preview
+GET /workflows/builder/templates
+GET /workflows/builder/templates/{template_name}
+POST /workflows/builder/validate
+POST /workflows/determine-agents
+GET /workflows/history
+GET /workflows/history/{request_id}
+GET /workflows/instances/{request_id}
+GET /workflows/instances/{request_id}/next-stage
+POST /workflows/instances/{request_id}/process
+GET /workflows/prebuilt
+POST /workflows/select
+POST /workflows/start
+GET /workflows/stats
+GET DELETE /workflows/{workflow_id}

@@ -17,6 +17,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'uat',
+      testDir: './e2e/uat',
+      use: {
+        ...devices['Desktop Chrome'],
+        screenshot: 'on',
+        video: 'retain-on-failure',
+      },
+    },
   ],
   webServer: {
     command: 'npm run dev',

@@ -223,24 +223,26 @@ def create_vendor(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     """Register a new third-party vendor."""
+    # Map tier string to integer: tier1=1, tier2=2, tier3=3, tier4=4
+    tier_map = {"tier1": 1, "tier2": 2, "tier3": 3, "tier4": 4}
+    tier_val = tier_map.get(body.tier) if body.tier else None
+    if tier_val is None and body.tier:
+        try:
+            tier_val = int(body.tier)
+        except (ValueError, TypeError):
+            tier_val = None
     vendor = Vendor(
         id=_new_id("VND"),
         tenant_id=tenant_id,
         vendor_name=body.vendor_name,
         vendor_code=body.vendor_code,
-        tier=body.tier,
-        status=body.status,
-        category=body.category,
-        website=body.website,
+        tier=tier_val,
+        status=VendorStatus(body.status) if body.status else VendorStatus.ACTIVE,
         country=body.country,
-        primary_contact_name=body.primary_contact_name,
-        primary_contact_email=body.primary_contact_email,
-        owner_id=body.owner_id,
-        owner_name=body.owner_name,
-        inherent_risk_score=body.inherent_risk_score,
+        primary_contact=body.primary_contact_name,
+        contact_email=body.primary_contact_email,
+        risk_score=body.inherent_risk_score,
         services_provided=body.services_provided or [],
-        data_classification=body.data_classification,
-        metadata_=body.metadata,
     )
     db.add(vendor)
     db.commit()
@@ -267,17 +269,30 @@ def update_vendor(
 ):
     """Update a vendor record."""
     vendor = _vendor_or_404(db, id, tenant_id)
-    updatable = [
-        "vendor_name", "tier", "status", "category", "website", "country",
-        "primary_contact_name", "primary_contact_email", "owner_id", "owner_name",
-        "inherent_risk_score", "services_provided", "data_classification",
-    ]
-    for field in updatable:
-        val = getattr(body, field)
+    # Map Pydantic fields to ORM columns
+    field_map = {
+        "vendor_name": "vendor_name",
+        "status": "status",
+        "country": "country",
+        "primary_contact_name": "primary_contact",
+        "primary_contact_email": "contact_email",
+        "inherent_risk_score": "risk_score",
+        "services_provided": "services_provided",
+    }
+    for pydantic_field, orm_field in field_map.items():
+        val = getattr(body, pydantic_field, None)
         if val is not None:
-            setattr(vendor, field, val)
-    if body.metadata is not None:
-        vendor.metadata_ = body.metadata
+            if orm_field == "status":
+                val = VendorStatus(val)
+            setattr(vendor, orm_field, val)
+    if body.tier is not None:
+        tier_map = {"tier1": 1, "tier2": 2, "tier3": 3, "tier4": 4}
+        vendor.tier = tier_map.get(body.tier)
+        if vendor.tier is None:
+            try:
+                vendor.tier = int(body.tier)
+            except (ValueError, TypeError):
+                pass
     db.commit()
     db.refresh(vendor)
     return vendor.to_dict()

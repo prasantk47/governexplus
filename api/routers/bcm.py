@@ -19,7 +19,7 @@ import uuid
 from db.database import get_db
 from db.models.extended_modules import (
     BiaRecord, BcmPlan, BcmTestExercise, IncidentActivation,
-    BcmCriticality, BcmPlanStatus, BcmActivationStatus,
+    BcmCriticality, BcmPlanType, BcmPlanStatus, BcmActivationStatus,
 )
 
 router = APIRouter(tags=["Business Continuity Management"])
@@ -232,18 +232,12 @@ def create_bia_record(
         tenant_id=tenant_id,
         process_name=body.process_name,
         process_owner=body.process_owner,
-        org_unit_id=body.org_unit_id,
-        criticality=body.criticality,
+        criticality=BcmCriticality(body.criticality) if body.criticality else BcmCriticality.MEDIUM,
         rto_hours=body.rto_hours,
         rpo_hours=body.rpo_hours,
         mtpd_hours=body.mtpd_hours,
         dependencies=body.dependencies or [],
-        financial_impact_per_hour=body.financial_impact_per_hour,
-        currency=body.currency,
         recovery_strategy=body.recovery_strategy,
-        minimum_staff_required=body.minimum_staff_required,
-        systems_required=body.systems_required or [],
-        metadata_=body.metadata,
     )
     db.add(record)
     db.commit()
@@ -308,19 +302,13 @@ def create_plan(
         id=_new_id("BCMP"),
         tenant_id=tenant_id,
         plan_name=body.plan_name,
-        plan_type=body.plan_type,
-        description=body.description,
-        status=body.status,
-        owner_id=body.owner_id,
-        owner_name=body.owner_name,
+        plan_type=BcmPlanType(body.plan_type) if body.plan_type else BcmPlanType.BCP,
         scope=body.scope,
-        linked_bia_ids=body.linked_bia_ids or [],
-        version=body.version,
+        owner=body.owner_name,
+        version=body.version or "1.0",
+        status=BcmPlanStatus(body.status) if body.status else BcmPlanStatus.DRAFT,
         approved_by=body.approved_by,
-        approved_at=datetime.fromisoformat(body.approved_at) if body.approved_at else None,
         next_test_date=datetime.fromisoformat(body.next_review_date) if body.next_review_date else None,
-        test_frequency_months=body.test_frequency_months,
-        metadata_=body.metadata,
     )
     db.add(plan)
     db.commit()

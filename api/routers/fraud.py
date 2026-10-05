@@ -19,7 +19,7 @@ import uuid
 from db.database import get_db
 from db.models.extended_modules import (
     FraudRule, FraudAlert, FraudCase,
-    FraudAlertStatus, FraudCaseStatus,
+    FraudAlertStatus, FraudCaseStatus, FraudRuleType,
 )
 
 router = APIRouter(tags=["Fraud Detection"])
@@ -165,14 +165,11 @@ def create_rule(
         id=_new_id("FRR"),
         tenant_id=tenant_id,
         rule_name=body.rule_name,
-        rule_type=body.rule_type,
+        rule_type=FraudRuleType(body.rule_type) if body.rule_type else FraudRuleType.THRESHOLD,
         description=body.description,
-        condition_expression=body.condition_expression,
-        threshold_value=body.threshold_value,
-        risk_score_weight=body.risk_score_weight,
-        is_active=body.is_active,
-        data_sources=body.data_sources or [],
-        metadata_=body.metadata,
+        conditions={"expression": body.condition_expression, "threshold": body.threshold_value} if body.condition_expression else {},
+        risk_score=body.risk_score_weight,
+        is_active=body.is_active if body.is_active is not None else True,
     )
     db.add(rule)
     db.commit()

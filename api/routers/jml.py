@@ -139,12 +139,10 @@ def create_policy(
         policy_name=body.policy_name,
         event_type=body.event_type,
         description=body.description,
-        roles_to_grant=body.roles_to_grant,
-        roles_to_revoke=body.roles_to_revoke,
-        org_unit_filter=body.org_unit_filter,
-        job_function_filter=body.job_function_filter,
-        is_active=body.is_active,
-        metadata_=body.metadata,
+        birthright_roles=body.roles_to_grant or [],
+        org_unit=body.org_unit_filter,
+        position_criteria={"job_function": body.job_function_filter} if body.job_function_filter else None,
+        is_active=body.is_active if body.is_active is not None else True,
     )
     db.add(policy)
     db.commit()

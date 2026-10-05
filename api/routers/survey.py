@@ -18,7 +18,10 @@ from sqlalchemy.orm import Session
 import uuid
 
 from db.database import get_db
-from db.models.extended_modules import StandaloneSurvey, SurveyDistribution, SurveyAnswer
+from db.models.extended_modules import (
+    StandaloneSurvey, SurveyDistribution, SurveyAnswer,
+    SurveyType, SurveyStatus,
+)
 
 router = APIRouter(tags=["Survey Engine"])
 
@@ -164,18 +167,14 @@ def create_survey(
     survey = StandaloneSurvey(
         id=_new_id("SRV"),
         tenant_id=tenant_id,
-        title=body.title,
-        survey_type=body.survey_type,
+        survey_name=body.title,
+        survey_type=SurveyType(body.survey_type) if body.survey_type else SurveyType.GENERAL,
         description=body.description,
-        status=body.status,
-        questions=[q.dict() for q in body.questions],
+        status=SurveyStatus(body.status) if body.status else SurveyStatus.DRAFT,
+        questions=[q.dict() for q in body.questions] if body.questions else [],
         allow_anonymous=body.allow_anonymous,
-        requires_completion=body.requires_completion,
         due_date=datetime.fromisoformat(body.due_date) if body.due_date else None,
-        owner_id=body.owner_id,
-        owner_name=body.owner_name,
-        tags=body.tags or [],
-        metadata_=body.metadata,
+        created_by=body.owner_name,
     )
     db.add(survey)
     db.commit()
@@ -217,7 +216,7 @@ def get_survey_dashboard(
         s_done = sum(1 for d in s_dists if d.status == "completed")
         active_breakdown.append({
             "survey_id": s.id,
-            "title": s.title,
+            "title": s.survey_name,
             "survey_type": s.survey_type,
             "distributed": s_total,
             "completed": s_done,
@@ -260,11 +259,11 @@ def update_survey(
             detail="Questions cannot be modified on an active survey. Close it first.",
         )
     if body.title is not None:
-        survey.title = body.title
+        survey.survey_name = body.title
     if body.description is not None:
         survey.description = body.description
     if body.status is not None:
-        survey.status = body.status
+        survey.status = SurveyStatus(body.status)
     if body.questions is not None:
         survey.questions = [q.dict() for q in body.questions]
     if body.allow_anonymous is not None:
@@ -526,7 +525,7 @@ def get_survey_form(
         raise HTTPException(status_code=400, detail="The deadline for this survey has passed.")
     return {
         "distribution_id": distribution_id,
-        "survey_title": survey.title,
+        "survey_title": survey.survey_name,
         "survey_description": survey.description,
         "due_date": survey.due_date.isoformat() if survey.due_date else None,
         "allow_anonymous": survey.allow_anonymous,

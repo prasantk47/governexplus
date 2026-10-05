@@ -41,7 +41,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
             "/auth/sso/status", "/auth/sso/saml/metadata",
             "/auth/sso/saml/login", "/auth/sso/saml/acs", "/auth/sso/saml/sls",
             "/auth/sso/oidc/login", "/auth/sso/oidc/callback",
+            "/whistleblower/submit",
         ]
+        self.public_prefixes = ["/whistleblower/track/"]
 
     async def dispatch(self, request: Request, call_next: Callable):
         path = request.url.path
@@ -167,7 +169,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
         return None
 
     def _is_public_path(self, path: str) -> bool:
-        return path in self.public_paths or path.startswith(("/docs", "/redoc", "/static"))
+        if path in self.public_paths or path.startswith(("/docs", "/redoc", "/static")):
+            return True
+        return any(path.startswith(p) for p in self.public_prefixes)
 
     @staticmethod
     def _error(status_code: int, message: str) -> JSONResponse:

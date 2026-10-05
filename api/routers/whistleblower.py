@@ -18,7 +18,7 @@ import uuid
 import secrets
 
 from db.database import get_db
-from db.models.extended_modules import WhistleblowerCase, WhistleblowerMessage
+from db.models.extended_modules import WhistleblowerCase, WhistleblowerMessage, WhistleblowerStatus
 
 router = APIRouter(tags=["Whistleblower Intake"])
 
@@ -150,17 +150,12 @@ def submit_case(
         tenant_id=tenant_id,
         case_reference=case_reference,
         category=body.category,
-        title=body.title,
-        description=body.description,
+        summary=body.title,
+        details=body.description,
         priority=body.priority or "normal",
-        subject_name=body.subject_name,
-        subject_department=body.subject_department,
-        incident_date=datetime.fromisoformat(body.incident_date) if body.incident_date else None,
-        supporting_details=body.supporting_details,
         is_anonymous=body.is_anonymous,
-        submitter_name=None if body.is_anonymous else body.submitter_name,
         submitter_email=None if body.is_anonymous else body.submitter_email,
-        status="open",
+        status=WhistleblowerStatus.OPEN,
         submitted_at=datetime.utcnow(),
     )
     db.add(case)

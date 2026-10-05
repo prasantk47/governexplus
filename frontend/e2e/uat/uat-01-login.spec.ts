@@ -20,7 +20,13 @@ test.describe('UAT-01 · Login & Session Management @P0', () => {
   test('Step 2-3: Valid login redirects to dashboard', async ({ page }) => {
     await test.step('Enter valid credentials and sign in', async () => {
       await page.goto('/login');
-      await page.fill('input[name="username"], input[type="text"]', PERSONAS.P08.username);
+      // Set tenant ID for QA users
+      const tenantInput = page.locator('input[name="tenantId"]');
+      if (await tenantInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await tenantInput.clear();
+        await tenantInput.fill('qa-tenant-001');
+      }
+      await page.fill('input[name="username"]', PERSONAS.P08.username);
       await page.fill('input[type="password"]', PERSONAS.P08.password);
       await evidence(page, UAT, 2, 'credentials-entered');
     });
@@ -49,12 +55,7 @@ test.describe('UAT-01 · Login & Session Management @P0', () => {
     await loginAs(page, 'P08');
     await test.step('Check localStorage for token', async () => {
       const token = await page.evaluate(() => {
-        // Check common auth storage keys
-        return localStorage.getItem('token') ||
-               localStorage.getItem('auth_token') ||
-               localStorage.getItem('access_token') ||
-               sessionStorage.getItem('token') ||
-               Object.keys(localStorage).find(k => k.includes('token') || k.includes('auth'));
+        return localStorage.getItem('accessToken');
       });
       expect(token, 'JWT should be present in storage').toBeTruthy();
       await evidence(page, UAT, 5, 'jwt-present');
@@ -95,7 +96,12 @@ test.describe('UAT-01 · Login & Session Management @P0', () => {
   test('Step 8: Invalid password shows error', async ({ page }) => {
     await test.step('Enter wrong password', async () => {
       await page.goto('/login');
-      await page.fill('input[name="username"], input[type="text"]', PERSONAS.P08.username);
+      const tenantInput = page.locator('input[name="tenantId"]');
+      if (await tenantInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await tenantInput.clear();
+        await tenantInput.fill('qa-tenant-001');
+      }
+      await page.fill('input[name="username"]', PERSONAS.P08.username);
       await page.fill('input[type="password"]', 'WrongPassword!');
       await page.click('button[type="submit"]');
       await page.waitForTimeout(2000);

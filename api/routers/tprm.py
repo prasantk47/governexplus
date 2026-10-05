@@ -17,7 +17,11 @@ from sqlalchemy.orm import Session
 import uuid
 
 from db.database import get_db
-from db.models.extended_modules import Vendor, VendorAssessment, VendorIssue, VendorContract
+from db.models.extended_modules import (
+    Vendor, VendorAssessment, VendorIssue, VendorContract,
+    VendorStatus, VendorAssessmentStatus, VendorIssueStatus, VendorIssueSeverity,
+    VendorContractStatus,
+)
 
 router = APIRouter(tags=["Third-Party Risk Management"])
 
@@ -523,24 +527,24 @@ def get_tprm_dashboard(
 
     total_vendors = db.query(Vendor).filter(
         Vendor.tenant_id == tenant_id,
-        Vendor.status == "active",
+        Vendor.status == VendorStatus.ACTIVE,
     ).count()
 
     high_risk_count = db.query(Vendor).filter(
         Vendor.tenant_id == tenant_id,
-        Vendor.tier == "tier1",
-        Vendor.status == "active",
+        Vendor.tier == 1,
+        Vendor.status == VendorStatus.ACTIVE,
     ).count()
 
     assessments_overdue = db.query(VendorAssessment).filter(
         VendorAssessment.tenant_id == tenant_id,
-        VendorAssessment.status.in_(["draft", "in_progress"]),
+        VendorAssessment.status.in_([VendorAssessmentStatus.DRAFT, VendorAssessmentStatus.IN_PROGRESS]),
         VendorAssessment.due_date < now,
     ).count()
 
     contracts_expiring_30d = db.query(VendorContract).filter(
         VendorContract.tenant_id == tenant_id,
-        VendorContract.status == "active",
+        VendorContract.status == VendorContractStatus.ACTIVE,
         VendorContract.end_date != None,
         VendorContract.end_date <= threshold_30d,
         VendorContract.end_date >= now,
@@ -548,13 +552,13 @@ def get_tprm_dashboard(
 
     open_issues = db.query(VendorIssue).filter(
         VendorIssue.tenant_id == tenant_id,
-        VendorIssue.status == "open",
+        VendorIssue.status == VendorIssueStatus.OPEN,
     ).count()
 
     critical_issues = db.query(VendorIssue).filter(
         VendorIssue.tenant_id == tenant_id,
-        VendorIssue.severity.in_(["critical", "high"]),
-        VendorIssue.status == "open",
+        VendorIssue.severity.in_([VendorIssueSeverity.CRITICAL, VendorIssueSeverity.HIGH]),
+        VendorIssue.status == VendorIssueStatus.OPEN,
     ).count()
 
     return {

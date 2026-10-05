@@ -183,6 +183,58 @@ def create_survey(
     return survey.to_dict()
 
 
+# ---------------------------------------------------------------------------
+# Dashboard (MUST be before /{id} to avoid catch-all)
+# ---------------------------------------------------------------------------
+
+@router.get("/dashboard")
+def get_survey_dashboard(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Survey engine dashboard: active surveys, pending responses, overall completion rate."""
+    surveys = db.query(StandaloneSurvey).filter(
+        StandaloneSurvey.tenant_id == tenant_id,
+    ).all()
+
+    active_surveys = sum(1 for s in surveys if s.status == "active")
+
+    all_distributions = db.query(SurveyDistribution).filter(
+        SurveyDistribution.tenant_id == tenant_id,
+    ).all()
+    total_distributed = len(all_distributions)
+    total_completed = sum(1 for d in all_distributions if d.status == "completed")
+    pending_responses = total_distributed - total_completed
+    completion_rate = round(total_completed / total_distributed * 100, 1) if total_distributed else 0.0
+
+    # Per-survey breakdown for active surveys
+    active_breakdown = []
+    for s in surveys:
+        if s.status != "active":
+            continue
+        s_dists = [d for d in all_distributions if d.survey_id == s.id]
+        s_total = len(s_dists)
+        s_done = sum(1 for d in s_dists if d.status == "completed")
+        active_breakdown.append({
+            "survey_id": s.id,
+            "title": s.title,
+            "survey_type": s.survey_type,
+            "distributed": s_total,
+            "completed": s_done,
+            "completion_rate": round(s_done / s_total * 100, 1) if s_total else 0.0,
+            "due_date": s.due_date.isoformat() if s.due_date else None,
+        })
+
+    return {
+        "active_surveys": active_surveys,
+        "pending_responses": pending_responses,
+        "total_distributed": total_distributed,
+        "total_completed": total_completed,
+        "completion_rate": completion_rate,
+        "active_surveys_breakdown": active_breakdown,
+    }
+
+
 @router.get("/{id}")
 def get_survey(
     id: str,
@@ -551,53 +603,3 @@ def submit_response(
     }
 
 
-# ---------------------------------------------------------------------------
-# Dashboard
-# ---------------------------------------------------------------------------
-
-@router.get("/dashboard")
-def get_survey_dashboard(
-    db: Session = Depends(get_db),
-    tenant_id: str = Depends(_get_tenant_id),
-):
-    """Survey engine dashboard: active surveys, pending responses, overall completion rate."""
-    surveys = db.query(StandaloneSurvey).filter(
-        StandaloneSurvey.tenant_id == tenant_id,
-    ).all()
-
-    active_surveys = sum(1 for s in surveys if s.status == "active")
-
-    all_distributions = db.query(SurveyDistribution).filter(
-        SurveyDistribution.tenant_id == tenant_id,
-    ).all()
-    total_distributed = len(all_distributions)
-    total_completed = sum(1 for d in all_distributions if d.status == "completed")
-    pending_responses = total_distributed - total_completed
-    completion_rate = round(total_completed / total_distributed * 100, 1) if total_distributed else 0.0
-
-    # Per-survey breakdown for active surveys
-    active_breakdown = []
-    for s in surveys:
-        if s.status != "active":
-            continue
-        s_dists = [d for d in all_distributions if d.survey_id == s.id]
-        s_total = len(s_dists)
-        s_done = sum(1 for d in s_dists if d.status == "completed")
-        active_breakdown.append({
-            "survey_id": s.id,
-            "title": s.title,
-            "survey_type": s.survey_type,
-            "distributed": s_total,
-            "completed": s_done,
-            "completion_rate": round(s_done / s_total * 100, 1) if s_total else 0.0,
-            "due_date": s.due_date.isoformat() if s.due_date else None,
-        })
-
-    return {
-        "active_surveys": active_surveys,
-        "pending_responses": pending_responses,
-        "total_distributed": total_distributed,
-        "total_completed": total_completed,
-        "completion_rate": completion_rate,
-        "active_surveys_breakdown": active_breakdown,
-    }

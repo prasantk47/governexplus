@@ -17,7 +17,10 @@ from sqlalchemy.orm import Session
 import uuid
 
 from db.database import get_db
-from db.models.extended_modules import FraudRule, FraudAlert, FraudCase
+from db.models.extended_modules import (
+    FraudRule, FraudAlert, FraudCase,
+    FraudAlertStatus, FraudCaseStatus,
+)
 
 router = APIRouter(tags=["Fraud Detection"])
 
@@ -431,24 +434,24 @@ def get_fraud_dashboard(
 
     open_alerts = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status.in_(["open", "investigating", "escalated"]),
+        FraudAlert.status.in_([FraudAlertStatus.OPEN, FraudAlertStatus.INVESTIGATING]),
     ).count()
 
     open_cases = db.query(FraudCase).filter(
         FraudCase.tenant_id == tenant_id,
-        FraudCase.status == "open",
+        FraudCase.status == FraudCaseStatus.OPEN,
     ).count()
 
     confirmed_fraud_30d = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status == "confirmed",
-        FraudAlert.closed_at >= cutoff_30d,
+        FraudAlert.status == FraudAlertStatus.CONFIRMED_FRAUD,
+        FraudAlert.reviewed_at >= cutoff_30d,
     ).count()
 
     dismissed_30d = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status == "dismissed",
-        FraudAlert.closed_at >= cutoff_30d,
+        FraudAlert.status == FraudAlertStatus.DISMISSED,
+        FraudAlert.reviewed_at >= cutoff_30d,
     ).count()
 
     total_closed_30d = confirmed_fraud_30d + dismissed_30d

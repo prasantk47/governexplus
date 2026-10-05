@@ -17,7 +17,10 @@ from sqlalchemy.orm import Session
 import uuid
 
 from db.database import get_db
-from db.models.extended_modules import BiaRecord, BcmPlan, BcmTestExercise, IncidentActivation
+from db.models.extended_modules import (
+    BiaRecord, BcmPlan, BcmTestExercise, IncidentActivation,
+    BcmCriticality, BcmPlanStatus, BcmActivationStatus,
+)
 
 router = APIRouter(tags=["Business Continuity Management"])
 
@@ -315,7 +318,7 @@ def create_plan(
         version=body.version,
         approved_by=body.approved_by,
         approved_at=datetime.fromisoformat(body.approved_at) if body.approved_at else None,
-        next_review_date=datetime.fromisoformat(body.next_review_date) if body.next_review_date else None,
+        next_test_date=datetime.fromisoformat(body.next_review_date) if body.next_review_date else None,
         test_frequency_months=body.test_frequency_months,
         metadata_=body.metadata,
     )
@@ -355,7 +358,7 @@ def update_plan(
     if body.approved_at:
         plan.approved_at = datetime.fromisoformat(body.approved_at)
     if body.next_review_date:
-        plan.next_review_date = datetime.fromisoformat(body.next_review_date)
+        plan.next_test_date = datetime.fromisoformat(body.next_review_date)
     if body.metadata is not None:
         plan.metadata_ = body.metadata
     db.commit()
@@ -442,8 +445,8 @@ def update_exercise(
             BcmPlan.tenant_id == tenant_id,
         ).first()
         if plan:
-            plan.last_tested_at = exercise.actual_date or datetime.utcnow()
-            plan.next_review_date = datetime.fromisoformat(body.next_exercise_date)
+            plan.last_tested = exercise.actual_date or datetime.utcnow()
+            plan.next_test_date = datetime.fromisoformat(body.next_exercise_date)
     if body.metadata is not None:
         exercise.metadata_ = body.metadata
     db.commit()
@@ -556,28 +559,28 @@ def get_bcm_dashboard(
 
     critical_processes = db.query(BiaRecord).filter(
         BiaRecord.tenant_id == tenant_id,
-        BiaRecord.criticality == "critical",
+        BiaRecord.criticality == BcmCriticality.CRITICAL,
     ).count()
 
     plans_tested_this_year = db.query(BcmPlan).filter(
         BcmPlan.tenant_id == tenant_id,
-        BcmPlan.last_tested_at >= year_start,
+        BcmPlan.last_tested >= year_start,
     ).count()
 
     active_incidents = db.query(IncidentActivation).filter(
         IncidentActivation.tenant_id == tenant_id,
-        IncidentActivation.status == "active",
+        IncidentActivation.status == BcmActivationStatus.ACTIVE,
     ).count()
 
     plans_due_test = db.query(BcmPlan).filter(
         BcmPlan.tenant_id == tenant_id,
-        BcmPlan.status == "active",
-        BcmPlan.next_review_date <= datetime.utcnow(),
+        BcmPlan.status == BcmPlanStatus.ACTIVE,
+        BcmPlan.next_test_date <= datetime.utcnow(),
     ).count()
 
     total_plans = db.query(BcmPlan).filter(
         BcmPlan.tenant_id == tenant_id,
-        BcmPlan.status == "active",
+        BcmPlan.status == BcmPlanStatus.ACTIVE,
     ).count()
 
     total_bia = db.query(BiaRecord).filter(BiaRecord.tenant_id == tenant_id).count()

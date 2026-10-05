@@ -39,10 +39,16 @@ export type PersonaId = keyof typeof PERSONAS;
 export async function loginAs(page: Page, persona: PersonaId) {
   const creds = PERSONAS[persona];
   await page.goto('/login');
-  await page.fill('input[name="username"], input[type="text"]', creds.username);
+  // Fill tenant ID first (QA users live in qa-tenant-001)
+  const tenantInput = page.locator('input[name="tenantId"]');
+  if (await tenantInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await tenantInput.clear();
+    await tenantInput.fill('qa-tenant-001');
+  }
+  await page.fill('input[name="username"]', creds.username);
   await page.fill('input[type="password"]', creds.password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/(dashboard|$)/, { timeout: 10000 });
+  await page.waitForURL(/\/(dashboard|$)/, { timeout: 15000 });
 }
 
 // ── API token helper (for API-level assertions) ───────────────────────────

@@ -327,10 +327,10 @@ export const reportsApi = {
   get: (reportId: string) => api.get(`/reporting/reports/${reportId}`),
 
   execute: (reportId: string, params?: any) =>
-    api.post(`/reporting/reports/${reportId}/execute`, params),
+    api.post('/reporting/generate', { report_id: reportId, ...params }),
 
   export: (reportId: string, format: string) =>
-    api.get(`/reporting/reports/${reportId}/export`, {
+    api.get(`/reporting/reports/${reportId}/download`, {
       params: { format },
       responseType: 'blob',
     }),
@@ -605,7 +605,7 @@ export const armApi = {
     api.post('/access-lifecycle/cart', { requester_id: requesterId }),
 
   addToCart: (cartId: string, roleId: string, data: object) =>
-    api.post(`/access-lifecycle/cart/${cartId}/add`, { role_id: roleId, ...data }),
+    api.post(`/access-lifecycle/cart/${cartId}/items`, { role_id: roleId, ...data }),
 
   checkConflicts: (cartId: string, existingRoles: string[]) =>
     api.post(`/access-lifecycle/cart/${cartId}/check-conflicts`, { existing_user_roles: existingRoles }),

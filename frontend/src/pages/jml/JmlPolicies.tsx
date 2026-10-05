@@ -133,7 +133,7 @@ export function JmlPolicies() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.patch(`/jml/policies/${id}`, { is_active }),
+      api.put(`/jml/policies/${id}`, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jml-policies'] });
     },

@@ -163,6 +163,39 @@ async def get_role(role_id: str):
     return role.to_dict()
 
 
+@router.put("/roles/{role_id}")
+async def update_role(role_id: str, request: CreateRoleRequest, modified_by: str = Query("system")):
+    """Update a role's basic properties."""
+    role = role_designer.get_role(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail=f"Role {role_id} not found")
+    if request.name:
+        role.name = request.name
+    if request.description:
+        role.description = request.description
+    if request.business_process:
+        role.business_process = request.business_process
+    if request.department:
+        role.department = request.department
+    if request.owner:
+        role.owner = request.owner
+    return role.to_dict()
+
+
+@router.delete("/roles/{role_id}")
+async def delete_role(role_id: str):
+    """Delete (deprecate) a role."""
+    role = role_designer.get_role(role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail=f"Role {role_id} not found")
+    try:
+        role = role_designer.deprecate_role(role_id, "system", "Deleted via API")
+        return {"message": f"Role {role_id} deprecated", "status": role.status.value}
+    except ValueError:
+        del role_designer.roles[role_id]
+        return {"message": f"Role {role_id} deleted"}
+
+
 @router.post("/roles/{role_id}/permissions")
 async def add_permission(
     role_id: str,

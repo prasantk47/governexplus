@@ -136,7 +136,7 @@ export function IdentityCorrelation() {
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: statsData } = useQuery<CorrelationStats>({
     queryKey: ['identity-correlation-stats'],
-    queryFn: () => api.get('/identity-correlation/stats').then((r) => r.data),
+    queryFn: () => api.get('/identity-correlation/overview').then((r) => r.data),
   });
 
   const { data: clustersData, isLoading: clustersLoading } = useQuery<IdentityCluster[]>({

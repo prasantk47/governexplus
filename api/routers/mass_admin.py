@@ -113,6 +113,43 @@ def mass_admin_root(body: Dict[str, Any] = None) -> Dict[str, Any]:
     return {"status": "ok", "message": "Use /mass-admin/roles/assign, /users/import, etc."}
 
 
+class GenericJobRequest(BaseModel):
+    operation: str = Field(..., description="Operation type: bulk_role_assign | bulk_role_remove | bulk_user_lock | bulk_user_import")
+    target_users: list[str] = Field(default=[], description="User IDs to target")
+    parameters: dict[str, Any] = Field(default={}, description="Operation-specific parameters")
+
+
+@router.post("/jobs", summary="Create a generic bulk job", status_code=201)
+def create_generic_job(
+    body: GenericJobRequest,
+    engine: MassAdminEngine = Depends(_get_engine),
+    tenant_id: str = Depends(_get_tenant_id),
+) -> dict[str, Any]:
+    """Create and queue a bulk administration job."""
+    job = engine._create_job(
+        tenant_id=tenant_id,
+        operation=body.operation,
+        target_users=body.target_users,
+        parameters=body.parameters,
+    )
+    return {"job_id": job.get("job_id"), "status": "queued", "operation": body.operation}
+
+
+@router.post("/jobs/{job_id}/cancel", summary="Cancel a running bulk job")
+def cancel_job(
+    job_id: str,
+    engine: MassAdminEngine = Depends(_get_engine),
+) -> dict[str, Any]:
+    """Cancel a queued or running bulk job."""
+    status = engine.get_job_status(job_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+    if status.get("status") in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail=f"Job already {status['status']}")
+    engine._complete_job(job_id, processed=0, succeeded=0, failed=0, results=[], status="cancelled")
+    return {"job_id": job_id, "status": "cancelled"}
+
+
 @router.get("/jobs", summary="List bulk job history")
 def list_job_history(
     operation: str | None = Query(default=None, description="Filter by operation type"),

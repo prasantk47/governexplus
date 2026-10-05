@@ -71,7 +71,7 @@ export function WhistleblowerIntake() {
   });
 
   const lookupMutation = useMutation({
-    mutationFn: (ref: string) => api.get(`/whistleblower/status/${ref}`).then(r => r.data),
+    mutationFn: (ref: string) => api.get(`/whistleblower/track/${ref}`).then(r => r.data),
     onSuccess: data => setLookupResult(data),
     onError: () => toast.error('Reference not found or expired'),
   });

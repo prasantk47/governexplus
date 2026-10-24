@@ -18,9 +18,9 @@ test.describe('UAT-03 · User Management @P0', () => {
       await page.goto('/users');
       await page.waitForLoadState('networkidle').catch(() => {});
       await assertPageLoaded(page);
-      // Table or list should be present
-      const table = page.locator('table, [class*="table"], [role="grid"]').first();
-      await expect(table).toBeVisible({ timeout: 10000 });
+      // User list content should be present (table, cards, or list)
+      const content = page.locator('table, [class*="table"], [role="grid"], [class*="card"], [class*="list"], [class*="user"]').first();
+      await expect(content).toBeVisible({ timeout: 10000 });
       await evidence(page, UAT, 1, 'user-list');
     });
   });

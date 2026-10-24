@@ -4,8 +4,8 @@
  */
 import { Page, expect } from '@playwright/test';
 
-export const API = 'http://localhost:9000';
-export const MAILPIT = 'http://localhost:8025';
+export const API = process.env.API_URL || 'http://localhost:9000';
+export const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025';
 
 // ── Persona credentials from qa/personas.json ─────────────────────────────
 export const PERSONAS = {

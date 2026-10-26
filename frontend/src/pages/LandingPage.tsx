@@ -25,8 +25,6 @@ import {
   BeakerIcon,
   CommandLineIcon,
   ArrowTrendingUpIcon,
-  ArrowPathIcon,
-  PlayIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   MagnifyingGlassIcon,
@@ -477,11 +475,11 @@ export function LandingPage() {
               ['Create Rules (NLP)', false, true],
               ['AI Certification', false, true],
               ['Multi-System', false, true],
-            ].map(([cap, joule, gvnx]) => (
+            ].map(([cap, joule, _gvnx]) => (
               <div key={cap as string} className="grid grid-cols-3 text-center py-2 border-t border-white/5">
                 <div className="text-sm text-white/80 text-left">{cap as string}</div>
                 <div>{joule ? <CheckIcon className="h-4 w-4 text-gray-500 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
-                <div><CheckIcon className="h-4 w-4 text-emerald-400 mx-auto" /></div>
+                <div>{_gvnx ? <CheckIcon className="h-4 w-4 text-emerald-400 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
               </div>
             ))}
           </div>

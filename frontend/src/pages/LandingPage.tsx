@@ -117,7 +117,7 @@ const sapComparison = [
   { feature: 'Deployment Time', sap: '6-12 months', gvnx: '< 1 week', winner: 'gvnx' },
   { feature: 'License Model', sap: 'Per-user + BTP units', gvnx: 'Simple per-user SaaS', winner: 'gvnx' },
   { feature: 'SoD Rules', sap: 'Manual config required', gvnx: '121 pre-built, ready to go', winner: 'gvnx' },
-  { feature: 'AI Capabilities', sap: 'Joule (basic NLP)', gvnx: 'Full AI Copilot (8 engines)', winner: 'gvnx' },
+  { feature: 'AI Capabilities', sap: 'Basic NLP assistant', gvnx: 'Full AI Copilot (8 engines)', winner: 'gvnx' },
   { feature: 'Multi-System', sap: 'SAP only', gvnx: 'SAP + Azure AD + ServiceNow + Any', winner: 'gvnx' },
   { feature: 'Risk Simulation', sap: 'Batch processing', gvnx: 'Real-time < 1ms', winner: 'gvnx' },
   { feature: 'Certification', sap: 'Manual decisions only', gvnx: 'AI recommendations + confidence', winner: 'gvnx' },
@@ -332,8 +332,8 @@ export function LandingPage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-[1.1] mb-6">
-            SAP Joule Tells You<br />
-            What's Wrong.<br />
+            Traditional GRC<br />
+            Tells You What's Wrong.<br />
             <span
               className="text-transparent bg-clip-text"
               style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa)' }}
@@ -434,7 +434,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── AI Intelligence (Joule Killer) ────────────────────── */}
+      {/* ── AI Intelligence ─────────────────────────────────── */}
       <section id="ai" className="relative py-24 overflow-hidden" style={{ background: 'linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%)' }}>
         <div
           className="absolute inset-0"
@@ -450,19 +450,19 @@ export function LandingPage() {
               <span className="text-sm font-semibold text-indigo-300">8 AI Engines Built-In</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-              Beyond SAP Joule
+              AI That Acts, Not Just Advises
             </h2>
             <p className="mt-4 text-lg text-indigo-200/60 max-w-3xl mx-auto">
-              SAP Joule is a read-only assistant. GovernexPlus AI Copilot detects, decides, and acts.
+              Traditional GRC tools only detect problems. GovernexPlus AI Copilot detects, decides, and acts.
               No external LLM required. All intelligence runs locally. Your data never leaves.
             </p>
           </div>
 
-          {/* Joule vs GovernexPlus quick comparison */}
+          {/* AI Capability Highlights */}
           <div className="max-w-2xl mx-auto mb-16 bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
             <div className="grid grid-cols-3 text-center mb-4">
               <div className="text-xs font-medium text-indigo-300">Capability</div>
-              <div className="text-xs font-medium text-gray-400">SAP Joule</div>
+              <div className="text-xs font-medium text-gray-400">Traditional GRC</div>
               <div className="text-xs font-medium text-indigo-400">GovernexPlus AI</div>
             </div>
             {[
@@ -472,11 +472,11 @@ export function LandingPage() {
               ['Create Rules (NLP)', false, true],
               ['AI Certification', false, true],
               ['Multi-System', false, true],
-            ].map(([cap, joule, _gvnx]) => (
+            ].map(([cap, legacy, gvnx]) => (
               <div key={cap as string} className="grid grid-cols-3 text-center py-2 border-t border-white/5">
                 <div className="text-sm text-white/80 text-left">{cap as string}</div>
-                <div>{joule ? <CheckIcon className="h-4 w-4 text-gray-500 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
-                <div>{_gvnx ? <CheckIcon className="h-4 w-4 text-emerald-400 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
+                <div>{legacy ? <CheckIcon className="h-4 w-4 text-gray-500 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
+                <div>{gvnx ? <CheckIcon className="h-4 w-4 text-emerald-400 mx-auto" /> : <XMarkIcon className="h-4 w-4 text-red-400 mx-auto" />}</div>
               </div>
             ))}
           </div>

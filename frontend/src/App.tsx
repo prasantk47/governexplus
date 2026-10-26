@@ -135,8 +135,8 @@ import { ShoppingCart } from './pages/access-requests/ShoppingCart';
 // Workflow Builder
 import { WorkflowBuilder } from './pages/workflows';
 
-// AI Assistant
-import { AIAssistant } from './pages/ai';
+// AI Assistant & AI Copilot Pages
+import { AIAssistant, OneClickRemediation, AICertification, NaturalLanguageRules, AIFindings, PredictiveRisk, IdentityGraph, GRCCopilot } from './pages/ai';
 
 // Admin Pages (Super Admin Portal)
 import { AdminLogin, AdminDashboard, TenantOnboard } from './pages/admin';
@@ -344,8 +344,15 @@ function AppRoutes() {
         <Route path="/audit-management/engagements" element={<AuditEngagement />} />
         <Route path="/audit-management/findings" element={<FindingsTracker />} />
 
-        {/* AI Assistant */}
+        {/* AI Assistant & AI Copilot */}
         <Route path="/ai" element={<AIAssistant />} />
+        <Route path="/ai/copilot" element={<GRCCopilot />} />
+        <Route path="/ai/remediation" element={<OneClickRemediation />} />
+        <Route path="/ai/certification" element={<AICertification />} />
+        <Route path="/ai/rules" element={<NaturalLanguageRules />} />
+        <Route path="/ai/findings" element={<AIFindings />} />
+        <Route path="/ai/forecast" element={<PredictiveRisk />} />
+        <Route path="/ai/identity-graph" element={<IdentityGraph />} />
 
         {/* JML — Joiner Mover Leaver */}
         <Route path="/jml" element={<JmlPolicies />} />

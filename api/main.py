@@ -124,6 +124,8 @@ from api.routers import i18n as i18n_router
 from api.routers import retention as retention_router
 # GRC AI Assistant (XI-08)
 from api.routers import ai_grc
+# AI Copilot — Joule-beating AI features
+from api.routers import ai_copilot
 # Audit Evidence Agent — AI-driven evidence assembly
 from api.routers import evidence_agent
 # GRC Digital Twin — live connected GRC state model
@@ -586,6 +588,12 @@ app.include_router(
     tags=["GRC AI Assistant"],
     dependencies=_require_auth,
 )
+app.include_router(
+    ai_copilot.router,
+    prefix="/ai-copilot",
+    tags=["AI Copilot"],
+    dependencies=_require_auth,
+)
 
 # ── GRC Suite Modules ──────────────────────────────────────────────────────
 app.include_router(
@@ -716,6 +724,14 @@ app.include_router(
 )
 
 # Seed the template library on startup (idempotent)
+# ── AI Copilot — Joule-beating AI-powered GRC intelligence ────────────────────
+from api.routers import ai_copilot as ai_copilot_router
+
+app.include_router(
+    ai_copilot_router.router, prefix="/ai-copilot",
+    tags=["AI Copilot"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

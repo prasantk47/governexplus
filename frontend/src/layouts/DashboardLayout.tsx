@@ -234,6 +234,13 @@ const navigation: NavItem[] = [
       { name: 'Identity Correlation', href: '/intelligence/identity' },
       { name: 'Audit Evidence', href: '/intelligence/audit-evidence' },
       { name: 'AI Assistant', href: '/ai' },
+      { name: 'GRC Copilot', href: '/ai/copilot' },
+      { name: 'One-Click Remediation', href: '/ai/remediation' },
+      { name: 'AI Certification', href: '/ai/certification' },
+      { name: 'NL Rule Creator', href: '/ai/rules' },
+      { name: 'AI Finding Generator', href: '/ai/findings' },
+      { name: 'Predictive Risk', href: '/ai/forecast' },
+      { name: 'Identity Graph', href: '/ai/identity-graph' },
     ],
   },
   {

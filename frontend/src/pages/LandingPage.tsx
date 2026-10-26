@@ -28,9 +28,6 @@ import {
   FireIcon,
   BuildingOfficeIcon,
   GlobeAltIcon,
-  CloudIcon,
-  CpuChipIcon,
-  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon as ShieldSolid, StarIcon } from '@heroicons/react/24/solid';
 

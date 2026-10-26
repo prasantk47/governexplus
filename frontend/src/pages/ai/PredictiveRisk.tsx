@@ -101,7 +101,7 @@ export function PredictiveRisk() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Risk Score Trend & Forecast</h3>
         <div className="flex items-end gap-3 h-48">
-          {TREND_DATA.map((d, i) => {
+          {TREND_DATA.map((d) => {
             const val = d.actual || d.forecast || 0;
             const h = (val / maxVal) * 100;
             return (

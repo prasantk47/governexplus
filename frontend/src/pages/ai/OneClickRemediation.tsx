@@ -98,8 +98,8 @@ export function OneClickRemediation() {
 
   const executePlan = useMutation({ mutationFn: (planId: string) => api.post(`/ai-copilot/remediation/execute`, { plan_id: planId }) });
 
-  const autoCount = violations.filter(v => v.autoRemediable).length;
-  const successRate = history.length > 0 ? Math.round((history.filter(h => h.result === 'success').length / history.length) * 100) : 0;
+  const autoCount = violations.filter((v: Violation) => v.autoRemediable).length;
+  const successRate = history.length > 0 ? Math.round((history.filter((h: HistoryItem) => h.result === 'success').length / history.length) * 100) : 0;
 
   const stats = [
     { label: 'Total Violations', value: violations.length, icon: ShieldExclamationIcon, color: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
@@ -156,7 +156,7 @@ export function OneClickRemediation() {
               <tr>{['ID', 'User', 'Rule', 'Description', 'Severity', 'System', 'Auto-Fix', 'Action'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {violations.map(v => (
+              {violations.map((v: Violation) => (
                 <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                   <td className="px-4 py-3 text-sm font-mono text-indigo-600 dark:text-indigo-400">{v.id}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{v.user}</td>
@@ -186,7 +186,7 @@ export function OneClickRemediation() {
               <tr>{['Plan ID', 'User', 'Violation', 'Steps', 'Confidence', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {plans.map(p => (
+              {plans.map((p: RemediationPlan) => (
                 <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                   <td className="px-4 py-3 text-sm font-mono text-indigo-600 dark:text-indigo-400">{p.id}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{p.user}</td>
@@ -217,7 +217,7 @@ export function OneClickRemediation() {
               <tr>{['User', 'Rule', 'Before', 'After', 'Result', 'Date'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {history.map(h => (
+              {history.map((h: HistoryItem) => (
                 <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{h.user}</td>
                   <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{h.rule}</td>

@@ -274,6 +274,8 @@ export function LandingPage() {
             <a href="#modules" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Modules</a>
             <a href="#strengths" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Why Us</a>
             <a href="#pricing" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Pricing</a>
+            <a href="#about" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">About</a>
+            <a href="#contact" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Contact</a>
           </div>
           <Link to="/login" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all">
             Sign In
@@ -554,12 +556,191 @@ export function LandingPage() {
       </section>
 
       {/* ── FAQ ────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 dark:bg-slate-900/50 py-24">
+      <section id="faq" className="bg-gray-50 dark:bg-slate-900/50 py-24">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Frequently Asked Questions</h2>
           </div>
           <div>{faqs.map(faq => <FAQItem key={faq.q} q={faq.q} a={faq.a} />)}</div>
+        </div>
+      </section>
+
+      {/* ── About ───────────────────────────────────────────────── */}
+      <section id="about" className="max-w-7xl mx-auto px-6 py-24">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-6">About GovernexPlus</h2>
+            <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+              GovernexPlus is an AI-native Governance, Risk & Compliance platform built for the modern enterprise.
+              We believe GRC should be intelligent, automated, and accessible — not a burden that slows your business down.
+            </p>
+            <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+              Our platform unifies four pillars — Access Governance, Control Assurance, Risk Intelligence, and Audit Intelligence —
+              into a single, integrated solution powered by 8 AI engines that detect, decide, and act automatically.
+            </p>
+            <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+              Founded by GRC practitioners and enterprise architects, GovernexPlus was designed from day one to deliver
+              value in days, not months. We serve organizations across financial services, manufacturing, technology,
+              healthcare, and the public sector.
+            </p>
+            <div className="grid grid-cols-3 gap-6">
+              {[
+                { value: '30+', label: 'Modules' },
+                { value: '121', label: 'Pre-built Rules' },
+                { value: '8', label: 'AI Engines' },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">{s.value}</div>
+                  <div className="text-xs text-gray-500 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
+            {[
+              { title: 'Our Mission', text: 'Make enterprise governance intelligent, automated, and effortless — so security teams can focus on strategy, not spreadsheets.' },
+              { title: 'Our Vision', text: 'A world where every organization has real-time visibility into their risk posture, with AI that acts before problems become incidents.' },
+              { title: 'Our Values', text: 'Security first. Simplicity always. Customer obsession. Continuous innovation. Transparent pricing.' },
+            ].map(v => (
+              <div key={v.title} className="bg-gray-50 dark:bg-slate-900 rounded-xl p-6 border border-gray-100 dark:border-slate-800">
+                <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-2">{v.title}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{v.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Security ───────────────────────────────────────────── */}
+      <section id="security" className="bg-gray-50 dark:bg-slate-900/50 py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Enterprise-Grade Security</h2>
+            <p className="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+              Your GRC data is your most sensitive asset. We protect it with defense-in-depth security at every layer.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { title: 'Multi-Tenant Isolation', desc: 'Every tenant is fully isolated at the database, API, and session level. Cross-tenant access is impossible without explicit platform admin authorization (logged).' },
+              { title: 'JWT Authentication', desc: 'Industry-standard JSON Web Token authentication with bcrypt password hashing, automatic token expiry, session timeout, and account lockout after failed attempts.' },
+              { title: 'Role-Based Access Control', desc: '33+ granular permissions. Every route is auth-gated. Users only see what their role permits. Platform admins have audited cross-tenant access.' },
+              { title: 'Rate Limiting', desc: 'API rate limiting on all endpoints (10/min for auth, 60/min default) prevents brute-force attacks and API abuse.' },
+              { title: 'Encryption', desc: 'TLS 1.3 for all data in transit. Database encryption at rest. Secrets managed via environment variables, never hardcoded.' },
+              { title: 'Audit Logging', desc: 'Every user action, API call, and admin operation is logged with timestamp, user ID, IP address, and tenant context. Tamper-proof audit trail.' },
+              { title: 'SOC 2 Ready', desc: 'Architecture designed for SOC 2 Type II certification. Control evidence collection built into the platform itself.' },
+              { title: 'GDPR Compliant', desc: 'Data residency controls, right to erasure support, consent management, and data processing agreements for EU compliance.' },
+              { title: 'No External AI Calls', desc: 'All 8 AI engines run locally within your deployment. Zero data leaves your environment. No third-party LLM dependencies.' },
+            ].map(s => (
+              <div key={s.title} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-gray-100 dark:border-slate-800">
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-2">{s.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Contact ────────────────────────────────────────────── */}
+      <section id="contact" className="max-w-5xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Get in Touch</h2>
+          <p className="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+            Have questions? Need a demo? Want to discuss enterprise deployment? We'd love to hear from you.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          {[
+            { title: 'Sales & Demos', email: 'sales@governexplus.com', desc: 'Schedule a personalized demo or discuss pricing for your organization.' },
+            { title: 'Technical Support', email: 'support@governexplus.com', desc: 'Get help with deployment, configuration, integrations, or troubleshooting.' },
+            { title: 'Partnerships', email: 'partners@governexplus.com', desc: 'Explore reseller, consulting, or technology partnership opportunities.' },
+          ].map(c => (
+            <div key={c.title} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-gray-100 dark:border-slate-800 text-center">
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-2">{c.title}</h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{c.desc}</p>
+              <a href={`mailto:${c.email}`} className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">{c.email}</a>
+            </div>
+          ))}
+        </div>
+        <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl p-8 border border-gray-100 dark:border-slate-800">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Send Us a Message</h3>
+              <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" placeholder="First Name" className="px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" placeholder="Last Name" className="px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <input type="email" placeholder="Work Email" className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="text" placeholder="Company" className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <select className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">I'm interested in...</option>
+                  <option>Product Demo</option>
+                  <option>Enterprise Pricing</option>
+                  <option>Technical Questions</option>
+                  <option>Partnership</option>
+                  <option>Other</option>
+                </select>
+                <textarea placeholder="Your message..." rows={4} className="w-full px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button type="submit" className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg transition-all text-sm">
+                  Send Message
+                </button>
+              </form>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Office</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">GovernexPlus Technologies<br />Enterprise GRC Solutions<br />Global Operations</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Response Time</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Sales inquiries: Within 4 hours<br />Support tickets: Within 2 hours<br />Critical issues: Within 30 minutes</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Follow Us</h4>
+                <div className="flex gap-3">
+                  {['LinkedIn', 'Twitter', 'YouTube'].map(s => (
+                    <span key={s} className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400">{s}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Privacy & Terms ────────────────────────────────────── */}
+      <section id="privacy" className="bg-gray-50 dark:bg-slate-900/50 py-24">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-8">Privacy Policy</h2>
+          <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 space-y-4">
+            <p><strong>Effective Date:</strong> January 1, 2026</p>
+            <p>GovernexPlus Technologies ("we", "us", "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.</p>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Information We Collect</h3>
+            <p>We collect information you provide directly: account details (name, email, organization), GRC configuration data, and usage analytics. We do not sell or share your personal data with third parties for marketing purposes.</p>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Data Processing</h3>
+            <p>All GRC data is processed within your tenant boundary. Multi-tenant isolation ensures no cross-tenant data leakage. AI engines run locally — no data is sent to external services.</p>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Data Retention</h3>
+            <p>We retain your data for as long as your account is active. Upon account termination, all tenant data is permanently deleted within 30 days. Audit logs are retained per your configured retention policy.</p>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Your Rights</h3>
+            <p>You have the right to access, correct, or delete your personal data. For GDPR requests, contact privacy@governexplus.com.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms" className="max-w-4xl mx-auto px-6 py-24">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-8">Terms of Service</h2>
+        <div className="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 space-y-4">
+          <p><strong>Effective Date:</strong> January 1, 2026</p>
+          <p>By accessing or using GovernexPlus, you agree to be bound by these Terms of Service. If you do not agree, do not use the platform.</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">License</h3>
+          <p>We grant you a non-exclusive, non-transferable license to use GovernexPlus for your internal business purposes in accordance with your subscription plan.</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Acceptable Use</h3>
+          <p>You agree not to: (a) reverse engineer the platform, (b) attempt to access other tenants' data, (c) use the platform for illegal purposes, (d) exceed your licensed user count.</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Service Level</h3>
+          <p>SaaS customers receive 99.9% uptime SLA. Scheduled maintenance windows are communicated 48 hours in advance. On-premise deployments are managed by the customer.</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Limitation of Liability</h3>
+          <p>GovernexPlus provides tools for governance, risk, and compliance management. We are not liable for regulatory non-compliance resulting from customer configuration decisions.</p>
         </div>
       </section>
 
@@ -602,18 +783,18 @@ export function LandingPage() {
             <div>
               <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Resources</h4>
               <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">API Reference</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Security</a></li>
+                <li><a href="#faq" className="hover:text-indigo-600 transition-colors">Documentation</a></li>
+                <li><a href="#security" className="hover:text-indigo-600 transition-colors">Security</a></li>
+                <li><a href="#pricing" className="hover:text-indigo-600 transition-colors">Pricing</a></li>
               </ul>
             </div>
             <div>
               <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Company</h4>
               <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Terms of Service</a></li>
+                <li><a href="#about" className="hover:text-indigo-600 transition-colors">About</a></li>
+                <li><a href="#contact" className="hover:text-indigo-600 transition-colors">Contact</a></li>
+                <li><a href="#privacy" className="hover:text-indigo-600 transition-colors">Privacy Policy</a></li>
+                <li><a href="#terms" className="hover:text-indigo-600 transition-colors">Terms of Service</a></li>
               </ul>
             </div>
           </div>

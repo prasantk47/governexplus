@@ -9,7 +9,6 @@ import {
   CommandLineIcon,
   CheckCircleIcon,
   LightBulbIcon,
-  ArrowRightIcon,
   DocumentPlusIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/api';

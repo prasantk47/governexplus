@@ -3,17 +3,13 @@
  * Cross-system identity correlation with visual graph
  */
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon,
   UserCircleIcon,
   ServerStackIcon,
   ExclamationTriangleIcon,
-  ShieldCheckIcon,
   GlobeAltIcon,
-  BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
 
 interface SystemAccount {
   system: string; systemType: string; username: string; roles: number;

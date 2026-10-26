@@ -46,11 +46,11 @@ export function AICertification() {
   const { data: items = ITEMS } = useQuery({ queryKey: ['ai-cert-items'], queryFn: () => api.get('/ai-copilot/certification/recommendations/current').then(r => r.data?.items ?? ITEMS).catch(() => ITEMS) });
   const applyAll = useMutation({ mutationFn: () => api.post('/ai-copilot/certification/apply/current') });
 
-  const filtered = filter === 'all' ? items : items.filter(i => i.recommendation === filter);
-  const certifyCount = items.filter(i => i.recommendation === 'certify').length;
-  const revokeCount = items.filter(i => i.recommendation === 'revoke').length;
-  const reviewCount = items.filter(i => i.recommendation === 'review').length;
-  const avgConfidence = items.length > 0 ? Math.round(items.reduce((s, i) => s + i.confidence, 0) / items.length) : 0;
+  const filtered = filter === 'all' ? items : items.filter((i: CertItem) => i.recommendation === filter);
+  const certifyCount = items.filter((i: CertItem) => i.recommendation === 'certify').length;
+  const revokeCount = items.filter((i: CertItem) => i.recommendation === 'revoke').length;
+  const reviewCount = items.filter((i: CertItem) => i.recommendation === 'review').length;
+  const avgConfidence = items.length > 0 ? Math.round(items.reduce((s: number, i: CertItem) => s + i.confidence, 0) / items.length) : 0;
 
   const stats = [
     { label: 'Items to Review', value: items.length, icon: DocumentCheckIcon, color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' },
@@ -110,7 +110,7 @@ export function AICertification() {
         {(['all', 'certify', 'revoke', 'review'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
-            {f === 'all' ? `All (${items.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${items.filter(i => i.recommendation === f).length})`}
+            {f === 'all' ? `All (${items.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${items.filter((i: CertItem) => i.recommendation === f).length})`}
           </button>
         ))}
       </div>
@@ -122,7 +122,7 @@ export function AICertification() {
             <tr>{['User', 'Dept', 'Role', 'Last Used', 'Usage', 'AI Recommendation', 'Confidence', 'Reason'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-            {filtered.map(item => {
+            {filtered.map((item: CertItem) => {
               const rec = recColors[item.recommendation];
               const Icon = rec.icon;
               return (

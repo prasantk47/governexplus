@@ -199,6 +199,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Template library seeder failed (non-fatal): %s", e)
 
+    # Seed ANAO SAP Security Controls (idempotent)
+    try:
+        from core.library.anao_seeder import seed_anao_controls
+        s = db_manager.get_session()
+        try:
+            result = seed_anao_controls(s)
+            logger.info("ANAO controls seeder: %s", result)
+        finally:
+            s.close()
+    except Exception as e:
+        logger.warning("ANAO controls seeder failed (non-fatal): %s", e)
+
     yield
     # Shutdown
     logger.info("Shutting down Governex+ Platform...")

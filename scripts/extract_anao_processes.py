@@ -1,0 +1,386 @@
+"""
+Extract process flows from ANAO 'Security and Control for SAP R/3' handbook.
+The handbook defines complete business process cycles for each module with
+risk points, control objectives, and configuration checkpoints.
+
+Outputs: scripts/anao_processes.json
+"""
+
+import json
+import re
+import os
+
+INPUT = os.path.join(os.path.dirname(__file__), "anao_full_text.txt")
+OUTPUT = os.path.join(os.path.dirname(__file__), "anao_processes.json")
+
+with open(INPUT, "r", encoding="utf-8") as f:
+    raw = f.read()
+
+# Split into pages
+pages = {}
+for m in re.finditer(r"===PAGE (\d+)===\n(.*?)(?=\n===PAGE |\Z)", raw, re.S):
+    pages[int(m.group(1))] = m.group(2)
+
+processes = []
+
+# ── PROCUREMENT TO PAYABLES (MM) ──────────────────────────────
+mm_text = "\n".join(pages.get(p, "") for p in range(9, 37))
+
+processes.append({
+    "id": "PROC-MM-001",
+    "name": "Procurement to Payables Cycle",
+    "module": "MM",
+    "module_name": "Materials Management",
+    "description": "End-to-end procurement cycle from purchase requisition through payment to vendor.",
+    "steps": [
+        {"order": 1, "name": "Purchase Requisition", "tcodes": ["ME51N", "ME52N", "ME53N"],
+         "description": "Business user creates purchase requisition for goods or services needed.",
+         "risks": ["Unauthorized requisitions", "Duplicate requisitions", "Inflated quantities"],
+         "controls": ["Approval workflow for PR", "Budget check on commitment", "Duplicate check on vendor/material"]},
+        {"order": 2, "name": "Request for Quotation", "tcodes": ["ME41", "ME42", "ME47"],
+         "description": "Purchasing sends RFQ to vendors and evaluates responses.",
+         "risks": ["Vendor collusion", "Inadequate vendor evaluation"],
+         "controls": ["Minimum number of quotations", "Competitive bidding policy", "Vendor evaluation scoring"]},
+        {"order": 3, "name": "Purchase Order Creation", "tcodes": ["ME21N", "ME22N", "ME23N"],
+         "description": "Purchasing converts approved PR to purchase order.",
+         "risks": ["Unauthorized PO creation", "PO without PR", "Exceeding budget", "Fictitious vendor"],
+         "controls": ["SoD: PR creator != PO creator", "PO approval workflow", "Vendor master validation", "Budget availability check"]},
+        {"order": 4, "name": "Purchase Order Approval", "tcodes": ["ME29N", "ME28"],
+         "description": "Manager or authorized approver releases the purchase order.",
+         "risks": ["Self-approval", "Approval without review", "Unauthorized release"],
+         "controls": ["Release strategy configuration", "Value-based approval limits", "SoD: PO creator != PO approver"]},
+        {"order": 5, "name": "Goods Receipt", "tcodes": ["MIGO", "MB01", "MB31"],
+         "description": "Warehouse receives goods and posts goods receipt against PO.",
+         "risks": ["Receipt without delivery", "Quantity manipulation", "Unauthorized GR posting"],
+         "controls": ["SoD: PO creator != GR poster", "Tolerance limits on over-delivery", "Physical inspection requirement"]},
+        {"order": 6, "name": "Invoice Verification", "tcodes": ["MIRO", "MIR7", "MIR4"],
+         "description": "Accounts payable matches vendor invoice against PO and GR (3-way match).",
+         "risks": ["Invoice without GR", "Duplicate invoices", "Price discrepancies", "Fraudulent invoices"],
+         "controls": ["3-way match (PO-GR-Invoice)", "Tolerance limits on price variance", "Duplicate invoice check", "SoD: GR poster != invoice poster"]},
+        {"order": 7, "name": "Payment Processing", "tcodes": ["F110", "F-53", "F-58"],
+         "description": "Payment run executed to pay approved vendor invoices.",
+         "risks": ["Payment to fictitious vendor", "Duplicate payments", "Unauthorized bank details change"],
+         "controls": ["SoD: vendor master != payment run", "Payment approval workflow", "Bank detail change monitoring", "Payment run authorization"]},
+    ],
+    "sod_risks": [
+        "Create Vendor + Approve Payment",
+        "Create PO + Approve PO",
+        "Create PO + Post Goods Receipt",
+        "Post Goods Receipt + Post Invoice",
+        "Maintain Vendor Master + Execute Payment Run",
+    ],
+    "key_reports": ["ME2M (PO by vendor)", "ME2L (PO by vendor list)", "ME80FN (Purchasing analysis)", "MIR6 (Invoice overview)", "FBL1N (Vendor line items)"],
+    "config_hotspots": [
+        "Release strategy for purchase orders (T16FS/T16FB)",
+        "Tolerance limits for price variance (OMR6)",
+        "Tolerance limits for GR quantity (OMR6)",
+        "3-way match configuration",
+        "Duplicate invoice check settings (OMRDC)",
+        "Payment run configuration (FBZP)",
+    ],
+})
+
+# ── FINANCIAL ACCOUNTING (FI) ─────────────────────────────────
+processes.append({
+    "id": "PROC-FI-001",
+    "name": "Financial Accounting — General Ledger",
+    "module": "FI",
+    "module_name": "Financial Accounting",
+    "description": "End-to-end general ledger accounting from journal entry to financial statements.",
+    "steps": [
+        {"order": 1, "name": "GL Master Data Maintenance", "tcodes": ["FS00", "FSP0", "FSS0"],
+         "description": "Chart of accounts and GL account master data setup and changes.",
+         "risks": ["Unauthorized account creation", "Incorrect account type", "Missing reconciliation accounts"],
+         "controls": ["Restricted access to FS00", "Change log monitoring", "Account naming convention enforcement"]},
+        {"order": 2, "name": "Journal Entry Posting", "tcodes": ["FB50", "F-02", "FB01"],
+         "description": "Post manual journal entries for adjustments, reclassifications, accruals.",
+         "risks": ["Unauthorized postings", "Incorrect amounts", "Posting to wrong period", "Fraudulent entries"],
+         "controls": ["Posting authorization limits", "SoD: post JE != approve JE", "Document type restrictions", "Tolerance groups"]},
+        {"order": 3, "name": "Journal Entry Approval", "tcodes": ["FB02", "FBRA"],
+         "description": "Review and approve journal entries above defined threshold.",
+         "risks": ["Self-approval", "Entries posted without review"],
+         "controls": ["Park and post workflow", "Dual control for entries above threshold", "Management review of manual JEs"]},
+        {"order": 4, "name": "Accounts Payable Processing", "tcodes": ["FB60", "F-43", "MIRO"],
+         "description": "Vendor invoice posting, credit memos, down payments.",
+         "risks": ["Duplicate invoices", "Fictitious vendor payments", "Unauthorized credit memos"],
+         "controls": ["3-way match", "Duplicate invoice check", "SoD: create vendor != post invoice", "Credit memo approval"]},
+        {"order": 5, "name": "Accounts Receivable Processing", "tcodes": ["FB70", "F-22", "F-28"],
+         "description": "Customer invoicing, incoming payments, credit notes.",
+         "risks": ["Unauthorized write-offs", "Ghost customer receipts", "Unallocated payments"],
+         "controls": ["SoD: create customer != post payment", "Write-off authorization limits", "Aging analysis review"]},
+        {"order": 6, "name": "Bank Reconciliation", "tcodes": ["FF67", "FEBAN", "FF_5"],
+         "description": "Match bank statement items with SAP GL entries.",
+         "risks": ["Unreconciled items", "Delayed reconciliation", "Manual adjustments without review"],
+         "controls": ["Daily/weekly reconciliation schedule", "Aging of open items", "Supervisory review of reconciling items"]},
+        {"order": 7, "name": "Period-End Closing", "tcodes": ["OB52", "F.5D", "S_ALR_87012284"],
+         "description": "Close posting periods, run depreciation, execute closing entries.",
+         "risks": ["Posting to closed periods", "Incomplete closing procedures", "Unauthorized period opening"],
+         "controls": ["Period lock configuration", "Closing checklist execution", "SoD: period open/close != post entries"]},
+        {"order": 8, "name": "Financial Reporting", "tcodes": ["F.01", "S_ALR_87012277", "S_ALR_87012284"],
+         "description": "Generate balance sheet, P&L, trial balance, and management reports.",
+         "risks": ["Inaccurate reports", "Unauthorized access to financial data"],
+         "controls": ["Reconciliation before reporting", "Report access restrictions", "Management signoff"]},
+    ],
+    "sod_risks": [
+        "Create Vendor + Post Invoice",
+        "Post Journal Entry + Reverse Journal Entry",
+        "Post Journal Entry + Approve Journal Entry",
+        "Create Customer + Post AR Payment",
+        "Maintain Bank Master + Execute Payment Run",
+        "Open/Close Posting Period + Post Entries",
+    ],
+    "key_reports": ["FBL3N (GL line items)", "FBL1N (Vendor line items)", "FBL5N (Customer line items)", "S_ALR_87012277 (Balance sheet)", "F.01 (Financial statements)"],
+    "config_hotspots": [
+        "Posting period variants (OB52)",
+        "Tolerance groups (OBA4)",
+        "Document types and number ranges",
+        "Payment terms configuration",
+        "GL account authorization groups",
+    ],
+})
+
+# ── ASSET ACCOUNTING (FI-AA) ──────────────────────────────────
+processes.append({
+    "id": "PROC-FI-AA-001",
+    "name": "Asset Accounting Lifecycle",
+    "module": "FI-AA",
+    "module_name": "Asset Accounting",
+    "description": "Fixed asset lifecycle from acquisition through depreciation to retirement.",
+    "steps": [
+        {"order": 1, "name": "Asset Master Creation", "tcodes": ["AS01", "AS91"],
+         "description": "Create asset master record with classification and depreciation parameters.",
+         "risks": ["Ghost assets", "Incorrect depreciation keys", "Unauthorized asset creation"],
+         "controls": ["Approval for asset creation", "Asset class validation", "Physical verification requirement"]},
+        {"order": 2, "name": "Asset Acquisition", "tcodes": ["F-90", "ABZON", "MIGO"],
+         "description": "Capitalize asset via purchase order, direct posting, or transfer.",
+         "risks": ["Capitalization of expenses", "Incorrect cost assignment", "Duplicate capitalization"],
+         "controls": ["Capitalization threshold policy", "SoD: create asset != capitalize", "PO-based acquisition"]},
+        {"order": 3, "name": "Depreciation Run", "tcodes": ["AFAB", "AFAR"],
+         "description": "Execute periodic depreciation calculation and posting.",
+         "risks": ["Incorrect depreciation method", "Missed depreciation runs", "Manual depreciation overrides"],
+         "controls": ["Automated monthly depreciation schedule", "Depreciation method review", "Reconciliation to GL"]},
+        {"order": 4, "name": "Asset Transfer", "tcodes": ["ABUMN", "ABT1N"],
+         "description": "Transfer asset between cost centers, business areas, or companies.",
+         "risks": ["Unauthorized transfers", "Incorrect intercompany postings"],
+         "controls": ["Transfer approval workflow", "Intercompany reconciliation", "Transfer documentation"]},
+        {"order": 5, "name": "Asset Retirement", "tcodes": ["ABAON", "ABN1N", "F-92"],
+         "description": "Retire asset with or without revenue (sale, scrapping, loss).",
+         "risks": ["Unauthorized disposal", "Incorrect gain/loss calculation", "Ghost asset retention"],
+         "controls": ["Retirement approval", "Physical verification before retirement", "SoD: create asset != retire asset"]},
+        {"order": 6, "name": "Physical Inventory", "tcodes": ["AR01", "AR02"],
+         "description": "Annual physical verification of assets against master records.",
+         "risks": ["Missing assets", "Unrecorded assets", "Location discrepancies"],
+         "controls": ["Annual physical count", "Reconciliation of count vs register", "Adjustment approval"]},
+    ],
+    "sod_risks": [
+        "Create Asset Master + Capitalize Asset",
+        "Create Asset + Retire Asset",
+        "Run Depreciation + Change Depreciation Key",
+    ],
+    "key_reports": ["S_ALR_87011963 (Asset balances)", "S_ALR_87011990 (Depreciation forecast)", "AR01/AR02 (Physical inventory)"],
+    "config_hotspots": ["Depreciation keys and methods", "Asset classes", "Capitalization threshold", "Number ranges for assets"],
+})
+
+# ── CONTROLLING (CO) ──────────────────────────────────────────
+processes.append({
+    "id": "PROC-CO-001",
+    "name": "Cost Allocation and Internal Orders",
+    "module": "CO",
+    "module_name": "Controlling",
+    "description": "Internal cost management: cost center accounting, internal orders, allocations.",
+    "steps": [
+        {"order": 1, "name": "Cost Center Master Data", "tcodes": ["KS01", "KS02", "KS03"],
+         "description": "Create and maintain cost center hierarchy and master data.",
+         "risks": ["Unauthorized cost center creation", "Incorrect hierarchy"],
+         "controls": ["Restricted access to KS01", "Cost center naming convention", "Approval for new cost centers"]},
+        {"order": 2, "name": "Internal Order Management", "tcodes": ["KO01", "KO02", "KO04"],
+         "description": "Create and manage internal orders for cost tracking projects.",
+         "risks": ["Unauthorized orders", "Budget overruns", "Incorrect settlement rules"],
+         "controls": ["Order approval workflow", "Budget monitoring", "Settlement rule validation"]},
+        {"order": 3, "name": "Cost Allocation Posting", "tcodes": ["KB21N", "KB11N"],
+         "description": "Post actual cost allocations between cost objects.",
+         "risks": ["Incorrect allocation basis", "Unauthorized cost transfers"],
+         "controls": ["Allocation cycle review", "Posting authorization by cost center", "Reconciliation to GL"]},
+        {"order": 4, "name": "Period-End Settlement", "tcodes": ["KO88", "CJ88"],
+         "description": "Settle internal order costs to receivers (cost centers, GL, assets).",
+         "risks": ["Incorrect settlement rules", "Partial settlements"],
+         "controls": ["Settlement rule review", "Full settlement verification", "Reconciliation to FI"]},
+    ],
+    "sod_risks": [
+        "Create Cost Center + Post Cost Allocation",
+        "Create Internal Order + Settle Order",
+    ],
+    "key_reports": ["S_ALR_87013611 (Cost centers actual/plan)", "KOB1 (Internal order actual)", "KSBT (Cost center summarization)"],
+    "config_hotspots": ["Cost center hierarchy", "Activity types", "Statistical key figures", "Settlement profiles"],
+})
+
+# ── HUMAN RESOURCES (HR) ──────────────────────────────────────
+processes.append({
+    "id": "PROC-HR-001",
+    "name": "Human Resources — Hire to Retire",
+    "module": "HR",
+    "module_name": "Human Resources",
+    "description": "Complete HR lifecycle from hiring through payroll to separation.",
+    "steps": [
+        {"order": 1, "name": "Employee Onboarding", "tcodes": ["PA40", "PA30"],
+         "description": "Hire employee: create personnel record with organizational assignment.",
+         "risks": ["Ghost employees", "Incorrect pay grade", "Missing approvals"],
+         "controls": ["Hire approval workflow", "Document verification", "SoD: create employee != maintain payroll"]},
+        {"order": 2, "name": "Personnel Master Maintenance", "tcodes": ["PA30", "PA20"],
+         "description": "Maintain personal data, addresses, bank details, tax information.",
+         "risks": ["Unauthorized master data changes", "Bank detail fraud"],
+         "controls": ["Bank detail change dual control", "Change log review (infotype 0009)", "Access restricted by personnel area"]},
+        {"order": 3, "name": "Time Management", "tcodes": ["CAT2", "PA61", "PA71"],
+         "description": "Record time entries, absences, overtime, substitutions.",
+         "risks": ["Unauthorized overtime", "Fictitious time entries"],
+         "controls": ["Manager approval for overtime", "Time entry validation rules", "Cross-check with badge system"]},
+        {"order": 4, "name": "Payroll Simulation", "tcodes": ["PC00_M99_CALC_SIMU"],
+         "description": "Run payroll simulation to verify calculations before productive run.",
+         "risks": ["Incorrect tax calculations", "Missing deductions"],
+         "controls": ["Mandatory simulation before productive run", "Variance analysis vs prior period", "Spot checks on sample employees"]},
+        {"order": 5, "name": "Payroll Execution", "tcodes": ["PC00_M99_CALC"],
+         "description": "Execute productive payroll run, calculate net pay, generate bank transfers.",
+         "risks": ["Unauthorized payroll changes before run", "Double payment", "Incorrect calculations"],
+         "controls": ["Payroll area lock during run", "SoD: maintain HR master != run payroll", "Reconciliation to GL", "Period lock for master changes"]},
+        {"order": 6, "name": "Payroll Posting to FI", "tcodes": ["PC00_M99_CIPE"],
+         "description": "Post payroll results to financial accounting (wage types to GL accounts).",
+         "risks": ["Incorrect GL mapping", "Reconciliation differences"],
+         "controls": ["Wage type to GL mapping review", "Monthly reconciliation HR vs FI", "Posting run authorization"]},
+        {"order": 7, "name": "Employee Separation", "tcodes": ["PA40"],
+         "description": "Process employee termination: final pay, deactivate access, archive records.",
+         "risks": ["Final pay errors", "Access not revoked", "Benefits not terminated"],
+         "controls": ["Separation checklist", "Final settlement calculation review", "Access revocation within 24hrs", "IT notification trigger"]},
+    ],
+    "sod_risks": [
+        "Maintain Employee Master + Execute Payroll",
+        "Create Employee + Maintain Bank Details",
+        "Maintain Payroll + Post to FI",
+        "Maintain Own HR Record (self-maintenance)",
+    ],
+    "key_reports": ["PC00_M99_CEDT (Remuneration statement)", "S_AHR_61016380 (Headcount)", "PC00_M99_CLJN (Payroll journal)"],
+    "config_hotspots": [
+        "Payroll area configuration",
+        "Personnel area / subarea authorization",
+        "Infotype access controls",
+        "Wage type configuration",
+        "Time management authorization",
+    ],
+})
+
+# ── BASIS — SECURITY ──────────────────────────────────────────
+processes.append({
+    "id": "PROC-BC-SEC-001",
+    "name": "SAP Security Administration",
+    "module": "BC-SEC",
+    "module_name": "Basis — Security Administration",
+    "description": "User administration, role management, authorization concept, and security monitoring.",
+    "steps": [
+        {"order": 1, "name": "User Account Creation", "tcodes": ["SU01", "SU01D", "SU10"],
+         "description": "Create user accounts with initial password and validity period.",
+         "risks": ["Unauthorized accounts", "Shared accounts", "Default passwords"],
+         "controls": ["User creation approval", "Naming convention enforcement", "Password policy enforcement", "No shared/generic IDs for production"]},
+        {"order": 2, "name": "Role Design", "tcodes": ["PFCG"],
+         "description": "Design single and composite roles with transaction and authorization assignments.",
+         "risks": ["Over-privileged roles", "SoD conflicts in role design", "Missing authorization checks"],
+         "controls": ["Role design review and approval", "SoD check during design", "Role naming convention", "Least privilege principle"]},
+        {"order": 3, "name": "Role Assignment", "tcodes": ["SU01", "SU10", "PFCG"],
+         "description": "Assign roles to users based on job function and organizational assignment.",
+         "risks": ["Excessive role assignment", "SoD violations", "Role assigned without approval"],
+         "controls": ["Access request workflow", "SoD check before assignment", "Manager approval", "Periodic access review"]},
+        {"order": 4, "name": "Profile Generation", "tcodes": ["PFCG", "SU25", "SU24"],
+         "description": "Generate authorization profiles from role assignments.",
+         "risks": ["Missing profiles", "Profile buffer not refreshed"],
+         "controls": ["User comparison (PFUD)", "Profile generation after role change", "Transport of roles to production"]},
+        {"order": 5, "name": "Privileged Access Management", "tcodes": ["SU01", "SM04"],
+         "description": "Control SAP_ALL, SAP_NEW, and other super-user profiles.",
+         "risks": ["SAP_ALL in production", "Permanent firefighter access", "Unmonitored privileged use"],
+         "controls": ["No SAP_ALL in production (except emergency)", "Firefighter ID with logging", "Emergency access review within 24hrs"]},
+        {"order": 6, "name": "Periodic User Review", "tcodes": ["SUIM", "S_BCE_68001398"],
+         "description": "Regular review of user access, dormant accounts, and SoD conflicts.",
+         "risks": ["Orphan accounts", "Access creep", "Undetected SoD violations"],
+         "controls": ["Quarterly user access review", "Dormant account lockout", "SoD violation report review", "Certification campaigns"]},
+        {"order": 7, "name": "Security Monitoring", "tcodes": ["SM20", "SM21", "SUIM", "ST03N"],
+         "description": "Monitor security audit log, system log, and user activity.",
+         "risks": ["Unauthorized access undetected", "Log tampering", "Insufficient logging"],
+         "controls": ["Security audit log enabled (SM19)", "Daily log review", "SIEM integration", "Critical transaction monitoring"]},
+    ],
+    "sod_risks": [
+        "Create User + Assign Roles",
+        "Design Role + Assign Role",
+        "Maintain User Master + Change Authorization",
+    ],
+    "key_reports": ["SUIM (User information system)", "SM20 (Security audit log)", "AGR_1251 (Role-tcode mapping)", "USR02 (User master records)"],
+    "config_hotspots": [
+        "Password policy parameters (login/min_password_lng, etc.)",
+        "Security audit log configuration (SM19)",
+        "Authorization check SU24 defaults",
+        "Table logging (rec/client)",
+        "Profile parameters (login/fails_to_session_end, etc.)",
+    ],
+})
+
+# ── BASIS — CHANGE CONTROL ────────────────────────────────────
+processes.append({
+    "id": "PROC-BC-CHG-001",
+    "name": "SAP Change Management (Transport System)",
+    "module": "BC-CHG",
+    "module_name": "Basis — Change Control",
+    "description": "SAP transport management system: development to production change promotion.",
+    "steps": [
+        {"order": 1, "name": "Change Request Creation", "tcodes": ["SE09", "SE10"],
+         "description": "Developer creates transport request for configuration or code change.",
+         "risks": ["Unauthorized changes", "Missing documentation"],
+         "controls": ["Change request linked to approved change ticket", "Description mandatory"]},
+        {"order": 2, "name": "Development/Configuration", "tcodes": ["SE80", "SPRO", "SE38"],
+         "description": "Develop or configure changes in development system.",
+         "risks": ["Untested changes", "Direct production changes"],
+         "controls": ["No changes directly in production", "Client settings: development only in DEV"]},
+        {"order": 3, "name": "Unit Testing", "tcodes": ["SE38", "SE37"],
+         "description": "Developer tests changes in development environment.",
+         "risks": ["Insufficient testing", "Test data issues"],
+         "controls": ["Test plan documentation", "Test results sign-off"]},
+        {"order": 4, "name": "Transport to QAS", "tcodes": ["SE09", "SE10", "STMS"],
+         "description": "Release and transport changes to quality assurance system.",
+         "risks": ["Incomplete transports", "Sequence errors"],
+         "controls": ["Transport release approval", "QAS import schedule"]},
+        {"order": 5, "name": "QA Testing & Approval", "tcodes": ["STMS"],
+         "description": "Business users test changes in QAS and approve for production.",
+         "risks": ["Inadequate UAT", "Business not involved"],
+         "controls": ["UAT sign-off required", "Business owner approval", "Regression testing"]},
+        {"order": 6, "name": "Production Import", "tcodes": ["STMS"],
+         "description": "Import approved transport into production system.",
+         "risks": ["Unauthorized production import", "Production downtime"],
+         "controls": ["SoD: developer != production importer", "Production import restricted to Basis team", "Change window scheduling"]},
+    ],
+    "sod_risks": [
+        "Develop Changes + Import to Production",
+        "Configure in DEV + Test in QAS + Import to PRD",
+    ],
+    "key_reports": ["SE09/SE10 (Transport lists)", "STMS (Transport management)", "E070 (Transport header table)"],
+    "config_hotspots": [
+        "Transport route configuration",
+        "Client settings (SCC4) — development/customizing restrictions",
+        "Software component protection",
+        "Transport approval workflow",
+    ],
+})
+
+# ── Save ──────────────────────────────────────────────────────
+output = {
+    "source": "ANAO - Security and Control for SAP R/3 Handbook",
+    "total_processes": len(processes),
+    "processes": processes,
+}
+
+with open(OUTPUT, "w", encoding="utf-8") as f:
+    json.dump(output, f, indent=2, ensure_ascii=False)
+
+print(f"Extracted {len(processes)} process flows:")
+for p in processes:
+    print(f"  {p['id']}: {p['name']} ({len(p['steps'])} steps)")
+
+total_steps = sum(len(p["steps"]) for p in processes)
+total_risks = sum(len(p.get("sod_risks", [])) for p in processes)
+print(f"\nTotal steps: {total_steps}")
+print(f"Total SoD risks identified: {total_risks}")
+print(f"Saved to {OUTPUT}")

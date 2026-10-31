@@ -453,13 +453,13 @@ with Session(engine) as db:
                     org_unit_id, risk_owner_id, risk_owner_name,
                     inherent_likelihood, inherent_impact, inherent_score,
                     residual_likelihood, residual_impact, residual_score,
-                    risk_appetite, status, last_assessed_at, next_review_date,
+                    risk_appetite, status, is_active, last_assessed_at, next_review_date,
                     created_at, updated_at)
                 VALUES (:tid, :rid, :title, :cat,
                     :ouid, :owner, :oname,
                     :il, :ii, :isc,
                     :rl, :ri, :rsc,
-                    5.0, :status, :now, :next,
+                    5.0, :status, true, :now, :next,
                     :now, :now)
                 RETURNING id
             """), {
@@ -739,14 +739,14 @@ with Session(engine) as db:
                     severity, root_cause, status, due_date,
                     created_at, updated_at)
                 VALUES (:tid, :did,
-                    :ctrl, :test, 'testing', :title, :title,
+                    :ctrl, :test, 'testing', :title, :desc,
                     :sev, :cause, 'open', :due,
                     :now, :now)
             """), {
                 "tid": TID, "did": did,
                 "ctrl": ctrl_int, "test": test_int,
-                "title": title, "sev": sev,
-                "cause": cause, "due": due, "now": NOW,
+                "title": title, "desc": title,
+                "sev": sev, "cause": cause, "due": due, "now": NOW,
             })
             count += 1
         except Exception as e:
@@ -898,14 +898,14 @@ with Session(engine) as db:
                     total_items, completed_items, certified_count, revoked_count,
                     included_systems, included_departments, risk_threshold,
                     created_at)
-                VALUES (:tid, :cid, :name, :name,
+                VALUES (:tid, :cid, :name, :desc,
                     :ctype, :status, :oid, :oname,
                     :start, :end,
                     :total, :comp, :cert, :rev,
                     :systems, :depts, 70,
                     :now)
             """), {
-                "tid": TID, "cid": cid, "name": name,
+                "tid": TID, "cid": cid, "name": name, "desc": name,
                 "ctype": ctype, "status": status,
                 "oid": oid, "oname": oname,
                 "start": start, "end": end,
@@ -935,12 +935,12 @@ with Session(engine) as db:
         row = db.execute(text("""
             INSERT INTO audit_plans (tenant_id, plan_id, name, description,
                 plan_type, fiscal_year, period_start, period_end,
-                total_audit_hours, allocated_budget, status,
+                total_audit_hours, allocated_budget, status, is_rolling,
                 prepared_by, created_at, updated_at)
             VALUES (:tid, 'ap-2026', 'FY2026 Internal Audit Plan',
                 'Annual risk-based internal audit plan covering all key business processes',
                 'annual', 2026, :start, :end,
-                2400, 480000.0, 'approved',
+                2400, 480000.0, 'approved', false,
                 'acme_auditor', :now, :now)
             RETURNING id
         """), {
@@ -1018,11 +1018,11 @@ with Session(engine) as db:
                 db.execute(text("""
                     INSERT INTO audit_findings (tenant_id, finding_id, engagement_id,
                         title, condition, criteria, cause, effect, recommendation,
-                        severity, category, status,
+                        severity, category, status, repeat_finding,
                         created_at, updated_at)
                     VALUES (:tid, :fid, :eng,
                         :title, :cond, :crit, :cause, :effect, :rec,
-                        :sev, :cat, 'open',
+                        :sev, :cat, 'open', false,
                         :now, :now)
                 """), {
                     "tid": TID, "fid": fid, "eng": eng_pk_val,
@@ -1058,11 +1058,11 @@ with Session(engine) as db:
                 INSERT INTO jml_policies (id, tenant_id, policy_name, description,
                     event_type, org_unit, birthright_roles, actions, is_active,
                     created_by, created_at, updated_at)
-                VALUES (:id, :tid, :name, :name,
+                VALUES (:id, :tid, :name, :desc,
                     :etype, :org, :roles, :actions, true,
                     'acme_admin', :now, :now)
             """), {
-                "id": pid, "tid": TID, "name": name,
+                "id": pid, "tid": TID, "name": name, "desc": name,
                 "etype": etype, "org": org,
                 "roles": json.dumps(roles), "actions": json.dumps(actions),
                 "now": NOW,
@@ -1076,13 +1076,13 @@ with Session(engine) as db:
     ev_count = 0
     jml_events = [
         (new_id(), "JOINER", "EMP-2026-101", "James Wilson",   None,         "Finance Analyst",   "Finance",
-         dt(7), pol_ids[0] if pol_ids else None, "completed"),
+         dt(7), pol_ids[0] if pol_ids else None, "COMPLETED"),
         (new_id(), "JOINER", "EMP-2026-102", "Emma Thompson",  None,         "IT Security Analyst","IT",
-         dt(14), pol_ids[1] if len(pol_ids)>1 else None, "completed"),
+         dt(14), pol_ids[1] if len(pol_ids)>1 else None, "COMPLETED"),
         (new_id(), "LEAVER", "EMP-2023-055", "Robert Davis",   "AP Analyst", None,                None,
-         dt(3), pol_ids[2] if len(pol_ids)>2 else None, "completed"),
+         dt(3), pol_ids[2] if len(pol_ids)>2 else None, "COMPLETED"),
         (new_id(), "MOVER",  "EMP-2021-033", "Jennifer Clark", "AR Analyst", "AP Manager",        "Finance",
-         dt(21), pol_ids[3] if len(pol_ids)>3 else None, "pending"),
+         dt(21), pol_ids[3] if len(pol_ids)>3 else None, "PENDING"),
     ]
     for eid, etype, emp_id, emp_name, old_pos, new_pos, new_org, eff, pol_id, status in jml_events:
         try:
@@ -1123,15 +1123,15 @@ with Session(engine) as db:
     print("\n[19/30] Creating TPRM vendors...")
     v_ids = [new_id() for _ in range(6)]
     vendors_data = [
-        (v_ids[0], "CloudSecure Pty Ltd",    "VEN-001", 1, 72.5, "Technology - Cloud Security"),
-        (v_ids[1], "DataVault Solutions",    "VEN-002", 1, 68.0, "Data Management"),
-        (v_ids[2], "Apex Consulting Group",  "VEN-003", 2, 55.0, "Professional Services"),
-        (v_ids[3], "TechBridge IT Services", "VEN-004", 2, 61.0, "IT Services"),
-        (v_ids[4], "Pinnacle Payroll Co",    "VEN-005", 1, 78.0, "Payroll Services"),
-        (v_ids[5], "Global Logistics Ltd",   "VEN-006", 3, 42.0, "Logistics"),
+        (v_ids[0], "CloudSecure Pty Ltd",    "VEN-001", 1, 72.5, "Technology - Cloud Security", "ACTIVE"),
+        (v_ids[1], "DataVault Solutions",    "VEN-002", 1, 68.0, "Data Management",            "ACTIVE"),
+        (v_ids[2], "Apex Consulting Group",  "VEN-003", 2, 55.0, "Professional Services",      "ACTIVE"),
+        (v_ids[3], "TechBridge IT Services", "VEN-004", 2, 61.0, "IT Services",                "ACTIVE"),
+        (v_ids[4], "Pinnacle Payroll Co",    "VEN-005", 1, 78.0, "Payroll Services",           "ACTIVE"),
+        (v_ids[5], "Global Logistics Ltd",   "VEN-006", 3, 42.0, "Logistics",                  "UNDER_REVIEW"),
     ]
     v_count = 0
-    for vid, vname, vcode, tier, rscore, services in vendors_data:
+    for vid, vname, vcode, tier, rscore, services, vstatus in vendors_data:
         try:
             db.execute(text("""
                 INSERT INTO vendors (id, tenant_id, vendor_name, vendor_code,
@@ -1141,14 +1141,14 @@ with Session(engine) as db:
                     last_assessment_date, next_assessment_date,
                     created_at, updated_at)
                 VALUES (:id, :tid, :name, :code,
-                    :tier, 'active', :rscore,
+                    :tier, :vstatus, :rscore,
                     'Primary Contact', :email, 'Australia',
                     :services,
                     :last, :next,
                     :now, :now)
             """), {
                 "id": vid, "tid": TID, "name": vname, "code": vcode,
-                "tier": tier, "rscore": rscore,
+                "tier": tier, "vstatus": vstatus, "rscore": rscore,
                 "email": f"contact@{vname.lower().replace(' ','-')[:20]}.com",
                 "services": json.dumps([services]),
                 "last": dt(days=90), "next": dt(days=-275), "now": NOW,
@@ -1169,8 +1169,8 @@ with Session(engine) as db:
                     overall_score, risk_rating, assessor,
                     created_at, updated_at)
                 VALUES (:id, :tid, :vid,
-                    'Annual Security Assessment 2026', 'completed', :sent, :due,
-                    72.5, 'medium', 'acme_compliance',
+                    'Annual Security Assessment 2026', 'COMPLETED', :sent, :due,
+                    72.5, 'MEDIUM', 'acme_compliance',
                     :now, :now)
             """), {
                 "id": assess_id, "tid": TID, "vid": v_ids[0],
@@ -1192,7 +1192,7 @@ with Session(engine) as db:
                 VALUES (:id, :tid, :vid,
                     'MFA Not Enforced on Vendor Portal',
                     'Vendor does not enforce MFA for admin users accessing shared systems',
-                    'high', 'open',
+                    'HIGH', 'OPEN',
                     :due, 'acme_ciso', :now, :now)
             """), {
                 "id": new_id(), "tid": TID, "vid": v_ids[0],
@@ -1215,11 +1215,11 @@ with Session(engine) as db:
     print("\n[20/30] Creating fraud detection data...")
     fr_ids = [new_id() for _ in range(5)]
     fraud_rules_data = [
-        (fr_ids[0], "Round-Trip Payment Detection",      "BEHAVIORAL",  85.0),
-        (fr_ids[1], "Vendor Bank Account Change Pattern","THRESHOLD",   92.0),
-        (fr_ids[2], "Ghost Employee Detection",          "STATISTICAL", 88.0),
-        (fr_ids[3], "Duplicate Invoice Detection",       "THRESHOLD",   78.0),
-        (fr_ids[4], "SoD Conflict + Transaction Spike",  "BEHAVIORAL",  95.0),
+        (fr_ids[0], "Round-Trip Payment Detection",      "PATTERN",   85.0),
+        (fr_ids[1], "Vendor Bank Account Change Pattern","THRESHOLD",  92.0),
+        (fr_ids[2], "Ghost Employee Detection",          "ANOMALY",   88.0),
+        (fr_ids[3], "Duplicate Invoice Detection",       "THRESHOLD",  78.0),
+        (fr_ids[4], "SoD Conflict + Transaction Spike",  "VELOCITY",   95.0),
     ]
     r_count = 0
     for rid, rname, rtype, rscore in fraud_rules_data:
@@ -1227,14 +1227,15 @@ with Session(engine) as db:
             db.execute(text("""
                 INSERT INTO fraud_rules (id, tenant_id, rule_name, rule_type,
                     description, conditions, risk_score,
-                    is_active, alert_on_breach,
+                    is_active, alert_on_breach, trigger_count,
                     created_by, created_at, updated_at)
                 VALUES (:id, :tid, :name, :rtype,
-                    :name, :cond, :score,
-                    true, true,
+                    :desc, :cond, :score,
+                    true, true, 0,
                     'acme_ciso', :now, :now)
             """), {
                 "id": rid, "tid": TID, "name": rname, "rtype": rtype,
+                "desc": rname,
                 "cond": json.dumps({"type": rtype.lower(), "threshold": rscore}),
                 "score": rscore, "now": NOW,
             })
@@ -1247,20 +1248,20 @@ with Session(engine) as db:
     al_ids = [new_id() for _ in range(4)]
     a_count = 0
     fraud_alerts_data = [
-        (al_ids[0], fr_ids[0], "Round-trip payment pattern - John Smith", 85.0, "open"),
-        (al_ids[1], fr_ids[1], "Vendor bank account changed 3x in 7 days", 92.0, "investigating"),
-        (al_ids[2], fr_ids[4], "SoD user transaction spike - Frank Controller", 95.0, "open"),
-        (al_ids[3], fr_ids[2], "Payroll entry without corresponding HR record", 88.0, "closed"),
+        (al_ids[0], fr_ids[0], "Round-trip payment pattern - John Smith", 85.0, "OPEN"),
+        (al_ids[1], fr_ids[1], "Vendor bank account changed 3x in 7 days", 92.0, "INVESTIGATING"),
+        (al_ids[2], fr_ids[4], "SoD user transaction spike - Frank Controller", 95.0, "OPEN"),
+        (al_ids[3], fr_ids[2], "Payroll entry without corresponding HR record", 88.0, "FALSE_POSITIVE"),
     ]
     for aid, rule_id, desc, score, status in fraud_alerts_data:
         try:
             db.execute(text("""
                 INSERT INTO fraud_alerts (id, tenant_id, rule_id,
                     user_id, alert_type, description, risk_score, status,
-                    triggered_at, created_at)
+                    triggered_at, created_at, updated_at)
                 VALUES (:id, :tid, :rid,
                     'john.smith', 'behavioral_anomaly', :desc, :score, :status,
-                    :now, :now)
+                    :now, :now, :now)
             """), {
                 "id": aid, "tid": TID, "rid": rule_id,
                 "desc": desc, "score": score, "status": status, "now": dt(days=7),
@@ -1279,7 +1280,7 @@ with Session(engine) as db:
                 linked_alert_ids, opened_at, loss_amount, created_at, updated_at)
             VALUES (:id, :tid, 'FC-2026-001', 'Suspected Vendor Fraud - Acme P2P',
                 'Multiple indicators of vendor payment fraud detected in P2P cycle',
-                'high', 'investigating', 'acme_compliance',
+                'HIGH', 'INVESTIGATING', 'acme_compliance',
                 :alerts, :opened, 250000.0, :now, :now)
         """), {
             "id": new_id(), "tid": TID,
@@ -1323,7 +1324,7 @@ with Session(engine) as db:
                     :now, :now, :now)
             """), {
                 "id": new_id(), "tid": TID, "name": pname,
-                "crit": ["low","low","medium","high","critical"][crit-1],
+                "crit": ["LOW","LOW","MEDIUM","HIGH","CRITICAL"][crit-1],
                 "rto": rto, "rpo": rpo, "mtpd": rto * 2,
                 "deps": json.dumps(["SAP ECC", "Network", "Active Directory"]),
                 "now": dt(days=45),
@@ -1336,9 +1337,9 @@ with Session(engine) as db:
     bcm_plan_ids = [new_id(), new_id(), new_id()]
     plan_count = 0
     bcm_plans_data = [
-        (bcm_plan_ids[0], "IT Disaster Recovery Plan",             "DR",    "active"),
-        (bcm_plan_ids[1], "Business Continuity Plan - Finance",    "BCP",   "active"),
-        (bcm_plan_ids[2], "Crisis Management Plan",                "CRISIS","draft"),
+        (bcm_plan_ids[0], "IT Disaster Recovery Plan",             "DRP",   "ACTIVE"),
+        (bcm_plan_ids[1], "Business Continuity Plan - Finance",    "BCP",   "ACTIVE"),
+        (bcm_plan_ids[2], "Crisis Management Plan",                "CRISIS","DRAFT"),
     ]
     for pid, pname, ptype, pstatus in bcm_plans_data:
         try:
@@ -1406,12 +1407,12 @@ with Session(engine) as db:
     # =========================================================
     print("\n[22/30] Creating whistleblower cases...")
     wb_data = [
-        ("WB-2026-001", "FINANCIAL_MISCONDUCT", "Suspected P2P Fraud",
-         "Concerns raised about vendor payment patterns in Q3", "high", "investigating"),
-        ("WB-2026-002", "ACCESS_CONTROL", "Unauthorized System Access",
-         "Employee observed accessing restricted SAP transactions", "medium", "under_review"),
-        ("WB-2026-003", "HR_MISCONDUCT", "Payroll Irregularities",
-         "Unexplained payroll adjustments for terminated employees", "high", "closed"),
+        ("WB-2026-001", "FRAUD",      "Suspected P2P Fraud",
+         "Concerns raised about vendor payment patterns in Q3", "HIGH", "INVESTIGATING"),
+        ("WB-2026-002", "OTHER",      "Unauthorized System Access",
+         "Employee observed accessing restricted SAP transactions", "MEDIUM", "TRIAGING"),
+        ("WB-2026-003", "CORRUPTION", "Payroll Irregularities",
+         "Unexplained payroll adjustments for terminated employees", "HIGH", "CLOSED"),
     ]
     count = 0
     for ref, cat, summary, details, priority, status in wb_data:
@@ -1448,13 +1449,13 @@ with Session(engine) as db:
     surveys = [
         ("GRC Awareness Survey Q4 2026",
          "Measure employee awareness of GRC policies and controls",
-         "AWARENESS", "active"),
+         "GENERAL", "ACTIVE"),
         ("Access Control Policy Acknowledgment",
          "Annual acknowledgment of access control and acceptable use policies",
-         "COMPLIANCE", "completed"),
+         "POLICY_ATTESTATION", "CLOSED"),
         ("Risk Culture Assessment 2026",
          "Assess organizational risk culture and appetite understanding",
-         "RISK_CULTURE", "draft"),
+         "RISK_ASSESSMENT", "DRAFT"),
     ]
     count = 0
     for sname, sdesc, stype, sstatus in surveys:
@@ -1522,13 +1523,15 @@ with Session(engine) as db:
                 INSERT INTO policy_documents (tenant_id, policy_id, title, description,
                     policy_type, regulation_id, content, version, status,
                     author_name, approved_by, published_at, effective_date,
-                    created_at, updated_at)
-                VALUES (:tid, :pid, :title, :title,
+                    acknowledgment_required, acknowledgment_count,
+                    total_recipients, created_at, updated_at)
+                VALUES (:tid, :pid, :title, :desc,
                     :ptype, :reg, :content, 1, :status,
                     'Carl Compliance', 'Board of Directors', :pub, :eff,
-                    :now, :now)
+                    false, 0,
+                    0, :now, :now)
             """), {
-                "tid": TID, "pid": pid, "title": title,
+                "tid": TID, "pid": pid, "title": title, "desc": title,
                 "ptype": ptype, "reg": reg_id,
                 "content": f"This policy establishes requirements for {title.lower()} "
                             f"across all Acme Corporation systems and processes.",
@@ -1678,13 +1681,10 @@ with Session(engine) as db:
     # =========================================================
     print("\n[28/30] Checking SAP security controls...")
     try:
-        row = db.execute(text(
-            "SELECT COUNT(*) FROM sap_security_controls WHERE tenant_id IS NULL OR tenant_id = ''")
-        ).fetchone()
-        global_count = row[0]
-        row2 = db.execute(text("SELECT COUNT(*) FROM sap_security_controls")).fetchone()
-        print(f"  OK: {row2[0]} SAP security controls (global library)")
+        row = db.execute(text("SELECT COUNT(*) FROM sap_security_controls")).fetchone()
+        print(f"  OK: {row[0]} SAP security controls (global library)")
     except Exception as e:
+        db.rollback()
         print(f"  INFO: {e}")
 
     # =========================================================
@@ -1695,6 +1695,7 @@ with Session(engine) as db:
         row = db.execute(text("SELECT COUNT(*) FROM template_items")).fetchone()
         print(f"  OK: {row[0]} template items (pre-seeded by library seeder)")
     except Exception as e:
+        db.rollback()
         print(f"  INFO: {e}")
 
     # =========================================================
@@ -1711,6 +1712,7 @@ with Session(engine) as db:
         else:
             print("  WARN: Admin user not found")
     except Exception as e:
+        db.rollback()
         print(f"  ERR: {e}")
 
     # =========================================================
@@ -1742,6 +1744,9 @@ with Session(engine) as db:
         try:
             if tbl in ("sap_security_controls", "template_items", "audit_logs"):
                 row = db.execute(text(f"SELECT COUNT(*) FROM {tbl}")).fetchone()
+            elif tbl == "tenants":
+                row = db.execute(text("SELECT COUNT(*) FROM tenants WHERE slug = :tid"),
+                                 {"tid": TID}).fetchone()
             else:
                 row = db.execute(text(f"SELECT COUNT(*) FROM {tbl} WHERE tenant_id = :tid"),
                                  {"tid": TID}).fetchone()
@@ -1752,6 +1757,7 @@ with Session(engine) as db:
             if n > 0:
                 populated += 1
         except Exception as e:
+            db.rollback()
             print(f"  ??  {tbl:<40} (error: {e})")
 
     print("=" * 60)

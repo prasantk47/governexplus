@@ -1045,25 +1045,6 @@ with Session(engine) as db:
     # 18. JML POLICIES + EVENTS
     # =========================================================
     print("\n[18/30] Creating JML policies and events...")
-    jml_policies = [
-        (new_id(), "New Hire Provisioning - Finance",
-         "JOINER", "Finance",
-         ["Z_FI_AP_CREATE", "Z_FI_GL_POST"],
-         ["{"action": "provision_roles", "roles": ["r-fi-ap-crt"]}'"]),
-        (new_id(), "New Hire Provisioning - IT",
-         "JOINER", "IT",
-         ["Z_BC_USER_ADMIN"],
-         []),
-        (new_id(), "Leaver Deprovisioning",
-         "LEAVER", None,
-         [],
-         []),
-        (new_id(), "Internal Transfer - Role Review",
-         "MOVER", None,
-         [],
-         []),
-    ]
-    # Simplified - just insert basic fields
     pol_ids = []
     pol_count = 0
     for pid, name, etype, org, roles, actions in [

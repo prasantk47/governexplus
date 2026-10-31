@@ -1,7 +1,8 @@
 """
-GovernexPlus — Full Tenant Onboarding Seeder (Schema-Correct)
-=============================================================
+GovernexPlus -- Full Tenant Onboarding Seeder v3 (Schema-Correct)
+=================================================================
 Populates every major table with realistic Acme Corporation demo data.
+Uses correct column names and integer FK lookups via RETURNING id.
 
 Run on server:
   cd /opt/governexplus/app
@@ -10,1253 +11,1774 @@ Run on server:
     python scripts/full_tenant_seed.py
 """
 from __future__ import annotations
-import os, sys, uuid, random, datetime, json
+import os, sys, uuid, datetime, json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-os.environ.setdefault("DATABASE_URL", "postgresql://governex:G0v3rn3x_Pr0d_2026!@localhost:5432/governexplus")
+os.environ.setdefault("DATABASE_URL",
+    "postgresql://governex:G0v3rn3x_Pr0d_2026!@localhost:5432/governexplus")
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 try:
     from passlib.context import CryptContext
-    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_pw = pwd_ctx.hash("AcmeP@ss2026!")
+    _ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    HASHED_PW = _ctx.hash("AcmeP@ss2026!")
 except Exception:
-    import hashlib
-    hashed_pw = "$2b$12$fakehashfordemopurposesonlyXXXXXXXXXXXXXXXXXXXXXXXXX"
+    HASHED_PW = "$2b$12$kqGNpUWQrjwmGh5dPwfAZeabfvOXPqJRLmXX7O./jZ6aW4izshZty"
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_engine(DATABASE_URL, echo=False)
 
-TENANT_ID = "acme-corp-demo"
+TID = "acme-corp-demo"
 NOW = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
-def dt(days_ago=0, hours_ago=0):
-    return NOW - datetime.timedelta(days=days_ago, hours=hours_ago)
+def dt(days=0, hours=0):
+    return NOW - datetime.timedelta(days=days, hours=hours)
 
-def uid():
+def new_id():
     return str(uuid.uuid4())
 
-def short_id(prefix, n):
-    return f"{prefix}-{n:03d}"
-
 print("=" * 60)
-print("GovernexPlus Full Tenant Seeder (Schema-Correct)")
-print(f"Tenant: {TENANT_ID}")
+print("GovernexPlus Full Tenant Seeder v3")
+print(f"Tenant: {TID}")
 print("=" * 60)
 
-results = {}
+# FK lookup maps (populated as we insert)
+user_pk = {}    # user_id_str -> users.id (integer)
+role_pk = {}    # role_id_str -> roles.id (integer)
+ou_pk   = {}    # unit_id_str -> org_units.id (integer)
+risk_pk = {}    # risk_id_str -> enterprise_risks.id (integer)
+ctrl_pk = {}    # control_id_str -> process_controls.id (integer)
+test_pk = {}    # test_id_str -> control_tests.id (integer)
+plan_pk = None  # audit_plans.id (integer)
+eng_pk  = {}    # engagement_id_str -> audit_engagements.id (integer)
 
 with Session(engine) as db:
 
-    # ── 1. TENANT ────────────────────────────────────────────────────────────
-    print("\n[1/30] Creating tenant...")
+    # =========================================================
+    # CLEANUP -- delete previous seed for this tenant
+    # =========================================================
+    print("\n[0/30] Cleaning up previous seed data...")
+    cleanup_order = [
+        "audit_findings",
+        "audit_engagements",
+        "audit_plans",
+        "control_deficiencies",
+        "control_tests",
+        "risk_violations",
+        "user_roles",
+        "key_risk_indicators",
+        "risk_incidents",
+        "risk_appetites",
+        "enterprise_risks",
+        "mitigation_controls",
+        "process_controls",
+        "firefighter_sessions",
+        "firefighter_requests",
+        "certification_campaigns",
+        "jml_events",
+        "jml_policies",
+        "vendor_assessments",
+        "vendor_issues",
+        "vendors",
+        "fraud_alerts",
+        "fraud_cases",
+        "fraud_rules",
+        "bcm_test_exercises",
+        "bcm_plans",
+        "bia_records",
+        "whistleblower_cases",
+        "standalone_surveys",
+        "policy_documents",
+        "notification_preferences",
+        "sync_configs",
+        "roles",
+    ]
+    # org_units: has self-FK, clear parent first
+    for tbl in cleanup_order:
+        try:
+            db.execute(text(f"DELETE FROM {tbl} WHERE tenant_id = :tid"), {"tid": TID})
+        except Exception:
+            db.rollback()
+    # org_units self-FK
     try:
-        db.execute(text("DELETE FROM tenants WHERE slug = :slug"), {"slug": TENANT_ID})
-        db.commit()
+        db.execute(text("UPDATE org_units SET parent_id = NULL WHERE tenant_id = :tid"), {"tid": TID})
+        db.execute(text("DELETE FROM org_units WHERE tenant_id = :tid"), {"tid": TID})
     except Exception:
         db.rollback()
-
+    # users (after user_roles deleted)
     try:
-        db.execute(text("""
-            INSERT INTO tenants (id, name, slug, status, tier, max_users, admin_email, admin_name,
-                modules_enabled, settings, created_at, updated_at)
-            VALUES (:id, :name, :slug, 'active', 'enterprise', 500,
-                'admin@acmecorp.com', 'Adam Admin',
-                :modules, :settings, :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {
-            "id": uid(), "name": "Acme Corporation Ltd", "slug": TENANT_ID,
-            "modules": json.dumps(["access","risk","audit","process_control","jml","tprm","fraud","bcm","whistleblower","survey"]),
-            "settings": json.dumps({"sap_systems": ["ECC","S4HANA"], "currency": "AUD"}),
-            "now": NOW
-        })
+        db.execute(text("DELETE FROM users WHERE tenant_id = :tid"), {"tid": TID})
+    except Exception:
+        db.rollback()
+    # tenants
+    try:
+        db.execute(text("DELETE FROM tenants WHERE slug = :tid"), {"tid": TID})
+    except Exception:
+        db.rollback()
+    try:
         db.commit()
-        results["tenants"] = 1
-        print("  ✓ Tenant: Acme Corporation Ltd")
+        print("  OK: Previous data cleared")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Tenant: {e}")
-        results["tenants"] = 0
+        print(f"  WARN: Cleanup partial: {e}")
 
-    # ── 2. USERS ─────────────────────────────────────────────────────────────
+    # =========================================================
+    # 1. TENANT
+    # =========================================================
+    print("\n[1/30] Creating tenant...")
+    try:
+        db.execute(text("""
+            INSERT INTO tenants (id, name, slug, status, tier, max_users,
+                admin_email, admin_name, modules_enabled, settings,
+                is_deleted, created_at, updated_at)
+            VALUES (:id, :name, :slug, 'active', 'enterprise', 500,
+                'admin@acmecorp.com', 'Adam Admin',
+                :modules, :settings,
+                false, :now, :now)
+        """), {
+            "id": new_id(), "name": "Acme Corporation Ltd", "slug": TID,
+            "modules": json.dumps(["access","risk","audit","process_control",
+                                   "jml","tprm","fraud","bcm","whistleblower","survey"]),
+            "settings": json.dumps({"sap_systems": ["ECC","S4HANA"], "currency": "AUD",
+                                    "timezone": "Australia/Sydney"}),
+            "now": NOW,
+        })
+        db.commit()
+        print("  OK: Acme Corporation Ltd")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR Tenant: {e}")
+
+    # =========================================================
+    # 2. USERS  (password_hash, no is_active column)
+    # =========================================================
     print("\n[2/30] Creating users...")
-    users = [
-        ("u-admin-01",  "acme_admin",       "Adam Admin",       "IT Administration",   "IT",          "tenant_admin"),
-        ("u-ciso-01",   "acme_ciso",        "Clara CISO",       "Information Security","IT",          "ciso"),
-        ("u-comp-01",   "acme_compliance",  "Carl Compliance",  "Compliance",          "Finance",     "compliance_officer"),
-        ("u-risk-01",   "acme_risk",        "Rachel Risk",      "Risk Management",     "Finance",     "risk_manager"),
-        ("u-audit-01",  "acme_auditor",     "Alan Auditor",     "Internal Audit",      "Finance",     "auditor"),
-        ("u-mgr-01",    "acme_manager",     "Mark Manager",     "Finance",             "Finance",     "line_manager"),
-        ("u-ap-01",     "john.smith",       "John Smith",       "Accounts Payable",    "Finance",     "business_user"),
-        ("u-ar-01",     "sarah.jones",      "Sarah Jones",      "Accounts Receivable", "Finance",     "business_user"),
-        ("u-mm-01",     "mike.chen",        "Mike Chen",        "Procurement",         "Operations",  "business_user"),
-        ("u-tr-01",     "lisa.wang",        "Lisa Wang",        "Treasury",            "Finance",     "business_user"),
-        ("u-hr-01",     "tom.brown",        "Tom Brown",        "Human Resources",     "HR",          "business_user"),
-        ("u-sd-01",     "anna.lee",         "Anna Lee",         "Sales",               "Sales",       "business_user"),
-        ("u-sec-01",    "david.kim",        "David Kim",        "IT Security",         "IT",          "security_admin"),
-        ("u-ff-01",     "frank.controller", "Frank Controller", "Finance",             "Finance",     "business_user"),
+    users_data = [
+        ("u-admin-01", "acme_admin",       "Adam Admin",        "IT Administration",   "IT",       "tenant_admin"),
+        ("u-ciso-01",  "acme_ciso",        "Clara CISO",        "Information Security","IT",       "ciso"),
+        ("u-comp-01",  "acme_compliance",  "Carl Compliance",   "Compliance",          "Finance",  "compliance_officer"),
+        ("u-risk-01",  "acme_risk",        "Rachel Risk",       "Risk Management",     "Finance",  "risk_manager"),
+        ("u-audit-01", "acme_auditor",     "Alan Auditor",      "Internal Audit",      "Finance",  "auditor"),
+        ("u-mgr-01",   "acme_manager",     "Mark Manager",      "Finance",             "Finance",  "line_manager"),
+        ("u-ap-01",    "john.smith",       "John Smith",        "Accounts Payable",    "Finance",  "business_user"),
+        ("u-ar-01",    "sarah.jones",      "Sarah Jones",       "Accounts Receivable", "Finance",  "business_user"),
+        ("u-mm-01",    "mike.chen",        "Mike Chen",         "Procurement",         "Operations","business_user"),
+        ("u-tr-01",    "lisa.wang",        "Lisa Wang",         "Treasury",            "Finance",  "business_user"),
+        ("u-hr-01",    "tom.brown",        "Tom Brown",         "Human Resources",     "HR",       "business_user"),
+        ("u-sd-01",    "anna.lee",         "Anna Lee",          "Sales",               "Sales",    "business_user"),
+        ("u-sec-01",   "david.kim",        "David Kim",         "IT Security",         "IT",       "security_admin"),
+        ("u-ff-01",    "frank.controller", "Frank Controller",  "Finance",             "Finance",  "business_user"),
     ]
     count = 0
-    for uid_val, username, full_name, dept, company_code, user_type in users:
+    for uid_str, uname, fname, dept, cc, utype in users_data:
+        try:
+            row = db.execute(text("""
+                INSERT INTO users (tenant_id, user_id, username, email, full_name,
+                    password_hash, department, company_code, user_type, status,
+                    created_at, updated_at)
+                VALUES (:tid, :uid, :un, :email, :fn, :pw, :dept, :cc, :ut,
+                    'active', :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "uid": uid_str, "un": uname,
+                "email": f"{uname.replace('.','_')}@acmecorp.com",
+                "fn": fname, "pw": HASHED_PW, "dept": dept,
+                "cc": cc, "ut": utype, "now": NOW,
+            }).fetchone()
+            user_pk[uid_str] = row[0]
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR user {uname}: {e}")
+    try:
+        db.commit()
+        print(f"  OK: {count} users")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR users commit: {e}")
+
+    # =========================================================
+    # 3. ROLES
+    # =========================================================
+    print("\n[3/30] Creating SAP roles...")
+    roles_data = [
+        ("r-fi-ap-full", "Z_FI_AP_FULL",      "Finance AP Full Access",         "FI", "composite", "high"),
+        ("r-fi-ap-crt",  "Z_FI_AP_CREATE",     "Finance AP Create",              "FI", "single",    "medium"),
+        ("r-fi-ap-apr",  "Z_FI_AP_APPROVE",    "Finance AP Approve",             "FI", "single",    "high"),
+        ("r-fi-gl",      "Z_FI_GL_POST",       "GL Journal Entry Posting",       "FI", "single",    "high"),
+        ("r-mm-buyer",   "Z_MM_BUYER",         "MM Purchasing Buyer",            "MM", "single",    "medium"),
+        ("r-mm-gr",      "Z_MM_GR_POST",       "MM Goods Receipt Posting",       "MM", "single",    "low"),
+        ("r-mm-ven",     "Z_MM_VENDOR_CREATE", "Vendor Master Create",           "MM", "single",    "high"),
+        ("r-sd-order",   "Z_SD_ORDER_CREATE",  "SD Sales Order Create",          "SD", "single",    "medium"),
+        ("r-sd-bill",    "Z_SD_BILLING",       "SD Billing Release",             "SD", "single",    "high"),
+        ("r-hr-pay",     "Z_HR_PAYROLL",       "HR Payroll Processing",          "HR", "single",    "critical"),
+        ("r-hr-maint",   "Z_HR_MAINTAIN",      "HR Employee Master Maintain",    "HR", "single",    "high"),
+        ("r-bc-useradm", "Z_BC_USER_ADMIN",    "BC User Administration",         "BC", "single",    "critical"),
+        ("r-tr-pay",     "Z_TR_PAYMENT",       "Treasury Payment Run",           "TR", "single",    "critical"),
+        ("r-basis-all",  "SAP_ALL",            "Full SAP Authorization (Basis)", "BC", "composite", "critical"),
+    ]
+    count = 0
+    for rid, rname, rdesc, rcat, rtype, rlevel in roles_data:
+        try:
+            row = db.execute(text("""
+                INSERT INTO roles (tenant_id, role_id, role_name, description,
+                    source_system, role_type, risk_level, is_sensitive, is_active,
+                    created_at, updated_at)
+                VALUES (:tid, :rid, :rn, :desc,
+                    'SAP_ECC', :rt, :rl, true, true,
+                    :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "rid": rid, "rn": rname, "desc": rdesc,
+                "rt": rtype, "rl": rlevel, "now": NOW,
+            }).fetchone()
+            role_pk[rid] = row[0]
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR role {rname}: {e}")
+    try:
+        db.commit()
+        print(f"  OK: {count} roles")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR roles commit: {e}")
+
+    # =========================================================
+    # 4. USER-ROLE ASSIGNMENTS (integer FKs)
+    # =========================================================
+    print("\n[4/30] Assigning roles (including SoD conflicts)...")
+    assignments = [
+        # (user_id_str, role_id_str)
+        # Admin
+        ("u-admin-01", "r-bc-useradm"),
+        # CISO
+        ("u-ciso-01", "r-bc-useradm"),
+        # John Smith -- SoD conflict: AP Create + AP Approve
+        ("u-ap-01", "r-fi-ap-crt"),
+        ("u-ap-01", "r-fi-ap-apr"),   # SoD violation!
+        # Sarah Jones -- AP + GL
+        ("u-ar-01", "r-fi-ap-crt"),
+        ("u-ar-01", "r-fi-gl"),       # SoD violation!
+        # Mike Chen -- Buyer + GR + Vendor
+        ("u-mm-01", "r-mm-buyer"),
+        ("u-mm-01", "r-mm-gr"),
+        ("u-mm-01", "r-mm-ven"),      # SoD violation!
+        # Lisa Wang -- Treasury
+        ("u-tr-01", "r-tr-pay"),
+        ("u-tr-01", "r-fi-gl"),       # SoD violation!
+        # Tom Brown -- HR
+        ("u-hr-01", "r-hr-pay"),
+        ("u-hr-01", "r-hr-maint"),    # SoD violation!
+        # Anna Lee -- SD
+        ("u-sd-01", "r-sd-order"),
+        ("u-sd-01", "r-sd-bill"),     # SoD violation!
+        # Frank Controller -- AP Full (super-user risk)
+        ("u-ff-01", "r-fi-ap-full"),
+        ("u-ff-01", "r-basis-all"),   # SoD violation: super-user!
+        # David Kim -- security admin
+        ("u-sec-01", "r-bc-useradm"),
+    ]
+    count = 0
+    for uid_str, rid_str in assignments:
+        u_int = user_pk.get(uid_str)
+        r_int = role_pk.get(rid_str)
+        if u_int is None or r_int is None:
+            continue
         try:
             db.execute(text("""
-                INSERT INTO users (id, tenant_id, user_id, username, email, full_name,
-                    hashed_password, department, company_code, user_type, status,
-                    is_active, created_at, updated_at)
-                VALUES (:id, :tid, :uid, :un, :email, :fn, :pw, :dept, :cc, :ut,
-                    'active', true, :now, :now)
-                ON CONFLICT (tenant_id, username) DO NOTHING
+                INSERT INTO user_roles (tenant_id, user_id, role_id, assigned_by,
+                    assigned_at, is_active, created_at, updated_at)
+                VALUES (:tid, :uid, :rid, 'acme_admin',
+                    :now, true, :now, :now)
+            """), {"tid": TID, "uid": u_int, "rid": r_int, "now": NOW})
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR assignment {uid_str}/{rid_str}: {e}")
+    try:
+        db.commit()
+        print(f"  OK: {count} user-role assignments")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR assignments commit: {e}")
+
+    # =========================================================
+    # 5. SoD VIOLATIONS (integer user FK)
+    # =========================================================
+    print("\n[5/30] Creating SoD violations...")
+    violations = [
+        ("v-001", "u-ap-01",  "john.smith",   "SOD-FI-001", "AP Create + AP Approve",       "FI", "critical", 95,
+         ["AP_CREATE","AP_APPROVE"], "Vendor payment fraud exposure"),
+        ("v-002", "u-ar-01",  "sarah.jones",  "SOD-FI-003", "AP Create + GL Posting",        "FI", "high",    75,
+         ["AP_CREATE","GL_POST"],    "Fictitious invoice + GL manipulation"),
+        ("v-003", "u-mm-01",  "mike.chen",    "SOD-MM-001", "PO Create + GR Post + Vendor",  "MM", "critical", 90,
+         ["PO_CREATE","GR_POST","VENDOR_CREATE"], "Full P2P cycle control bypass"),
+        ("v-004", "u-tr-01",  "lisa.wang",    "SOD-FI-005", "Treasury + GL",                 "FI", "critical", 88,
+         ["TR_PAYMENT","GL_POST"],  "Treasury self-approving payments"),
+        ("v-005", "u-hr-01",  "tom.brown",    "SOD-HR-001", "Payroll Run + HR Maintain",     "HR", "critical", 92,
+         ["HR_PAYROLL","HR_MAINT"], "Ghost employee + payroll fraud"),
+        ("v-006", "u-sd-01",  "anna.lee",     "SOD-SD-001", "Order Create + Billing",        "SD", "high",    70,
+         ["SO_CREATE","SD_BILL"],   "Unauthorized revenue booking"),
+        ("v-007", "u-ff-01",  "frank.controller","SOD-BC-001","Super-user + AP Full",        "BC", "critical", 99,
+         ["SAP_ALL","AP_FULL"],     "Unrestricted system access"),
+        ("v-008", "u-hr-01",  "tom.brown",    "SOD-HR-002", "Dual HR control bypass",        "HR", "high",    80,
+         ["HR_PAYROLL","HR_MAINT"], "HR data integrity risk"),
+    ]
+    count = 0
+    for vid, uid_str, uname, rule_id, rule_name, cat, sev, score, funcs, impact in violations:
+        u_int = user_pk.get(uid_str)
+        if u_int is None:
+            continue
+        try:
+            db.execute(text("""
+                INSERT INTO risk_violations (tenant_id, violation_id, rule_id, rule_name, rule_type,
+                    user_id, user_external_id, username, severity, severity_score, risk_category,
+                    conflicting_functions, business_impact, status, detected_at, detected_by,
+                    is_mitigated, created_at, updated_at)
+                VALUES (:tid, :vid, :rid, :rn, 'sod', :uid, :uext, :un,
+                    :sev, :score, :cat, :funcs, :impact,
+                    'open', :det, 'system',
+                    false, :now, :now)
             """), {
-                "id": uid_val, "tid": TENANT_ID, "uid": uid_val,
-                "un": username, "email": f"{username.replace('.','_')}@acmecorp.com",
-                "fn": full_name, "pw": hashed_pw, "dept": dept,
-                "cc": company_code, "ut": user_type, "now": NOW
+                "tid": TID, "vid": vid, "rid": rule_id, "rn": rule_name,
+                "uid": u_int, "uext": uid_str, "un": uname,
+                "sev": sev, "score": score, "cat": cat,
+                "funcs": json.dumps(funcs), "impact": impact,
+                "det": dt(days=14), "now": NOW,
             })
             count += 1
         except Exception as e:
             db.rollback()
-            print(f"    ✗ User {username}: {e}")
+            print(f"    ERR violation {vid}: {e}")
     try:
         db.commit()
-        results["users"] = count
-        print(f"  ✓ {count} users")
+        print(f"  OK: {count} violations")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Users commit: {e}")
+        print(f"  ERR violations commit: {e}")
 
-    # ── 3. ROLES ─────────────────────────────────────────────────────────────
-    print("\n[3/30] Creating SAP roles...")
-    roles = [
-        ("r-fi-ap-full",  "Z_FI_AP_FULL",      "Finance AP Full Access",          "FI",  "composite"),
-        ("r-fi-ap-crt",   "Z_FI_AP_CREATE",     "Finance AP Create",               "FI",  "single"),
-        ("r-fi-ap-apr",   "Z_FI_AP_APPROVE",    "Finance AP Approve",              "FI",  "single"),
-        ("r-fi-gl",       "Z_FI_GL_POST",       "GL Journal Entry Posting",        "FI",  "single"),
-        ("r-mm-buyer",    "Z_MM_BUYER",         "MM Purchasing Buyer",             "MM",  "single"),
-        ("r-mm-gr",       "Z_MM_GR_POST",       "MM Goods Receipt Posting",        "MM",  "single"),
-        ("r-mm-ven",      "Z_MM_VENDOR_CREATE", "Vendor Master Create",            "MM",  "single"),
-        ("r-sd-order",    "Z_SD_ORDER_CREATE",  "SD Sales Order Create",           "SD",  "single"),
-        ("r-sd-bill",     "Z_SD_BILLING",       "SD Billing Release",              "SD",  "single"),
-        ("r-hr-pay",      "Z_HR_PAYROLL",       "HR Payroll Processing",           "HR",  "single"),
-        ("r-hr-maint",    "Z_HR_MAINTAIN",      "HR Employee Master Maintain",     "HR",  "single"),
-        ("r-bc-useradm",  "Z_BC_USER_ADMIN",    "BC User Administration",          "BC",  "single"),
-        ("r-tr-pay",      "Z_TR_PAYMENT",       "Treasury Payment Run",            "TR",  "single"),
-        ("r-basis-all",   "SAP_ALL",            "Full SAP Authorization (Basis)",  "BC",  "composite"),
-    ]
-    count = 0
-    for rid, rname, rdesc, rcat, rtype in roles:
-        try:
-            db.execute(text("""
-                INSERT INTO roles (id, tenant_id, role_id, role_name, description,
-                    source_system, role_type, is_active, created_at, updated_at)
-                VALUES (:id, :tid, :rid, :rname, :rdesc, 'SAP ECC', :rtype, true, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": rid, "tid": TENANT_ID, "rid": rname, "rname": rname,
-                   "rdesc": rdesc, "rtype": rtype, "now": NOW})
-            count += 1
-        except Exception as e:
-            db.rollback()
-    try:
-        db.commit()
-        results["roles"] = count
-        print(f"  ✓ {count} roles")
-    except Exception as e:
-        db.rollback()
-        print(f"  ✗ Roles: {e}")
-
-    # ── 4. USER-ROLE ASSIGNMENTS ─────────────────────────────────────────────
-    print("\n[4/30] Assigning roles (including SoD conflicts)...")
-    assignments = [
-        ("u-ap-01",  "r-fi-ap-full"),   # John: AP Full
-        ("u-ap-01",  "r-fi-ap-apr"),    # John: AP Approve — SoD conflict
-        ("u-ap-01",  "r-mm-ven"),       # John: Vendor Create — triple conflict
-        ("u-ar-01",  "r-fi-ap-crt"),    # Sarah: AP Create only (clean)
-        ("u-mm-01",  "r-mm-buyer"),     # Mike: Buyer
-        ("u-mm-01",  "r-mm-gr"),        # Mike: GR Post — SoD conflict
-        ("u-tr-01",  "r-tr-pay"),       # Lisa: Treasury
-        ("u-hr-01",  "r-hr-pay"),       # Tom: Payroll
-        ("u-hr-01",  "r-hr-maint"),     # Tom: HR Maintain — SoD conflict
-        ("u-sd-01",  "r-sd-order"),     # Anna: Sales Orders
-        ("u-sd-01",  "r-sd-bill"),      # Anna: Billing — SoD conflict
-        ("u-mgr-01", "r-fi-ap-apr"),    # Mark: AP Approve (clean)
-        ("u-admin-01","r-bc-useradm"),  # Admin: User Admin
-        ("u-ff-01",  "r-fi-gl"),        # Frank: GL Post
-    ]
-    count = 0
-    for user_id, role_id in assignments:
-        try:
-            db.execute(text("""
-                INSERT INTO user_roles (id, tenant_id, user_id, role_id, assigned_by, assigned_at, created_at, updated_at)
-                VALUES (:id, :tid, :uid, :rid, 'seed', :now, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": uid(), "tid": TENANT_ID, "uid": user_id, "rid": role_id, "now": NOW})
-            count += 1
-        except Exception as e:
-            db.rollback()
-    try:
-        db.commit()
-        results["user_roles"] = count
-        print(f"  ✓ {count} user-role assignments")
-    except Exception as e:
-        db.rollback()
-        print(f"  ✗ User roles: {e}")
-
-    # ── 5. RISK VIOLATIONS ───────────────────────────────────────────────────
-    print("\n[5/30] Creating SoD violations...")
-    violations = [
-        ("vio-001", "SoD-FI-001", "Create Vendor AND Approve Payment (AP)",         "u-ap-01",  "critical", 90),
-        ("vio-002", "SoD-FI-003", "Post Journal Entry AND Approve Journal Entry",    "u-ap-01",  "high",     70),
-        ("vio-003", "SoD-MM-003", "Create Purchase Order AND Post Goods Receipt",    "u-mm-01",  "high",     70),
-        ("vio-004", "SoD-HR-001", "Maintain Employee Master AND Process Payroll",    "u-hr-01",  "critical", 90),
-        ("vio-005", "SoD-SD-005", "Create Sales Order AND Release Billing Document", "u-sd-01",  "medium",   50),
-        ("vio-006", "SoD-MM-001", "Create Vendor AND Create Purchase Order",         "u-ap-01",  "high",     65),
-        ("vio-007", "SoD-FI-002", "Approve Payment AND Release Payment Run",         "u-ar-01",  "medium",   50),
-        ("vio-008", "SoD-TR-001", "Initiate Payment AND Release Treasury Run",       "u-tr-01",  "critical", 85),
-    ]
-    count = 0
-    for vid, rule_id, desc, user_id, sev, score in violations:
-        try:
-            db.execute(text("""
-                INSERT INTO risk_violations (id, tenant_id, violation_id, rule_id, rule_name,
-                    rule_type, user_id, description, severity_score, status, detected_at,
-                    created_at, updated_at)
-                VALUES (:id, :tid, :vid, :rid, :rname, 'SoD', :uid, :desc,
-                    :score, 'open', :det, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": vid, "tid": TENANT_ID, "vid": vid, "rid": rule_id,
-                   "rname": rule_id, "uid": user_id, "desc": desc,
-                   "score": score, "det": dt(random.randint(1, 30)), "now": NOW})
-            count += 1
-        except Exception as e:
-            db.rollback()
-    try:
-        db.commit()
-        results["risk_violations"] = count
-        print(f"  ✓ {count} violations")
-    except Exception as e:
-        db.rollback()
-        print(f"  ✗ Violations: {e}")
-
-    # ── 6. ORG UNITS ─────────────────────────────────────────────────────────
+    # =========================================================
+    # 6. ORG UNITS (hierarchical, integer PKs)
+    # =========================================================
     print("\n[6/30] Creating org units...")
-    org_units = [
-        ("ou-root",   None,       "Acme Corporation Ltd",   "company",    1, "acme"),
-        ("ou-fin",    "ou-root",  "Finance",                "division",   2, "acme/finance"),
-        ("ou-it",     "ou-root",  "Information Technology", "division",   2, "acme/it"),
-        ("ou-hr",     "ou-root",  "Human Resources",        "division",   2, "acme/hr"),
-        ("ou-proc",   "ou-root",  "Procurement",            "division",   2, "acme/procurement"),
-        ("ou-sales",  "ou-root",  "Sales",                  "division",   2, "acme/sales"),
-        ("ou-ap",     "ou-fin",   "Accounts Payable",       "department", 3, "acme/finance/ap"),
-        ("ou-ar",     "ou-fin",   "Accounts Receivable",    "department", 3, "acme/finance/ar"),
-        ("ou-tr",     "ou-fin",   "Treasury",               "department", 3, "acme/finance/treasury"),
-        ("ou-itsec",  "ou-it",    "IT Security",            "department", 3, "acme/it/security"),
+    # Insert top-level first (no parent)
+    top_ous = [
+        ("ou-corp",   "Acme Corporation", "company",    1),
+        ("ou-fin",    "Finance",          "department", 2),
+        ("ou-ops",    "Operations",       "department", 2),
+        ("ou-it",     "Information Technology","department",2),
+        ("ou-hr",     "Human Resources",  "department", 2),
+        ("ou-sales",  "Sales",            "department", 2),
+    ]
+    child_ous = [
+        # (unit_id, name, type, level, parent_unit_id_str)
+        ("ou-ap",    "Accounts Payable",       "team", 3, "ou-fin"),
+        ("ou-ar",    "Accounts Receivable",    "team", 3, "ou-fin"),
+        ("ou-gl",    "General Ledger",         "team", 3, "ou-fin"),
+        ("ou-treas", "Treasury",               "team", 3, "ou-fin"),
     ]
     count = 0
-    for ou_id, parent, name, utype, level, path in org_units:
+    # Top-level (no parent)
+    for uid_str, name, utype, level in top_ous:
         try:
-            db.execute(text("""
-                INSERT INTO org_units (id, tenant_id, unit_id, name, unit_type,
-                    parent_id, level, path, is_active, created_at, updated_at)
-                VALUES (:id, :tid, :uid, :name, :utype, :parent, :level, :path,
+            row = db.execute(text("""
+                INSERT INTO org_units (tenant_id, unit_id, name, unit_type, level,
+                    is_active, created_at, updated_at)
+                VALUES (:tid, :uid, :name, :utype, :level,
                     true, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": ou_id, "tid": TENANT_ID, "uid": ou_id, "name": name,
-                   "utype": utype, "parent": parent, "level": level,
-                   "path": path, "now": NOW})
+                RETURNING id
+            """), {"tid": TID, "uid": uid_str, "name": name,
+                   "utype": utype, "level": level, "now": NOW}).fetchone()
+            ou_pk[uid_str] = row[0]
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR org_unit {name}: {e}")
+    # Children
+    for uid_str, name, utype, level, parent_str in child_ous:
+        parent_int = ou_pk.get(parent_str)
+        try:
+            row = db.execute(text("""
+                INSERT INTO org_units (tenant_id, unit_id, name, unit_type, level,
+                    parent_id, is_active, created_at, updated_at)
+                VALUES (:tid, :uid, :name, :utype, :level,
+                    :pid, true, :now, :now)
+                RETURNING id
+            """), {"tid": TID, "uid": uid_str, "name": name,
+                   "utype": utype, "level": level, "pid": parent_int, "now": NOW}).fetchone()
+            ou_pk[uid_str] = row[0]
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR org_unit child {name}: {e}")
     try:
         db.commit()
-        results["org_units"] = count
-        print(f"  ✓ {count} org units")
+        print(f"  OK: {count} org units")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Org units: {e}")
+        print(f"  ERR org units commit: {e}")
 
-    # ── 7. ENTERPRISE RISKS ───────────────────────────────────────────────────
+    # =========================================================
+    # 7. ENTERPRISE RISKS
+    # =========================================================
     print("\n[7/30] Creating enterprise risk register...")
     risks = [
-        ("er-001", "Unauthorized Financial Transactions",       "Financial",   5, 5, "open",        "ou-fin"),
-        ("er-002", "Excessive User Privileges",                 "Access",      4, 4, "in_treatment", "ou-itsec"),
-        ("er-003", "Payroll Fraud via SoD Failure",             "Financial",   5, 4, "open",         "ou-hr"),
-        ("er-004", "SAP System Downtime - Month End",           "Operational", 3, 5, "in_treatment", "ou-it"),
-        ("er-005", "Vendor Master Data Manipulation",           "Financial",   4, 5, "open",         "ou-ap"),
-        ("er-006", "Inadequate Audit Trail Coverage",           "Compliance",  3, 4, "open",         "ou-itsec"),
-        ("er-007", "Data Breach via Excessive Access",          "IT Security", 4, 5, "in_treatment", "ou-itsec"),
-        ("er-008", "Regulatory Non-Compliance (SOX 404)",       "Compliance",  2, 5, "monitoring",   "ou-fin"),
+        ("risk-001", "Segregation of Duties Breakdown in P2P",
+         "operational", "ou-fin", "u-risk-01", 4, 5, 20.0, 2, 4, 8.0, "open"),
+        ("risk-002", "Insider Threat via Privileged Access",
+         "cybersecurity", "ou-it", "u-ciso-01", 4, 5, 20.0, 3, 4, 12.0, "open"),
+        ("risk-003", "Payroll Fraud via HR System Manipulation",
+         "fraud", "ou-hr", "u-risk-01", 3, 5, 15.0, 2, 4, 8.0, "open"),
+        ("risk-004", "ERP Data Integrity Failure",
+         "technology", "ou-it", "u-ciso-01", 3, 4, 12.0, 2, 3, 6.0, "open"),
+        ("risk-005", "Vendor Master Data Tampering",
+         "fraud", "ou-ops", "u-risk-01", 3, 4, 12.0, 2, 3, 6.0, "in_progress"),
+        ("risk-006", "Regulatory Compliance Failure (SOX)",
+         "compliance", "ou-fin", "u-comp-01", 2, 5, 10.0, 1, 4, 4.0, "open"),
+        ("risk-007", "Business Continuity Risk - IT Outage",
+         "operational", "ou-it", "u-ciso-01", 3, 4, 12.0, 2, 3, 6.0, "open"),
+        ("risk-008", "Third-Party Vendor Security Breach",
+         "cybersecurity", "ou-ops", "u-risk-01", 3, 4, 12.0, 2, 3, 6.0, "open"),
     ]
     count = 0
-    for rid, title, cat, lik, imp, status, org_unit in risks:
-        score = lik * imp
+    for rid, title, cat, ou_str, owner_str, il, ii, isc, rl, ri, rsc, status in risks:
+        ou_int = ou_pk.get(ou_str)
+        owner_uid = owner_str  # store as string user_id
         try:
-            db.execute(text("""
-                INSERT INTO enterprise_risks (id, tenant_id, risk_id, title, description,
-                    description_ar, category, org_unit_id, likelihood, impact,
-                    inherent_risk_score, residual_risk_score, status, owner_id,
+            row = db.execute(text("""
+                INSERT INTO enterprise_risks (tenant_id, risk_id, title, category,
+                    org_unit_id, risk_owner_id, risk_owner_name,
+                    inherent_likelihood, inherent_impact, inherent_score,
+                    residual_likelihood, residual_impact, residual_score,
+                    risk_appetite, status, last_assessed_at, next_review_date,
                     created_at, updated_at)
-                VALUES (:id, :tid, :rid, :title, :desc, '', :cat, :ou,
-                    :lik, :imp, :score, :rscore, :status, 'u-risk-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": rid, "tid": TENANT_ID, "rid": rid, "title": title,
-                   "desc": f"Risk: {title}. Impact on Acme operations and compliance posture.",
-                   "cat": cat, "ou": org_unit, "lik": lik, "imp": imp,
-                   "score": score, "rscore": max(score - random.randint(2, 6), 2),
-                   "status": status, "now": dt(random.randint(10, 90))})
+                VALUES (:tid, :rid, :title, :cat,
+                    :ouid, :owner, :oname,
+                    :il, :ii, :isc,
+                    :rl, :ri, :rsc,
+                    5.0, :status, :now, :next,
+                    :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "rid": rid, "title": title, "cat": cat,
+                "ouid": ou_int, "owner": owner_uid,
+                "oname": next((u[2] for u in users_data if u[0] == owner_str), owner_str),
+                "il": il, "ii": ii, "isc": isc,
+                "rl": rl, "ri": ri, "rsc": rsc,
+                "status": status, "now": NOW, "next": dt(days=-90),
+            }).fetchone()
+            risk_pk[rid] = row[0]
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR risk {rid}: {e}")
     try:
         db.commit()
-        results["enterprise_risks"] = count
-        print(f"  ✓ {count} risks")
+        print(f"  OK: {count} enterprise risks")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Risks: {e}")
+        print(f"  ERR risks commit: {e}")
 
-    # ── 8. KRIs ───────────────────────────────────────────────────────────────
+    # =========================================================
+    # 8. KEY RISK INDICATORS
+    # =========================================================
     print("\n[8/30] Creating KRIs...")
     kris = [
-        ("kri-001", "SoD Violation Rate",           "er-002", 8.5, 5.0,  10.0, "breached",  "%"),
-        ("kri-002", "Unreviewed FF Sessions",        "er-002", 3,   0,    5,    "at_risk",   "count"),
-        ("kri-003", "Overdue Certification Items",   "er-008", 12,  0,    10,   "breached",  "count"),
-        ("kri-004", "Failed Login Attempts/Day",     "er-007", 45,  0,    100,  "normal",    "count"),
-        ("kri-005", "Critical Open Findings >30 days","er-008", 4,  0,    3,    "breached",  "count"),
-        ("kri-006", "Unmapped Users (Orphan Accounts)","er-002",7,  0,    10,   "at_risk",   "count"),
+        ("kri-001", "SoD Violation Count",       "risk-001", "violations",  10, 20, 30, 23, "breach"),
+        ("kri-002", "Privileged User Count",      "risk-002", "users",       5,  10, 15, 8,  "amber"),
+        ("kri-003", "Failed Login Attempts",      "risk-002", "events",      50, 100, 200, 45, "green"),
+        ("kri-004", "Overdue Access Reviews",     "risk-001", "reviews",     0,  5,  10, 7,  "amber"),
+        ("kri-005", "Unresolved Critical Findings","risk-006","findings",    0,  2,  5,  4,  "amber"),
+        ("kri-006", "Vendor Risk Score (Avg)",    "risk-008", "score",       30, 50, 70, 62, "amber"),
     ]
     count = 0
-    for kri_id, name, risk_id, curr, low, high, status, unit in kris:
+    for kid, name, risk_str, unit, tg, ta, tr, val, status in kris:
+        risk_int = risk_pk.get(risk_str)
         try:
             db.execute(text("""
-                INSERT INTO key_risk_indicators (id, tenant_id, kri_id, name, description,
-                    risk_id, unit_of_measure, current_value, lower_threshold, upper_threshold,
-                    status, frequency, owner_id, created_at, updated_at)
-                VALUES (:id, :tid, :kid, :name, :desc, :rid, :unit,
-                    :curr, :low, :high, :status, 'monthly', 'u-risk-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": kri_id, "tid": TENANT_ID, "kid": kri_id, "name": name,
-                   "desc": f"Monitors: {name}", "rid": risk_id, "unit": unit,
-                   "curr": curr, "low": low, "high": high, "status": status, "now": NOW})
-            count += 1
-        except Exception as e:
-            db.rollback()
-    try:
-        db.commit()
-        results["key_risk_indicators"] = count
-        print(f"  ✓ {count} KRIs")
-    except Exception as e:
-        db.rollback()
-        print(f"  ✗ KRIs: {e}")
-
-    # ── 9. RISK APPETITE ──────────────────────────────────────────────────────
-    print("\n[9/30] Creating risk appetite...")
-    appetites = [
-        ("ra-001", "Access Control",   3, 15, "ou-itsec", "LOW appetite for unauthorized access. Maximum tolerated risk score: 15/25."),
-        ("ra-002", "Financial Fraud",  1, 5,  "ou-fin",   "ZERO appetite for financial fraud. Any incident triggers immediate board escalation."),
-        ("ra-003", "Operational Risk", 5, 20, "ou-it",    "MEDIUM appetite for operational disruptions. Tolerated RTO: 4 hours."),
-        ("ra-004", "Compliance",       2, 12, "ou-fin",   "LOW appetite for regulatory non-compliance. All critical controls must be effective."),
-        ("ra-005", "Technology Risk",  4, 18, "ou-it",    "MODERATE appetite for technology risk. DR plan tested annually."),
-    ]
-    count = 0
-    for ra_id, cat, score, threshold, ou, desc in appetites:
-        try:
-            db.execute(text("""
-                INSERT INTO risk_appetites (id, tenant_id, category, org_unit_id,
-                    appetite_score, tolerance_score, description, approved_by,
+                INSERT INTO key_risk_indicators (tenant_id, kri_id, name, risk_id,
+                    unit_of_measure, frequency, threshold_green, threshold_amber, threshold_red,
+                    current_value, last_measured_at, status, is_active,
                     created_at, updated_at)
-                VALUES (:id, :tid, :cat, :ou, :score, :thresh, :desc, 'u-risk-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": ra_id, "tid": TENANT_ID, "cat": cat, "ou": ou,
-                   "score": score, "thresh": threshold, "desc": desc, "now": dt(90)})
+                VALUES (:tid, :kid, :name, :rid,
+                    :unit, 'monthly', :tg, :ta, :tr,
+                    :val, :now, :status, true,
+                    :now, :now)
+            """), {
+                "tid": TID, "kid": kid, "name": name, "rid": risk_int,
+                "unit": unit, "tg": tg, "ta": ta, "tr": tr,
+                "val": val, "status": status, "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR kri {kid}: {e}")
     try:
         db.commit()
-        results["risk_appetites"] = count
-        print(f"  ✓ {count} risk appetite statements")
+        print(f"  OK: {count} KRIs")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Appetite: {e}")
+        print(f"  ERR KRI commit: {e}")
 
-    # ── 10. RISK INCIDENTS ────────────────────────────────────────────────────
+    # =========================================================
+    # 9. RISK APPETITES
+    # =========================================================
+    print("\n[9/30] Creating risk appetite statements...")
+    appetites = [
+        ("operational",  "ou-fin",  3.0, 5.0),
+        ("cybersecurity","ou-it",   2.0, 4.0),
+        ("fraud",        "ou-fin",  1.0, 3.0),
+        ("compliance",   "ou-fin",  1.0, 2.0),
+        ("technology",   "ou-it",   4.0, 6.0),
+    ]
+    count = 0
+    for cat, ou_str, appetite, tolerance in appetites:
+        ou_int = ou_pk.get(ou_str)
+        try:
+            db.execute(text("""
+                INSERT INTO risk_appetites (tenant_id, category, org_unit_id,
+                    appetite_score, tolerance_score, description,
+                    approved_by, approved_at, effective_from,
+                    created_at, updated_at)
+                VALUES (:tid, :cat, :ouid,
+                    :app, :tol, :desc,
+                    'Board of Directors', :now, :eff,
+                    :now, :now)
+            """), {
+                "tid": TID, "cat": cat, "ouid": ou_int,
+                "app": appetite, "tol": tolerance,
+                "desc": f"Board-approved risk appetite for {cat} risk category",
+                "now": NOW, "eff": dt(days=365),
+            })
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR appetite {cat}: {e}")
+    try:
+        db.commit()
+        print(f"  OK: {count} risk appetite statements")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR appetites commit: {e}")
+
+    # =========================================================
+    # 10. RISK INCIDENTS
+    # =========================================================
     print("\n[10/30] Creating risk incidents...")
     incidents = [
-        ("ri-001", "er-001", "Unauthorized AP Payment Approved",  "Payment of AUD 85,000 approved without dual auth",  "high",     "investigating"),
-        ("ri-002", "er-003", "Ghost Payroll Employee Detected",   "Active payroll record for employee who left 3m ago", "critical", "contained"),
-        ("ri-003", "er-004", "SAP ECC Outage - 4 Hours",          "System unavailable during month-end close",          "high",     "resolved"),
+        ("inc-001", "Unauthorized Vendor Payment",       "risk-001", "critical", 250000.0, dt(30)),
+        ("inc-002", "Employee Payroll Overpayment",      "risk-003", "high",     45000.0,  dt(60)),
+        ("inc-003", "ERP Access Control Misconfiguration","risk-002","medium",   0.0,      dt(14)),
     ]
     count = 0
-    for inc_id, risk_id, title, desc, sev, status in incidents:
+    for iid, title, risk_str, sev, fin, occurred in incidents:
+        risk_int = risk_pk.get(risk_str)
         try:
             db.execute(text("""
-                INSERT INTO risk_incidents (id, tenant_id, incident_id, title, description,
-                    risk_id, severity, financial_impact, currency, status, occurred_at,
-                    reported_by, created_at, updated_at)
-                VALUES (:id, :tid, :iid, :title, :desc, :rid, :sev,
-                    :impact, 'AUD', :status, :occ, 'u-risk-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": inc_id, "tid": TENANT_ID, "iid": inc_id, "title": title,
-                   "desc": desc, "rid": risk_id, "sev": sev,
-                   "impact": random.randint(10000, 100000),
-                   "status": status, "occ": dt(random.randint(5, 30)), "now": dt(1)})
+                INSERT INTO risk_incidents (tenant_id, incident_id, title, risk_id,
+                    severity, financial_impact, currency,
+                    occurred_at, detected_at, root_cause,
+                    status, reported_by, created_at, updated_at)
+                VALUES (:tid, :iid, :title, :rid,
+                    :sev, :fin, 'AUD',
+                    :occ, :det, :cause,
+                    'under_review', 'acme_auditor', :now, :now)
+            """), {
+                "tid": TID, "iid": iid, "title": title, "rid": risk_int,
+                "sev": sev, "fin": fin,
+                "occ": occurred, "det": occurred + datetime.timedelta(days=2),
+                "cause": "Control breakdown identified during routine review",
+                "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR incident {iid}: {e}")
     try:
         db.commit()
-        results["risk_incidents"] = count
-        print(f"  ✓ {count} incidents")
+        print(f"  OK: {count} risk incidents")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Incidents: {e}")
+        print(f"  ERR incidents commit: {e}")
 
-    # ── 11. PROCESS CONTROLS ──────────────────────────────────────────────────
+    # =========================================================
+    # 11. PROCESS CONTROLS
+    # =========================================================
     print("\n[11/30] Creating process controls...")
     controls = [
-        ("pc-001", "AP-CTL-001", "AP Invoice 3-Way Match",          "Three-way match enforced for all invoices >AUD 5,000", "preventive", "automated", "monthly"),
-        ("pc-002", "AP-CTL-002", "Monthly Bank Reconciliation",     "All bank accounts reconciled monthly by Finance Mgr",   "detective",  "manual",    "monthly"),
-        ("pc-003", "AP-CTL-003", "Vendor Master Change Approval",   "Dual approval required for all vendor master changes",  "preventive", "hybrid",    "event_driven"),
-        ("pc-004", "AC-CTL-001", "Quarterly Access Review",         "All user access reviewed and recertified quarterly",    "detective",  "manual",    "quarterly"),
-        ("pc-005", "AC-CTL-002", "Real-Time SoD Conflict Detection","SoD violation alerts via GovernexPlus ARA engine",      "detective",  "automated", "continuous"),
-        ("pc-006", "HR-CTL-001", "Payroll Calculation Verification","Independent verification of payroll calculations",       "detective",  "manual",    "monthly"),
-        ("pc-007", "IT-CTL-001", "SAP Change Management",           "All SAP changes via formal change management process",  "preventive", "hybrid",    "event_driven"),
-        ("pc-008", "AC-CTL-003", "Privileged Access Monitoring",    "All firefighter sessions logged and reviewed",          "detective",  "automated", "event_driven"),
+        ("ctrl-001", "Segregation of Duties - P2P",
+         "preventive", "automated", "continuous", "ou-fin",
+         "Finance - Accounts Payable", "Purchase-to-Pay"),
+        ("ctrl-002", "Payment Dual Approval Control",
+         "preventive", "manual", "transaction", "ou-fin",
+         "Finance - Treasury",        "Cash Management"),
+        ("ctrl-003", "Vendor Master Change Authorization",
+         "preventive", "manual", "weekly",      "ou-ops",
+         "Procurement",               "Vendor Management"),
+        ("ctrl-004", "Payroll Review and Approval",
+         "detective", "manual", "monthly",     "ou-hr",
+         "Human Resources",            "Payroll Processing"),
+        ("ctrl-005", "ERP User Access Review",
+         "detective", "manual", "quarterly",   "ou-it",
+         "IT Security",               "Access Management"),
+        ("ctrl-006", "Journal Entry Review",
+         "detective", "manual", "monthly",     "ou-fin",
+         "Finance - General Ledger",  "Financial Reporting"),
+        ("ctrl-007", "System Integrity Monitoring",
+         "detective", "automated", "continuous","ou-it",
+         "IT Operations",             "IT Controls"),
+        ("ctrl-008", "Third-Party Security Assessment",
+         "detective", "manual", "annual",      "ou-ops",
+         "Procurement",               "Vendor Management"),
     ]
     count = 0
-    for pc_id, ctrl_id, name, desc, ctype, cnature, freq in controls:
+    for cid, name, ctype, cnature, freq, ou_str, proc, subproc in controls:
+        ou_int = ou_pk.get(ou_str)
         try:
-            db.execute(text("""
-                INSERT INTO process_controls (id, tenant_id, control_id, name,
-                    objective, description, control_type, control_nature,
-                    frequency, status, owner_id, created_at, updated_at)
-                VALUES (:id, :tid, :cid, :name, :obj, :desc, :ct, :cn,
-                    :freq, 'active', 'u-comp-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": pc_id, "tid": TENANT_ID, "cid": ctrl_id, "name": name,
-                   "obj": f"Ensure {name.lower()} is operating effectively",
-                   "desc": desc, "ct": ctype, "cn": cnature, "freq": freq,
-                   "now": dt(random.randint(30, 120))})
+            row = db.execute(text("""
+                INSERT INTO process_controls (tenant_id, control_id, name,
+                    control_type, control_nature, frequency,
+                    org_unit_id, process_name, subprocess_name,
+                    version, status, key_control, is_active,
+                    created_at, updated_at)
+                VALUES (:tid, :cid, :name,
+                    :ct, :cn, :freq,
+                    :ouid, :proc, :subproc,
+                    1, 'active', true, true,
+                    :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "cid": cid, "name": name,
+                "ct": ctype, "cn": cnature, "freq": freq,
+                "ouid": ou_int, "proc": proc, "subproc": subproc,
+                "now": NOW,
+            }).fetchone()
+            ctrl_pk[cid] = row[0]
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR control {cid}: {e}")
     try:
         db.commit()
-        results["process_controls"] = count
-        print(f"  ✓ {count} process controls")
+        print(f"  OK: {count} process controls")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Controls: {e}")
+        print(f"  ERR controls commit: {e}")
 
-    # ── 12. CONTROL TESTS ─────────────────────────────────────────────────────
+    # =========================================================
+    # 12. CONTROL TESTS
+    # =========================================================
     print("\n[12/30] Creating control tests...")
-    tests = [
-        ("ct-001", "pc-001", "pass",    "3-way match verified for 100% of Q3 invoices. 0 exceptions.",      50, 0),
-        ("ct-002", "pc-002", "pass",    "All 12 bank accounts reconciled. 2 timing differences explained.",  12, 0),
-        ("ct-003", "pc-003", "fail",    "3 vendor changes found without dual approval. Escalated to mgr.",   25, 3),
-        ("ct-004", "pc-004", "pass",    "Q3 access review completed. 14 users had access removed.",          80, 0),
-        ("ct-005", "pc-005", "pass",    "ARA running continuously. 8 new violations detected same day.",     100,0),
-        ("ct-006", "pc-006", "partial", "Payroll verification done. 1 employee record had wrong allowance.", 30, 1),
+    ctests = [
+        ("ct-001", "ctrl-001", "walkthrough", dt(30), dt(20), 25, 250, "effective",   0),
+        ("ct-002", "ctrl-002", "sampling",    dt(45), dt(35), 30, 500, "effective",   1),
+        ("ct-003", "ctrl-003", "inspection",  dt(60), dt(50), 20, 100, "ineffective", 5),
+        ("ct-004", "ctrl-004", "reperformance",dt(30),dt(20),50,1200, "effective",   2),
+        ("ct-005", "ctrl-005", "observation", dt(90), dt(75),100, 500, "ineffective", 12),
+        ("ct-006", "ctrl-006", "sampling",    dt(30), dt(20), 30, 800, "effective",   1),
     ]
     count = 0
-    for ct_id, ctrl_id, result, notes, sample, exc in tests:
+    for tid_str, cid_str, ttype, ps, pe, samp, pop, result, exc in ctests:
+        ctrl_int = ctrl_pk.get(cid_str)
+        if ctrl_int is None:
+            continue
         try:
-            db.execute(text("""
-                INSERT INTO control_tests (id, tenant_id, test_id, control_id, test_type,
-                    testing_period_start, testing_period_end, sample_size, population_size,
-                    tester_id, result, notes, exceptions_found, created_at, updated_at)
-                VALUES (:id, :tid, :tid2, :cid, 'design_effectiveness',
-                    :start, :end, :sample, :pop, 'u-audit-01', :result, :notes,
-                    :exc, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": ct_id, "tid": TENANT_ID, "tid2": ct_id, "cid": ctrl_id,
-                   "start": dt(30), "end": dt(1), "sample": sample, "pop": sample * 2,
-                   "result": result, "notes": notes, "exc": exc,
-                   "now": dt(random.randint(1, 7))})
+            row = db.execute(text("""
+                INSERT INTO control_tests (tenant_id, test_id, control_id,
+                    test_type, testing_period_start, testing_period_end,
+                    sample_size, population_size, tester_name,
+                    result, exceptions_found, status,
+                    created_at, updated_at)
+                VALUES (:tid, :testid, :ctrl,
+                    :ttype, :ps, :pe,
+                    :samp, :pop, 'Alan Auditor',
+                    :result, :exc, 'completed',
+                    :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "testid": tid_str, "ctrl": ctrl_int,
+                "ttype": ttype, "ps": ps, "pe": pe,
+                "samp": samp, "pop": pop,
+                "result": result, "exc": exc, "now": NOW,
+            }).fetchone()
+            test_pk[tid_str] = row[0]
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR control test {tid_str}: {e}")
     try:
         db.commit()
-        results["control_tests"] = count
-        print(f"  ✓ {count} control tests")
+        print(f"  OK: {count} control tests")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Tests: {e}")
+        print(f"  ERR control tests commit: {e}")
 
-    # ── 13. CONTROL DEFICIENCIES ──────────────────────────────────────────────
+    # =========================================================
+    # 13. CONTROL DEFICIENCIES
+    # =========================================================
     print("\n[13/30] Creating control deficiencies...")
     deficiencies = [
-        ("cd-001", "pc-003", "ct-003", "significant_deficiency", "Vendor Master Change Approval Bypass",  "3 vendor changes without dual approval", "open"),
-        ("cd-002", "pc-006", "ct-006", "deficiency",             "Payroll Allowance Miscalculation",      "1 employee over-paid by AUD 1,200",       "in_remediation"),
+        ("def-001", "ctrl-003", "ct-003", "Vendor change requests lack secondary approval",
+         "significant", "Inadequate design", dt(30)),
+        ("def-002", "ctrl-005", "ct-005", "Access review completion rate below 60%",
+         "material", "Operational failure", dt(15)),
     ]
     count = 0
-    for did, ctrl_id, test_id, sev, title, desc, status in deficiencies:
+    for did, cid_str, tid_str, title, sev, cause, due in deficiencies:
+        ctrl_int = ctrl_pk.get(cid_str)
+        test_int = test_pk.get(tid_str)
+        if ctrl_int is None:
+            continue
         try:
             db.execute(text("""
-                INSERT INTO control_deficiencies (id, tenant_id, deficiency_id, control_id,
-                    test_id, source, title, description, severity, root_cause, status,
-                    identified_date, owner_id, created_at, updated_at)
-                VALUES (:id, :tid, :did, :cid, :test_id, 'testing',
-                    :title, :desc, :sev, 'Process not followed',
-                    :status, :idate, 'u-comp-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": did, "tid": TENANT_ID, "did": did, "cid": ctrl_id,
-                   "test_id": test_id, "title": title, "desc": desc,
-                   "sev": sev, "status": status,
-                   "idate": dt(random.randint(5, 14)), "now": dt(1)})
+                INSERT INTO control_deficiencies (tenant_id, deficiency_id,
+                    control_id, test_id, source, title, description,
+                    severity, root_cause, status, due_date,
+                    created_at, updated_at)
+                VALUES (:tid, :did,
+                    :ctrl, :test, 'testing', :title, :title,
+                    :sev, :cause, 'open', :due,
+                    :now, :now)
+            """), {
+                "tid": TID, "did": did,
+                "ctrl": ctrl_int, "test": test_int,
+                "title": title, "sev": sev,
+                "cause": cause, "due": due, "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR deficiency {did}: {e}")
     try:
         db.commit()
-        results["control_deficiencies"] = count
-        print(f"  ✓ {count} deficiencies")
+        print(f"  OK: {count} control deficiencies")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Deficiencies: {e}")
+        print(f"  ERR deficiencies commit: {e}")
 
-    # ── 14. MITIGATION CONTROLS ───────────────────────────────────────────────
+    # =========================================================
+    # 14. MITIGATION CONTROLS
+    # =========================================================
     print("\n[14/30] Creating mitigation controls...")
     mitigations = [
-        ("mc-001", "MC-001", "Dual Approval Compensating Control",  "detective",  ["SoD-FI-001", "SoD-MM-001"]),
-        ("mc-002", "MC-002", "Monthly Vendor Reconciliation",       "detective",  ["SoD-FI-001"]),
-        ("mc-003", "MC-003", "Segregated GR Log Review",            "detective",  ["SoD-MM-003"]),
-        ("mc-004", "MC-004", "Payroll Supervisor Sign-off",         "preventive", ["SoD-HR-001"]),
-        ("mc-005", "MC-005", "Automated Payment Threshold Alert",   "detective",  ["SoD-TR-001"]),
+        ("mit-001", "Compensating Control - AP SoD Monitor",
+         "compensating", ["SOD-FI-001","SOD-FI-003"], "u-comp-01"),
+        ("mit-002", "Manual Vendor Change Approval Log",
+         "manual",       ["SOD-MM-001"],               "u-mgr-01"),
+        ("mit-003", "Payroll Exception Report Review",
+         "detective",    ["SOD-HR-001","SOD-HR-002"],   "u-mgr-01"),
+        ("mit-004", "Treasury Payment Independent Verification",
+         "preventive",   ["SOD-FI-005"],                "u-ciso-01"),
+        ("mit-005", "Super-user Access Monitoring Log",
+         "compensating", ["SOD-BC-001"],                "u-sec-01"),
     ]
     count = 0
-    for mc_id, ctrl_id, name, ctype, rule_ids in mitigations:
+    for cid, name, ctype, rules, owner_str in mitigations:
         try:
             db.execute(text("""
-                INSERT INTO mitigation_controls (id, tenant_id, control_id, control_name,
-                    description, control_type, monitoring_frequency, applicable_rule_ids,
-                    status, owner_id, created_at, updated_at)
-                VALUES (:id, :tid, :cid, :name, :desc, :ct, 'monthly', :rids,
-                    'active', 'u-comp-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": mc_id, "tid": TENANT_ID, "cid": ctrl_id, "name": name,
-                   "desc": f"Compensating control: {name}",
-                   "ct": ctype, "rids": json.dumps(rule_ids), "now": NOW})
+                INSERT INTO mitigation_controls (tenant_id, control_id, control_name,
+                    control_type, applicable_rule_ids,
+                    owner_user_id, owner_name,
+                    is_active, valid_from,
+                    created_at, updated_at)
+                VALUES (:tid, :cid, :name,
+                    :ctype, :rules,
+                    :owner, :oname,
+                    true, :now,
+                    :now, :now)
+            """), {
+                "tid": TID, "cid": cid, "name": name,
+                "ctype": ctype, "rules": json.dumps(rules),
+                "owner": owner_str,
+                "oname": next((u[2] for u in users_data if u[0] == owner_str), owner_str),
+                "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR mitigation {cid}: {e}")
     try:
         db.commit()
-        results["mitigation_controls"] = count
-        print(f"  ✓ {count} mitigation controls")
+        print(f"  OK: {count} mitigation controls")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Mitigations: {e}")
+        print(f"  ERR mitigations commit: {e}")
 
-    # ── 15. FIREFIGHTER ───────────────────────────────────────────────────────
+    # =========================================================
+    # 15. FIREFIGHTER REQUESTS + SESSIONS
+    # =========================================================
     print("\n[15/30] Creating firefighter data...")
     ff_requests = [
-        ("ffr-001", "u-ff-01",    "SAP ECC Production", "Critical month-end AP posting failure. Invoice stuck.",  "approved"),
-        ("ffr-002", "u-admin-01", "SAP ECC Production", "Emergency basis config for system outage resolution.",   "approved"),
-        ("ffr-003", "u-sec-01",   "SAP ECC Production", "Urgent vendor payment for emergency system maintenance.","pending"),
-        ("ffr-004", "u-hr-01",    "SAP HCM Production", "Emergency payroll correction for terminated employee.",   "rejected"),
+        ("ff-req-001", "u-ff-01",  "frank.controller", "frank_controller@acmecorp.com",
+         "Finance", "SAP_ECC", "ff-001", "Year-end close critical batch job failure", 240),
+        ("ff-req-002", "u-sec-01", "david.kim",         "david_kim@acmecorp.com",
+         "IT Security", "SAP_ECC", "ff-002", "Security patch deployment requires elevated access", 120),
+        ("ff-req-003", "u-admin-01","acme_admin",       "acme_admin@acmecorp.com",
+         "IT", "SAP_S4H", "ff-001", "Critical system configuration change for month-end", 60),
+        ("ff-req-004", "u-ff-01",  "frank.controller", "frank_controller@acmecorp.com",
+         "Finance", "SAP_ECC", "ff-001", "Emergency vendor payment processing", 180),
     ]
-    count_req = 0
-    for fr_id, user_id, sys_name, reason, status in ff_requests:
+    req_count = 0
+    for req_id, uid_str, uname, email, dept, sys, ff_id, reason, dur in ff_requests:
+        status = "approved" if req_id in ("ff-req-001", "ff-req-002") else "pending"
         try:
             db.execute(text("""
-                INSERT INTO firefighter_requests (id, tenant_id, request_id, requester_user_id,
-                    requester_name, requester_email, requester_department, target_system,
-                    reason, justification, status, priority, requested_at, created_at, updated_at)
-                VALUES (:id, :tid, :frid, :uid, 'Requester', :email, 'Finance',
-                    :sys, :reason, :reason, :status, 'high',
-                    :now, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": fr_id, "tid": TENANT_ID, "frid": fr_id, "uid": user_id,
-                   "email": f"{user_id}@acmecorp.com", "sys": sys_name,
-                   "reason": reason, "status": status,
-                   "now": dt(random.randint(1, 10))})
-            count_req += 1
+                INSERT INTO firefighter_requests (tenant_id, request_id,
+                    requester_user_id, requester_name, requester_email, requester_department,
+                    target_system, firefighter_id, reason, business_justification,
+                    requested_duration_minutes, status, priority,
+                    created_at, updated_at)
+                VALUES (:tid, :req,
+                    :uid, :uname, :email, :dept,
+                    :sys, :ff, :reason, :reason,
+                    :dur, :status, 'high',
+                    :now, :now)
+            """), {
+                "tid": TID, "req": req_id,
+                "uid": uid_str, "uname": uname, "email": email, "dept": dept,
+                "sys": sys, "ff": ff_id, "reason": reason,
+                "dur": dur, "status": status, "now": NOW,
+            })
+            req_count += 1
         except Exception as e:
             db.rollback()
-
-    # FF Session
-    count_sess = 0
+            print(f"    ERR FF request {req_id}: {e}")
+    # One active session
+    sess_count = 0
     try:
         db.execute(text("""
-            INSERT INTO firefighter_sessions (id, tenant_id, session_id, request_id,
-                requester_user_id, firefighter_id, target_system, start_time, end_time,
-                status, log_reviewed, created_at, updated_at)
-            VALUES (:id, :tid, 'ffs-001', 'ffr-001', 'u-ff-01',
-                'FF_ACME_FI', 'SAP ECC Production', :start, :end,
-                'completed', true, :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "ffs-001", "tid": TENANT_ID, "start": dt(5, 2), "end": dt(5, 0), "now": dt(5)})
-        count_sess = 1
+            INSERT INTO firefighter_sessions (tenant_id, session_id, request_id,
+                requester_user_id, firefighter_id, target_system,
+                start_time, scheduled_end_time, status, mfa_verified,
+                reason, created_at, updated_at)
+            VALUES (:tid, :sid, 'ff-req-001',
+                'u-ff-01', 'ff-001', 'SAP_ECC',
+                :start, :end, 'active', true,
+                'Year-end close critical batch job failure', :now, :now)
+        """), {
+            "tid": TID, "sid": f"ffs-{new_id()[:8]}",
+            "start": dt(hours=2), "end": dt(hours=-2), "now": NOW,
+        })
+        sess_count = 1
     except Exception as e:
         db.rollback()
-
+        print(f"    ERR FF session: {e}")
     try:
         db.commit()
-        results["firefighter_requests"] = count_req
-        results["firefighter_sessions"] = count_sess
-        print(f"  ✓ {count_req} FF requests, {count_sess} session")
+        print(f"  OK: {req_count} FF requests, {sess_count} session")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Firefighter: {e}")
+        print(f"  ERR FF commit: {e}")
 
-    # ── 16. CERTIFICATION CAMPAIGNS ───────────────────────────────────────────
+    # =========================================================
+    # 16. CERTIFICATION CAMPAIGNS
+    # =========================================================
     print("\n[16/30] Creating certification campaigns...")
     campaigns = [
-        ("cc-001", "Q4 2026 User Access Review",           "access_review",  "completed"),
-        ("cc-002", "SOX Critical Controls Certification",  "controls",       "active"),
-        ("cc-003", "Privileged Access Certification",      "access_review",  "draft"),
+        ("camp-001", "Q4 2026 Full Access Review",
+         "user_access", "in_progress", "u-comp-01", "Carl Compliance",
+         dt(30), dt(days=-30), 350, 280, 210, 70),
+        ("camp-002", "Critical SoD Violations Review",
+         "sod_violations", "completed", "u-ciso-01", "Clara CISO",
+         dt(90), dt(60), 45, 45, 38, 7),
+        ("camp-003", "SAP Super-User Access Review",
+         "privileged_access", "planning", "u-sec-01", "David Kim",
+         dt(days=-7), dt(days=-37), 12, 0, 0, 0),
     ]
     count = 0
-    for cc_id, name, ctype, status in campaigns:
+    for cid, name, ctype, status, oid, oname, start, end, total, comp, cert, rev in campaigns:
         try:
             db.execute(text("""
-                INSERT INTO certification_campaigns (id, campaign_id, tenant_id, name,
-                    description, campaign_type, status, owner_id,
-                    start_date, end_date, created_at, updated_at)
-                VALUES (:id, :cid, :tid, :name, :desc, :ctype, :status,
-                    'u-comp-01', :start, :end, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": cc_id, "cid": cc_id, "tid": TENANT_ID, "name": name,
-                   "desc": f"Certification: {name}", "ctype": ctype, "status": status,
-                   "start": dt(30), "end": dt(0) + datetime.timedelta(days=30), "now": dt(30)})
+                INSERT INTO certification_campaigns (tenant_id, campaign_id, name, description,
+                    campaign_type, status, owner_id, owner_name,
+                    start_date, end_date,
+                    total_items, completed_items, certified_count, revoked_count,
+                    included_systems, included_departments, risk_threshold,
+                    created_at)
+                VALUES (:tid, :cid, :name, :name,
+                    :ctype, :status, :oid, :oname,
+                    :start, :end,
+                    :total, :comp, :cert, :rev,
+                    :systems, :depts, 70,
+                    :now)
+            """), {
+                "tid": TID, "cid": cid, "name": name,
+                "ctype": ctype, "status": status,
+                "oid": oid, "oname": oname,
+                "start": start, "end": end,
+                "total": total, "comp": comp, "cert": cert, "rev": rev,
+                "systems": json.dumps(["SAP_ECC", "SAP_S4H"]),
+                "depts": json.dumps(["Finance", "HR", "IT", "Operations"]),
+                "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR campaign {cid}: {e}")
     try:
         db.commit()
-        results["certification_campaigns"] = count
-        print(f"  ✓ {count} certification campaigns")
+        print(f"  OK: {count} certification campaigns")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Certifications: {e}")
+        print(f"  ERR campaigns commit: {e}")
 
-    # ── 17. AUDIT MANAGEMENT ──────────────────────────────────────────────────
+    # =========================================================
+    # 17. AUDIT MANAGEMENT
+    # =========================================================
     print("\n[17/30] Creating audit management data...")
-
-    # Audit plan
-    count_plan = 0
+    # Audit Plan
+    plan_pk_val = None
     try:
-        db.execute(text("""
-            INSERT INTO audit_plans (id, tenant_id, plan_id, name, description,
-                plan_type, fiscal_year, period_start, period_end, status,
-                created_by, created_at, updated_at)
-            VALUES (:id, :tid, 'ap-001', 'FY2026 Internal Audit Plan',
-                'Annual risk-based internal audit plan for Acme Corporation FY2026',
-                'annual', 2026, :start, :end, 'approved', 'u-audit-01', :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "ap-001", "tid": TENANT_ID,
-               "start": dt(300), "end": dt(0) + datetime.timedelta(days=65), "now": dt(300)})
-        count_plan = 1
+        row = db.execute(text("""
+            INSERT INTO audit_plans (tenant_id, plan_id, name, description,
+                plan_type, fiscal_year, period_start, period_end,
+                total_audit_hours, allocated_budget, status,
+                prepared_by, created_at, updated_at)
+            VALUES (:tid, 'ap-2026', 'FY2026 Internal Audit Plan',
+                'Annual risk-based internal audit plan covering all key business processes',
+                'annual', 2026, :start, :end,
+                2400, 480000.0, 'approved',
+                'acme_auditor', :now, :now)
+            RETURNING id
+        """), {
+            "tid": TID, "start": dt(days=365), "end": dt(days=-365), "now": NOW,
+        }).fetchone()
+        plan_pk_val = row[0]
+        plan_pk = plan_pk_val
+        print("  OK: 1 audit plan")
     except Exception as e:
         db.rollback()
+        print(f"    ERR audit plan: {e}")
 
-    # Audit engagement
-    count_eng = 0
-    try:
-        db.execute(text("""
-            INSERT INTO audit_engagements (id, tenant_id, engagement_id, plan_id,
-                entity_id, title, objective, scope, engagement_type, status,
-                risk_rating, lead_auditor_id, start_date, end_date, created_at, updated_at)
-            VALUES (:id, :tid, 'eng-001', 'ap-001', 'ou-ap',
-                'AP SoD Controls Review',
-                'Review SoD controls in AP process and effectiveness of compensating controls',
-                'SAP ECC AP module, all AP users', 'controls', 'fieldwork',
-                'high', 'u-audit-01', :start, :end, :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "eng-001", "tid": TENANT_ID,
-               "start": dt(20), "end": dt(0) + datetime.timedelta(days=10), "now": dt(20)})
-        count_eng = 1
-    except Exception as e:
-        db.rollback()
-
-    # Audit findings
-    findings = [
-        ("af-001", "SoD Violation in AP",              "6 users have conflicting AP roles — create vendor AND approve payment. High fraud risk.", "critical", "open"),
-        ("af-002", "Vendor Master Change Control Weak", "Change approval bypassed 3 times. No detective control.",                                "high",     "in_progress"),
-        ("af-003", "Excessive System Access",           "4 finance users have SAP_ALL profile beyond business need.",                             "high",     "open"),
-    ]
-    count_find = 0
-    for fid, title, desc, sev, status in findings:
+    # Audit Engagement
+    eng_pk_val = None
+    if plan_pk_val:
         try:
-            db.execute(text("""
-                INSERT INTO audit_findings (id, tenant_id, finding_id, engagement_id,
-                    ref_number, title, condition, criteria, cause, effect,
-                    severity, status, owner_id, due_date, created_at, updated_at)
-                VALUES (:id, :tid, :fid, 'eng-001', :ref,
-                    :title, :desc, 'Control standards require SoD', 'Process failure',
-                    'Risk of unauthorized transactions', :sev, :status,
-                    'u-audit-01', :due, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": fid, "tid": TENANT_ID, "fid": fid,
-                   "ref": f"AF-2026-{fid[-3:]}", "title": title, "desc": desc,
-                   "sev": sev, "status": status,
-                   "due": dt(0) + datetime.timedelta(days=30), "now": dt(5)})
-            count_find += 1
+            row = db.execute(text("""
+                INSERT INTO audit_engagements (tenant_id, engagement_id, plan_id,
+                    title, objective, scope,
+                    engagement_type, status,
+                    lead_auditor_id, lead_auditor_name,
+                    team_members, planned_start, planned_end,
+                    budget_hours, risk_rating,
+                    created_at, updated_at)
+                VALUES (:tid, 'eng-001', :plan,
+                    'ERP Access Control & SoD Audit',
+                    'Evaluate the design and operating effectiveness of access controls and SoD policies in SAP ECC',
+                    'Finance, HR, IT departments; SAP ECC and S/4HANA systems',
+                    'performance', 'fieldwork',
+                    'acme_auditor', 'Alan Auditor',
+                    :team, :start, :end,
+                    320, 'high',
+                    :now, :now)
+                RETURNING id
+            """), {
+                "tid": TID, "plan": plan_pk_val,
+                "team": json.dumps(["Alan Auditor", "Clara CISO"]),
+                "start": dt(days=30), "end": dt(days=-7), "now": NOW,
+            }).fetchone()
+            eng_pk_val = row[0]
+            eng_pk["eng-001"] = eng_pk_val
+            print("  OK: 1 audit engagement")
         except Exception as e:
             db.rollback()
+            print(f"    ERR engagement: {e}")
 
+    # Audit Findings
+    findings_count = 0
+    if eng_pk_val:
+        findings = [
+            ("af-001", "Critical SoD Violation - AP Create + Approve",
+             "John Smith has both AP invoice creation and payment approval rights",
+             "SOX Section 404 requires SoD in all payment processes",
+             "Rapid user provisioning without SoD analysis",
+             "Unauthorized payments totalling ~AUD 250K processed in Q3",
+             "Immediately revoke AP Approve role from John Smith",
+             "critical", "Access Control"),
+            ("af-002", "User Access Review Overdue by 45 Days",
+             "Quarterly access review not completed within required timeframe",
+             "IT Security Policy requires quarterly access certification",
+             "Lack of automated workflow and reviewer accountability",
+             "12 users retain access to systems from prior roles",
+             "Implement automated campaign workflow with escalation",
+             "high", "Access Management"),
+            ("af-003", "Vendor Master Changes Without Dual Approval",
+             "5 vendor bank account changes made without secondary approval",
+             "Fraud prevention policy requires dual authorization",
+             "Control breakdown in vendor change process",
+             "Potential for fraudulent payment diversion",
+             "Implement system-enforced dual approval for vendor changes",
+             "high", "Vendor Management"),
+        ]
+        for fid, title, condition, criteria, cause, effect, rec, sev, cat in findings:
+            try:
+                db.execute(text("""
+                    INSERT INTO audit_findings (tenant_id, finding_id, engagement_id,
+                        title, condition, criteria, cause, effect, recommendation,
+                        severity, category, status,
+                        created_at, updated_at)
+                    VALUES (:tid, :fid, :eng,
+                        :title, :cond, :crit, :cause, :effect, :rec,
+                        :sev, :cat, 'open',
+                        :now, :now)
+                """), {
+                    "tid": TID, "fid": fid, "eng": eng_pk_val,
+                    "title": title, "cond": condition, "crit": criteria,
+                    "cause": cause, "effect": effect, "rec": rec,
+                    "sev": sev, "cat": cat, "now": NOW,
+                })
+                findings_count += 1
+            except Exception as e:
+                db.rollback()
+                print(f"    ERR finding {fid}: {e}")
     try:
         db.commit()
-        results["audit_plans"] = count_plan
-        results["audit_engagements"] = count_eng
-        results["audit_findings"] = count_find
-        print(f"  ✓ {count_plan} plan, {count_eng} engagement, {count_find} findings")
+        print(f"  OK: {findings_count} audit findings")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Audit: {e}")
+        print(f"  ERR audit commit: {e}")
 
-    # ── 18. JML ──────────────────────────────────────────────────────────────
+    # =========================================================
+    # 18. JML POLICIES + EVENTS
+    # =========================================================
     print("\n[18/30] Creating JML policies and events...")
     jml_policies = [
-        ("jml-pol-001", "Standard Joiner Policy",            "joiner",   "Provision birthright access on day 1"),
-        ("jml-pol-002", "Departmental Transfer Policy",      "mover",    "Adjust access within 24h of confirmed transfer"),
-        ("jml-pol-003", "Resignation Leaver Policy",         "leaver",   "Revoke all access on last working day"),
-        ("jml-pol-004", "Termination for Cause Policy",      "leaver",   "Immediate access revocation on termination"),
+        (new_id(), "New Hire Provisioning - Finance",
+         "JOINER", "Finance",
+         ["Z_FI_AP_CREATE", "Z_FI_GL_POST"],
+         ["{"action": "provision_roles", "roles": ["r-fi-ap-crt"]}'"]),
+        (new_id(), "New Hire Provisioning - IT",
+         "JOINER", "IT",
+         ["Z_BC_USER_ADMIN"],
+         []),
+        (new_id(), "Leaver Deprovisioning",
+         "LEAVER", None,
+         [],
+         []),
+        (new_id(), "Internal Transfer - Role Review",
+         "MOVER", None,
+         [],
+         []),
     ]
-    count = 0
-    for pol_id, name, ptype, desc in jml_policies:
+    # Simplified - just insert basic fields
+    pol_ids = []
+    pol_count = 0
+    for pid, name, etype, org, roles, actions in [
+        (new_id(), "New Hire Provisioning - Finance", "JOINER", "Finance",  ["Z_FI_AP_CREATE"], [{"action":"provision"}]),
+        (new_id(), "New Hire Provisioning - IT",      "JOINER", "IT",       ["Z_BC_USER_ADMIN"],[{"action":"provision"}]),
+        (new_id(), "Leaver Deprovisioning",            "LEAVER", None,       [],                 [{"action":"deprovision"}]),
+        (new_id(), "Internal Transfer - Role Review",  "MOVER",  None,       [],                 [{"action":"review"}]),
+    ]:
         try:
             db.execute(text("""
                 INSERT INTO jml_policies (id, tenant_id, policy_name, description,
-                    event_type, birthright_roles, is_active, created_at, updated_at)
-                VALUES (:id, :tid, :name, :desc, :ptype, :roles, true, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": pol_id, "tid": TENANT_ID, "name": name, "desc": desc,
-                   "ptype": ptype, "roles": json.dumps([]), "now": NOW})
-            count += 1
+                    event_type, org_unit, birthright_roles, actions, is_active,
+                    created_by, created_at, updated_at)
+                VALUES (:id, :tid, :name, :name,
+                    :etype, :org, :roles, :actions, true,
+                    'acme_admin', :now, :now)
+            """), {
+                "id": pid, "tid": TID, "name": name,
+                "etype": etype, "org": org,
+                "roles": json.dumps(roles), "actions": json.dumps(actions),
+                "now": NOW,
+            })
+            pol_ids.append(pid)
+            pol_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR JML policy: {e}")
 
+    ev_count = 0
     jml_events = [
-        ("jml-evt-001", "joiner", "EMP-2001", "Sarah Jones",    "AR Specialist",    "Accounts Receivable"),
-        ("jml-evt-002", "mover",  "EMP-1045", "Mike Chen",      "Procurement Lead", "Procurement"),
-        ("jml-evt-003", "leaver", "EMP-1078", "Lisa Wang",      "Treasury Analyst", "Treasury"),
-        ("jml-evt-004", "leaver", "EMP-1099", "Former Employee","",                 ""),
+        (new_id(), "JOINER", "EMP-2026-101", "James Wilson",   None,         "Finance Analyst",   "Finance",
+         dt(7), pol_ids[0] if pol_ids else None, "completed"),
+        (new_id(), "JOINER", "EMP-2026-102", "Emma Thompson",  None,         "IT Security Analyst","IT",
+         dt(14), pol_ids[1] if len(pol_ids)>1 else None, "completed"),
+        (new_id(), "LEAVER", "EMP-2023-055", "Robert Davis",   "AP Analyst", None,                None,
+         dt(3), pol_ids[2] if len(pol_ids)>2 else None, "completed"),
+        (new_id(), "MOVER",  "EMP-2021-033", "Jennifer Clark", "AR Analyst", "AP Manager",        "Finance",
+         dt(21), pol_ids[3] if len(pol_ids)>3 else None, "pending"),
     ]
-    count_evt = 0
-    for evt_id, etype, emp_id, name, pos, org in jml_events:
+    for eid, etype, emp_id, emp_name, old_pos, new_pos, new_org, eff, pol_id, status in jml_events:
         try:
             db.execute(text("""
-                INSERT INTO jml_events (id, tenant_id, event_type, employee_id,
-                    employee_name, new_position, new_org_unit, effective_date,
-                    status, created_at, updated_at)
-                VALUES (:id, :tid, :etype, :emp, :name, :pos, :org,
-                    :eff, 'completed', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": evt_id, "tid": TENANT_ID, "etype": etype, "emp": emp_id,
-                   "name": name, "pos": pos, "org": org,
-                   "eff": dt(random.randint(1, 20)), "now": dt(random.randint(0, 5))})
-            count_evt += 1
+                INSERT INTO jml_events (id, tenant_id, event_type,
+                    employee_id, employee_name, old_position, new_position,
+                    new_org_unit, effective_date, hr_system,
+                    status, matched_policy_id, actions_taken,
+                    created_at, updated_at)
+                VALUES (:id, :tid, :etype,
+                    :empid, :empname, :oldpos, :newpos,
+                    :neworg, :eff, 'Workday',
+                    :status, :polid, :actions,
+                    :now, :now)
+            """), {
+                "id": eid, "tid": TID, "etype": etype,
+                "empid": emp_id, "empname": emp_name,
+                "oldpos": old_pos, "newpos": new_pos,
+                "neworg": new_org, "eff": eff, "polid": pol_id,
+                "status": status,
+                "actions": json.dumps([{"action": "roles_reviewed", "result": "completed"}]),
+                "now": NOW,
+            })
+            ev_count += 1
         except Exception as e:
             db.rollback()
-
+            print(f"    ERR JML event: {e}")
     try:
         db.commit()
-        results["jml_policies"] = count
-        results["jml_events"] = count_evt
-        print(f"  ✓ {count} JML policies, {count_evt} events")
+        print(f"  OK: {pol_count} JML policies, {ev_count} events")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ JML: {e}")
+        print(f"  ERR JML commit: {e}")
 
-    # ── 19. TPRM ─────────────────────────────────────────────────────────────
+    # =========================================================
+    # 19. TPRM VENDORS
+    # =========================================================
     print("\n[19/30] Creating TPRM vendors...")
-    vendors = [
-        ("ven-001", "CloudSoft Solutions",     "V-CSO-001", "IT Services",  "critical", "active",    "high"),
-        ("ven-002", "Apex Consulting Group",   "V-ACG-002", "Consulting",   "high",     "active",    "medium"),
-        ("ven-003", "FastShip Logistics",      "V-FSL-003", "Logistics",    "medium",   "active",    "low"),
-        ("ven-004", "DataSafe Analytics",      "V-DSA-004", "Data Services","critical", "active",    "high"),
-        ("ven-005", "OfficeMax Supplies",      "V-OMS-005", "Procurement",  "low",      "active",    "low"),
-        ("ven-006", "TechMaint Systems",       "V-TMS-006", "Maintenance",  "high",     "suspended", "critical"),
+    v_ids = [new_id() for _ in range(6)]
+    vendors_data = [
+        (v_ids[0], "CloudSecure Pty Ltd",    "VEN-001", 1, 72.5, "Technology - Cloud Security"),
+        (v_ids[1], "DataVault Solutions",    "VEN-002", 1, 68.0, "Data Management"),
+        (v_ids[2], "Apex Consulting Group",  "VEN-003", 2, 55.0, "Professional Services"),
+        (v_ids[3], "TechBridge IT Services", "VEN-004", 2, 61.0, "IT Services"),
+        (v_ids[4], "Pinnacle Payroll Co",    "VEN-005", 1, 78.0, "Payroll Services"),
+        (v_ids[5], "Global Logistics Ltd",   "VEN-006", 3, 42.0, "Logistics"),
     ]
-    count = 0
-    for vid, name, vcode, cat, crit, status, risk in vendors:
+    v_count = 0
+    for vid, vname, vcode, tier, rscore, services in vendors_data:
         try:
             db.execute(text("""
                 INSERT INTO vendors (id, tenant_id, vendor_name, vendor_code,
-                    tier, status, contact_email, risk_rating, category,
+                    tier, status, risk_score,
+                    primary_contact, contact_email, country,
+                    services_provided,
+                    last_assessment_date, next_assessment_date,
                     created_at, updated_at)
-                VALUES (:id, :tid, :name, :vcode, :tier, :status,
-                    :email, :risk, :cat, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": vid, "tid": TENANT_ID, "name": name, "vcode": vcode,
-                   "tier": crit, "status": status,
-                   "email": f"vendor@{name.lower().replace(' ','-')}.com",
-                   "risk": risk, "cat": cat, "now": NOW})
-            count += 1
+                VALUES (:id, :tid, :name, :code,
+                    :tier, 'active', :rscore,
+                    'Primary Contact', :email, 'Australia',
+                    :services,
+                    :last, :next,
+                    :now, :now)
+            """), {
+                "id": vid, "tid": TID, "name": vname, "code": vcode,
+                "tier": tier, "rscore": rscore,
+                "email": f"contact@{vname.lower().replace(' ','-')[:20]}.com",
+                "services": json.dumps([services]),
+                "last": dt(days=90), "next": dt(days=-275), "now": NOW,
+            })
+            v_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR vendor {vname}: {e}")
 
-    count_va = 0
-    try:
-        db.execute(text("""
-            INSERT INTO vendor_assessments (id, tenant_id, vendor_id, assessment_name,
-                status, due_date, completed_date, overall_score, created_at, updated_at)
-            VALUES (:id, :tid, 'ven-001', 'Annual Security Assessment FY2026',
-                'completed', :due, :comp, 72, :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "va-001", "tid": TENANT_ID, "due": dt(50), "comp": dt(45), "now": dt(45)})
-        count_va = 1
-    except Exception as e:
-        db.rollback()
+    # One assessment
+    assess_id = new_id()
+    a_count = 0
+    if v_ids:
+        try:
+            db.execute(text("""
+                INSERT INTO vendor_assessments (id, tenant_id, vendor_id,
+                    assessment_name, status, sent_date, due_date,
+                    overall_score, risk_rating, assessor,
+                    created_at, updated_at)
+                VALUES (:id, :tid, :vid,
+                    'Annual Security Assessment 2026', 'completed', :sent, :due,
+                    72.5, 'medium', 'acme_compliance',
+                    :now, :now)
+            """), {
+                "id": assess_id, "tid": TID, "vid": v_ids[0],
+                "sent": dt(days=90), "due": dt(days=60), "now": NOW,
+            })
+            a_count = 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR vendor assessment: {e}")
 
-    count_vi = 0
-    try:
-        db.execute(text("""
-            INSERT INTO vendor_issues (id, tenant_id, vendor_id, issue_title,
-                description, severity, status, due_date, owner, resolution_notes,
-                created_at, updated_at)
-            VALUES (:id, :tid, 'ven-006',
-                'Data Access Breach During Maintenance',
-                'Vendor accessed client data outside contractual scope during maintenance window.',
-                'critical', 'open', :due, 'u-ciso-01', '', :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "vi-001", "tid": TENANT_ID, "due": dt(0) + datetime.timedelta(days=7), "now": dt(3)})
-        count_vi = 1
-    except Exception as e:
-        db.rollback()
-
+    # One issue
+    i_count = 0
+    if v_ids:
+        try:
+            db.execute(text("""
+                INSERT INTO vendor_issues (id, tenant_id, vendor_id,
+                    issue_title, description, severity, status,
+                    due_date, owner, created_at, updated_at)
+                VALUES (:id, :tid, :vid,
+                    'MFA Not Enforced on Vendor Portal',
+                    'Vendor does not enforce MFA for admin users accessing shared systems',
+                    'high', 'open',
+                    :due, 'acme_ciso', :now, :now)
+            """), {
+                "id": new_id(), "tid": TID, "vid": v_ids[0],
+                "due": dt(days=-30), "now": NOW,
+            })
+            i_count = 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR vendor issue: {e}")
     try:
         db.commit()
-        results["vendors"] = count
-        results["vendor_assessments"] = count_va
-        results["vendor_issues"] = count_vi
-        print(f"  ✓ {count} vendors, {count_va} assessment, {count_vi} issue")
+        print(f"  OK: {v_count} vendors, {a_count} assessment, {i_count} issue")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ TPRM: {e}")
+        print(f"  ERR TPRM commit: {e}")
 
-    # ── 20. FRAUD DETECTION ───────────────────────────────────────────────────
+    # =========================================================
+    # 20. FRAUD DETECTION
+    # =========================================================
     print("\n[20/30] Creating fraud detection data...")
+    fr_ids = [new_id() for _ in range(5)]
     fraud_rules_data = [
-        ("fr-001", "Duplicate Vendor Payment",       "payment_duplicate",   "Flags duplicate invoice numbers within 30 days",       5),
-        ("fr-002", "Round Dollar Amount Anomaly",    "payment_anomaly",     "Flags payments in exact round amounts",                 3),
-        ("fr-003", "After-Hours Transaction",        "access_anomaly",      "Flags financial transactions outside business hours",   4),
-        ("fr-004", "Dormant Account Activation",    "access_anomaly",      "Flags accounts inactive 90+ days suddenly active",      4),
-        ("fr-005", "Vendor Self-Approval",           "authorization_bypass","User approves payment to vendor they created",          8),
+        (fr_ids[0], "Round-Trip Payment Detection",      "BEHAVIORAL",  85.0),
+        (fr_ids[1], "Vendor Bank Account Change Pattern","THRESHOLD",   92.0),
+        (fr_ids[2], "Ghost Employee Detection",          "STATISTICAL", 88.0),
+        (fr_ids[3], "Duplicate Invoice Detection",       "THRESHOLD",   78.0),
+        (fr_ids[4], "SoD Conflict + Transaction Spike",  "BEHAVIORAL",  95.0),
     ]
-    count = 0
-    for frid, name, ftype, desc, score in fraud_rules_data:
+    r_count = 0
+    for rid, rname, rtype, rscore in fraud_rules_data:
         try:
             db.execute(text("""
-                INSERT INTO fraud_rules (id, tenant_id, rule_name, rule_type, description,
-                    conditions, risk_score, is_active, created_at, updated_at)
-                VALUES (:id, :tid, :name, :rtype, :desc, :conds, :score, true, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": frid, "tid": TENANT_ID, "name": name, "rtype": ftype,
-                   "desc": desc, "conds": json.dumps({"threshold": 3}),
-                   "score": score, "now": NOW})
-            count += 1
+                INSERT INTO fraud_rules (id, tenant_id, rule_name, rule_type,
+                    description, conditions, risk_score,
+                    is_active, alert_on_breach,
+                    created_by, created_at, updated_at)
+                VALUES (:id, :tid, :name, :rtype,
+                    :name, :cond, :score,
+                    true, true,
+                    'acme_ciso', :now, :now)
+            """), {
+                "id": rid, "tid": TID, "name": rname, "rtype": rtype,
+                "cond": json.dumps({"type": rtype.lower(), "threshold": rscore}),
+                "score": rscore, "now": NOW,
+            })
+            r_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR fraud rule: {e}")
 
+    # Fraud alerts
+    al_ids = [new_id() for _ in range(4)]
+    a_count = 0
     fraud_alerts_data = [
-        ("fa-001", "fr-001", "u-ap-01",  "Duplicate invoice INV-4421 detected — AUD 45,000", "high",     "open"),
-        ("fa-002", "fr-003", "u-mm-01",  "Purchase Order raised at 11:47 PM on Sunday",       "medium",   "investigating"),
-        ("fa-003", "fr-005", "u-ap-01",  "User approved payment to vendor they created",       "critical", "open"),
-        ("fa-004", "fr-002", "u-tr-01",  "3 payments of exactly AUD 10,000 in 7 days",         "high",     "open"),
+        (al_ids[0], fr_ids[0], "Round-trip payment pattern - John Smith", 85.0, "open"),
+        (al_ids[1], fr_ids[1], "Vendor bank account changed 3x in 7 days", 92.0, "investigating"),
+        (al_ids[2], fr_ids[4], "SoD user transaction spike - Frank Controller", 95.0, "open"),
+        (al_ids[3], fr_ids[2], "Payroll entry without corresponding HR record", 88.0, "closed"),
     ]
-    count_alert = 0
-    for fa_id, rule_id, user_id, desc, sev, status in fraud_alerts_data:
+    for aid, rule_id, desc, score, status in fraud_alerts_data:
         try:
             db.execute(text("""
-                INSERT INTO fraud_alerts (id, tenant_id, rule_id, user_id, system_id,
-                    alert_type, description, risk_score, status, triggered_at,
-                    created_at, updated_at)
-                VALUES (:id, :tid, :rid, :uid, 'SAP ECC',
-                    'sod_violation', :desc,
-                    :score, :status, :trig, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": fa_id, "tid": TENANT_ID, "rid": rule_id, "uid": user_id,
-                   "desc": desc, "score": 75 if sev == "critical" else 50 if sev == "high" else 30,
-                   "status": status, "trig": dt(random.randint(0, 7)), "now": NOW})
-            count_alert += 1
+                INSERT INTO fraud_alerts (id, tenant_id, rule_id,
+                    user_id, alert_type, description, risk_score, status,
+                    triggered_at, created_at)
+                VALUES (:id, :tid, :rid,
+                    'john.smith', 'behavioral_anomaly', :desc, :score, :status,
+                    :now, :now)
+            """), {
+                "id": aid, "tid": TID, "rid": rule_id,
+                "desc": desc, "score": score, "status": status, "now": dt(days=7),
+            })
+            a_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR fraud alert: {e}")
 
-    count_case = 0
+    # One fraud case
+    case_count = 0
     try:
         db.execute(text("""
-            INSERT INTO fraud_cases (id, tenant_id, case_reference,
-                title, description, severity, status, assigned_to,
-                linked_alert_ids, created_at, updated_at)
-            VALUES (:id, :tid, 'FC-2026-001',
-                'AP Vendor Self-Approval Investigation',
-                'Investigation into unauthorized vendor payment approvals by AP user. Potential exposure AUD 45,000.',
-                'critical', 'open', 'u-ciso-01',
-                :alerts, :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "fc-001", "tid": TENANT_ID,
-               "alerts": json.dumps(["fa-001", "fa-003"]), "now": dt(2)})
-        count_case = 1
+            INSERT INTO fraud_cases (id, tenant_id, case_reference, title,
+                description, severity, status, assigned_to,
+                linked_alert_ids, opened_at, loss_amount, created_at, updated_at)
+            VALUES (:id, :tid, 'FC-2026-001', 'Suspected Vendor Fraud - Acme P2P',
+                'Multiple indicators of vendor payment fraud detected in P2P cycle',
+                'high', 'investigating', 'acme_compliance',
+                :alerts, :opened, 250000.0, :now, :now)
+        """), {
+            "id": new_id(), "tid": TID,
+            "alerts": json.dumps([al_ids[0], al_ids[1]]),
+            "opened": dt(days=14), "now": NOW,
+        })
+        case_count = 1
     except Exception as e:
         db.rollback()
-
+        print(f"    ERR fraud case: {e}")
     try:
         db.commit()
-        results["fraud_rules"] = count
-        results["fraud_alerts"] = count_alert
-        results["fraud_cases"] = count_case
-        print(f"  ✓ {count} rules, {count_alert} alerts, {count_case} case")
+        print(f"  OK: {r_count} fraud rules, {a_count} alerts, {case_count} case")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Fraud: {e}")
+        print(f"  ERR fraud commit: {e}")
 
-    # ── 21. BCM ───────────────────────────────────────────────────────────────
+    # =========================================================
+    # 21. BCM DATA
+    # =========================================================
     print("\n[21/30] Creating BCM data...")
-    bias = [
-        ("bia-001", "Finance Payment Processing",   "critical", 4,  "ou-fin"),
-        ("bia-002", "SAP ECC Core Operations",      "critical", 2,  "ou-it"),
-        ("bia-003", "Payroll Processing",           "critical", 1,  "ou-hr"),
-        ("bia-004", "Procurement Ordering",         "high",     8,  "ou-proc"),
-        ("bia-005", "Customer Order Processing",    "high",     24, "ou-sales"),
+    bia_count = 0
+    bia_data = [
+        ("SAP ECC - Accounts Payable", 4, 0.5, 24.0),
+        ("SAP ECC - Payroll Processing", 5, 0.0, 4.0),
+        ("Treasury - Payment Processing", 5, 0.0, 2.0),
+        ("HR - Employee Onboarding", 3, 24.0, 72.0),
+        ("Procurement - Purchase Orders", 4, 4.0, 48.0),
     ]
-    count = 0
-    for bid, name, crit, rto, ou in bias:
+    for pname, crit, rpo, rto in bia_data:
         try:
             db.execute(text("""
                 INSERT INTO bia_records (id, tenant_id, process_name, process_owner,
-                    criticality, rto_hours, rpo_hours, mtpd_hours, dependencies,
-                    recovery_strategy, created_at, updated_at)
-                VALUES (:id, :tid, :name, :owner, :crit, :rto, :rpo, :mtpd,
-                    :deps, 'Manual fallback with pre-approved procedures', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": bid, "tid": TENANT_ID, "name": name, "owner": ou,
-                   "crit": crit, "rto": rto, "rpo": max(rto // 2, 1),
-                   "mtpd": rto * 2, "deps": json.dumps(["SAP ECC", "Network"]),
-                   "now": NOW})
-            count += 1
+                    criticality, rto_hours, rpo_hours, mtpd_hours,
+                    dependencies, recovery_strategy,
+                    impact_description, last_reviewed, created_at, updated_at)
+                VALUES (:id, :tid, :name, 'acme_risk',
+                    :crit, :rto, :rpo, :mtpd,
+                    :deps, 'Activate DR environment and failover procedures',
+                    'Critical business process; outage impacts revenue and compliance',
+                    :now, :now, :now)
+            """), {
+                "id": new_id(), "tid": TID, "name": pname,
+                "crit": ["low","low","medium","high","critical"][crit-1],
+                "rto": rto, "rpo": rpo, "mtpd": rto * 2,
+                "deps": json.dumps(["SAP ECC", "Network", "Active Directory"]),
+                "now": dt(days=45),
+            })
+            bia_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR BIA {pname}: {e}")
 
+    bcm_plan_ids = [new_id(), new_id(), new_id()]
+    plan_count = 0
     bcm_plans_data = [
-        ("bcp-001", "SAP ECC Business Continuity Plan",    "it_disaster_recovery", "approved"),
-        ("bcp-002", "Finance Operations Continuity Plan",  "business_continuity",  "approved"),
-        ("bcp-003", "HR Payroll Contingency Plan",         "business_continuity",  "draft"),
+        (bcm_plan_ids[0], "IT Disaster Recovery Plan",             "DR",    "active"),
+        (bcm_plan_ids[1], "Business Continuity Plan - Finance",    "BCP",   "active"),
+        (bcm_plan_ids[2], "Crisis Management Plan",                "CRISIS","draft"),
     ]
-    count_plan = 0
-    for bp_id, name, ptype, status in bcm_plans_data:
+    for pid, pname, ptype, pstatus in bcm_plans_data:
         try:
             db.execute(text("""
                 INSERT INTO bcm_plans (id, tenant_id, plan_name, plan_type,
-                    scope, owner, version, status, created_at, updated_at)
-                VALUES (:id, :tid, :name, :ptype, 'All critical business processes',
-                    'u-admin-01', '1.0', :status, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": bp_id, "tid": TENANT_ID, "name": name, "ptype": ptype,
-                   "status": status, "now": dt(90)})
-            count_plan += 1
+                    scope, owner, version, status,
+                    last_tested, next_test_date,
+                    call_tree, recovery_steps,
+                    created_at, updated_at)
+                VALUES (:id, :tid, :name, :ptype,
+                    'All business-critical systems and processes', 'acme_risk',
+                    '2.1', :status,
+                    :last, :next,
+                    :tree, :steps,
+                    :now, :now)
+            """), {
+                "id": pid, "tid": TID, "name": pname, "ptype": ptype,
+                "status": pstatus,
+                "last": dt(days=90), "next": dt(days=-275),
+                "tree": json.dumps([{"role":"CIO","contact":"cio@acmecorp.com"}]),
+                "steps": json.dumps([{"step":1,"action":"Activate incident response"},
+                                     {"step":2,"action":"Notify stakeholders"},
+                                     {"step":3,"action":"Failover to DR site"}]),
+                "now": NOW,
+            })
+            plan_count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR BCM plan {pname}: {e}")
 
-    count_ex = 0
+    # BCM exercise
+    ex_count = 0
     try:
         db.execute(text("""
-            INSERT INTO bcm_test_exercises (id, tenant_id, plan_id, exercise_name,
-                exercise_type, scheduled_date, completed_date, facilitator,
-                participants, outcome, created_at, updated_at)
-            VALUES (:id, :tid, 'bcp-001', 'SAP Failover Tabletop Exercise',
-                'tabletop', :sched, :comp, 'u-admin-01',
-                :parts, 'successful', :now, :now)
-            ON CONFLICT DO NOTHING
-        """), {"id": "bce-001", "tid": TENANT_ID,
-               "sched": dt(60), "comp": dt(59),
-               "parts": json.dumps(["u-admin-01", "u-ciso-01", "u-risk-01"]),
-               "now": dt(59)})
-        count_ex = 1
+            INSERT INTO bcm_test_exercises (id, tenant_id, plan_id,
+                exercise_name, exercise_type, scheduled_date, completed_date,
+                facilitator, participants, outcome, findings, lessons_learned,
+                created_at, updated_at)
+            VALUES (:id, :tid, :pid,
+                'Q3 2026 DR Tabletop Exercise', 'TABLETOP', :sched, :comp,
+                'acme_risk',
+                :part, 'PASS',
+                'All recovery procedures executed within RTO. Minor gaps in communication tree.',
+                'Update call tree with current mobile numbers; Test actual failover annually',
+                :now, :now)
+        """), {
+            "id": new_id(), "tid": TID, "pid": bcm_plan_ids[0],
+            "sched": dt(days=90), "comp": dt(days=88),
+            "part": json.dumps(["CIO","CFO","CISO","IT Operations"]),
+            "now": dt(days=88),
+        })
+        ex_count = 1
     except Exception as e:
         db.rollback()
-
+        print(f"    ERR BCM exercise: {e}")
     try:
         db.commit()
-        results["bia_records"] = count
-        results["bcm_plans"] = count_plan
-        results["bcm_test_exercises"] = count_ex
-        print(f"  ✓ {count} BIA, {count_plan} BCM plans, {count_ex} exercise")
+        print(f"  OK: {bia_count} BIA, {plan_count} BCM plans, {ex_count} exercise")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ BCM: {e}")
+        print(f"  ERR BCM commit: {e}")
 
-    # ── 22. WHISTLEBLOWER ─────────────────────────────────────────────────────
+    # =========================================================
+    # 22. WHISTLEBLOWER CASES
+    # =========================================================
     print("\n[22/30] Creating whistleblower cases...")
-    wb_cases = [
-        ("wb-001", "REF-2026-WB-001", "fraud",           "critical", "investigating",
-         "Suspected vendor kickback in procurement. Manager approving inflated invoices from related party."),
-        ("wb-002", "REF-2026-WB-002", "policy_violation","high",     "open",
-         "Manager requesting inappropriate system access for personal use outside job scope."),
-        ("wb-003", "REF-2026-WB-003", "fraud",           "high",     "resolved",
-         "Possible payroll manipulation. Ghost employee on payroll for 3 months after termination."),
+    wb_data = [
+        ("WB-2026-001", "FINANCIAL_MISCONDUCT", "Suspected P2P Fraud",
+         "Concerns raised about vendor payment patterns in Q3", "high", "investigating"),
+        ("WB-2026-002", "ACCESS_CONTROL", "Unauthorized System Access",
+         "Employee observed accessing restricted SAP transactions", "medium", "under_review"),
+        ("WB-2026-003", "HR_MISCONDUCT", "Payroll Irregularities",
+         "Unexplained payroll adjustments for terminated employees", "high", "closed"),
     ]
     count = 0
-    for wc_id, ref, cat, priority, status, details in wb_cases:
+    for ref, cat, summary, details, priority, status in wb_data:
         try:
             db.execute(text("""
                 INSERT INTO whistleblower_cases (id, tenant_id, case_reference,
-                    category, submission_channel, summary, details, priority,
-                    status, is_anonymous, submitted_at, created_at, updated_at)
-                VALUES (:id, :tid, :ref, :cat, 'web_portal',
-                    :summary, :details, :priority, :status, true,
-                    :now, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": wc_id, "tid": TENANT_ID, "ref": ref, "cat": cat,
-                   "summary": details[:80], "details": details,
-                   "priority": priority, "status": status,
-                   "now": dt(random.randint(3, 30))})
+                    category, submission_channel, summary, details,
+                    submitted_at, is_anonymous, status,
+                    assigned_to, priority, created_at, updated_at)
+                VALUES (:id, :tid, :ref,
+                    :cat, 'web_portal', :summary, :details,
+                    :sub, true, :status,
+                    'acme_compliance', :priority, :now, :now)
+            """), {
+                "id": new_id(), "tid": TID, "ref": ref,
+                "cat": cat, "summary": summary, "details": details,
+                "sub": dt(days=21), "status": status, "priority": priority, "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR whistleblower {ref}: {e}")
     try:
         db.commit()
-        results["whistleblower_cases"] = count
-        print(f"  ✓ {count} whistleblower cases")
+        print(f"  OK: {count} whistleblower cases")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Whistleblower: {e}")
+        print(f"  ERR whistleblower commit: {e}")
 
-    # ── 23. SURVEYS ───────────────────────────────────────────────────────────
+    # =========================================================
+    # 23. SURVEYS
+    # =========================================================
     print("\n[23/30] Creating surveys...")
-    surveys_data = [
-        ("sv-001", "Q4 2026 IT Security Awareness Survey",
-         "Annual survey measuring staff IT security awareness",
-         "awareness", "active"),
-        ("sv-002", "Control Owner Attestation Survey - Q4 2026",
-         "Quarterly attestation by control owners confirming control effectiveness",
-         "attestation", "active"),
-        ("sv-003", "Post-Incident Employee Survey",
-         "Survey following the Q3 SAP outage incident to capture lessons learned",
-         "assessment", "completed"),
+    surveys = [
+        ("GRC Awareness Survey Q4 2026",
+         "Measure employee awareness of GRC policies and controls",
+         "AWARENESS", "active"),
+        ("Access Control Policy Acknowledgment",
+         "Annual acknowledgment of access control and acceptable use policies",
+         "COMPLIANCE", "completed"),
+        ("Risk Culture Assessment 2026",
+         "Assess organizational risk culture and appetite understanding",
+         "RISK_CULTURE", "draft"),
     ]
     count = 0
-    for sv_id, name, desc, stype, status in surveys_data:
+    for sname, sdesc, stype, sstatus in surveys:
         try:
             db.execute(text("""
                 INSERT INTO standalone_surveys (id, tenant_id, survey_name, description,
-                    survey_type, questions, status, created_by, created_at, updated_at)
-                VALUES (:id, :tid, :name, :desc, :stype, :questions, :status,
-                    'u-ciso-01', :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": sv_id, "tid": TENANT_ID, "name": name, "desc": desc,
-                   "stype": stype, "status": status,
-                   "questions": json.dumps([
-                       {"q": "How often do you change your password?", "type": "multiple_choice"},
-                       {"q": "Have you completed security awareness training?", "type": "yes_no"},
-                   ]),
-                   "now": dt(random.randint(5, 15))})
+                    survey_type, status, created_by, survey_created_at,
+                    due_date, allow_anonymous, questions,
+                    created_at, updated_at)
+                VALUES (:id, :tid, :name, :desc,
+                    :stype, :status, 'acme_compliance', :now,
+                    :due, true,
+                    :questions,
+                    :now, :now)
+            """), {
+                "id": new_id(), "tid": TID, "name": sname, "desc": sdesc,
+                "stype": stype, "status": sstatus, "now": NOW,
+                "due": dt(days=-30),
+                "questions": json.dumps([
+                    {"id": "q1", "text": "Do you understand your access control responsibilities?",
+                     "type": "rating", "scale": 5},
+                    {"id": "q2", "text": "Have you completed your mandatory GRC training?",
+                     "type": "yes_no"},
+                    {"id": "q3", "text": "Comments on risk management culture",
+                     "type": "text"},
+                ]),
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR survey {sname}: {e}")
     try:
         db.commit()
-        results["standalone_surveys"] = count
-        print(f"  ✓ {count} surveys")
+        print(f"  OK: {count} surveys")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Surveys: {e}")
+        print(f"  ERR surveys commit: {e}")
 
-    # ── 24. POLICY DOCUMENTS ──────────────────────────────────────────────────
+    # =========================================================
+    # 24. POLICY DOCUMENTS
+    # =========================================================
     print("\n[24/30] Creating policy documents...")
     policies = [
-        ("pol-001", "Information Security Policy",        "security",   "approved"),
-        ("pol-002", "Access Control Policy",              "access",     "approved"),
-        ("pol-003", "Segregation of Duties Policy",       "access",     "approved"),
-        ("pol-004", "Privileged Access Management Policy","access",     "approved"),
-        ("pol-005", "Data Classification Policy",         "data",       "in_review"),
-        ("pol-006", "Incident Response Policy",           "security",   "approved"),
-        ("pol-007", "Vendor Risk Management Policy",      "risk",       "approved"),
-        ("pol-008", "Business Continuity Policy",         "operations", "approved"),
+        ("pol-001", "Information Security Policy",
+         "security", "ISO27001-A.5", "approved"),
+        ("pol-002", "Access Control Policy",
+         "access", "ISO27001-A.9", "approved"),
+        ("pol-003", "Segregation of Duties Policy",
+         "governance", "SOX-ITGC-001", "approved"),
+        ("pol-004", "Vendor Management Policy",
+         "procurement", "ISO27001-A.15", "approved"),
+        ("pol-005", "Business Continuity Policy",
+         "continuity", "ISO22301", "under_review"),
+        ("pol-006", "Data Protection & Privacy Policy",
+         "privacy", "GDPR-Art5", "approved"),
+        ("pol-007", "Change Management Policy",
+         "technology", "ITIL-CHM", "draft"),
+        ("pol-008", "Incident Response Policy",
+         "security", "NIST-IR", "approved"),
     ]
     count = 0
-    for pol_id, title, ptype, status in policies:
+    for pid, title, ptype, reg_id, status in policies:
         try:
             db.execute(text("""
-                INSERT INTO policy_documents (id, tenant_id, policy_id, title,
-                    description, policy_type, content, status, version,
-                    owner_id, effective_date, review_date, created_at, updated_at)
-                VALUES (:id, :tid, :pid, :title, :desc, :ptype, :content,
-                    :status, '2.0', 'u-comp-01', :eff, :rev, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": pol_id, "tid": TENANT_ID, "pid": pol_id,
-                   "title": title, "desc": f"Acme Corporation {title}",
-                   "ptype": ptype,
-                   "content": f"# {title}\n\nThis policy applies to all Acme Corporation employees and contractors...",
-                   "status": status, "eff": dt(180),
-                   "rev": dt(0) + datetime.timedelta(days=185),
-                   "now": dt(180)})
-            count += 1
-        except Exception as e:
-            db.rollback()
-    try:
-        db.commit()
-        results["policy_documents"] = count
-        print(f"  ✓ {count} policies")
-    except Exception as e:
-        db.rollback()
-        print(f"  ✗ Policies: {e}")
-
-    # ── 25. NOTIFICATION PREFERENCES ─────────────────────────────────────────
-    print("\n[25/30] Creating notification preferences...")
-    count = 0
-    for user_id in ["u-admin-01", "u-ciso-01", "u-comp-01", "u-risk-01", "u-audit-01"]:
-        try:
-            db.execute(text("""
-                INSERT INTO notification_preferences (id, tenant_id, user_id,
-                    email_enabled, slack_enabled, slack_channel, disabled_types,
+                INSERT INTO policy_documents (tenant_id, policy_id, title, description,
+                    policy_type, regulation_id, content, version, status,
+                    author_name, approved_by, published_at, effective_date,
                     created_at, updated_at)
-                VALUES (:id, :tid, :uid, true, false, '', :disabled, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": uid(), "tid": TENANT_ID, "uid": user_id,
-                   "disabled": json.dumps([]), "now": NOW})
+                VALUES (:tid, :pid, :title, :title,
+                    :ptype, :reg, :content, 1, :status,
+                    'Carl Compliance', 'Board of Directors', :pub, :eff,
+                    :now, :now)
+            """), {
+                "tid": TID, "pid": pid, "title": title,
+                "ptype": ptype, "reg": reg_id,
+                "content": f"This policy establishes requirements for {title.lower()} "
+                            f"across all Acme Corporation systems and processes.",
+                "status": status, "pub": dt(days=180), "eff": dt(days=180), "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR policy {pid}: {e}")
     try:
         db.commit()
-        results["notification_preferences"] = count
-        print(f"  ✓ {count} notification preferences")
+        print(f"  OK: {count} policy documents")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Notifications: {e}")
+        print(f"  ERR policies commit: {e}")
 
-    # ── 26. SYNC CONFIGS (System Connectors) ─────────────────────────────────
+    # =========================================================
+    # 25. NOTIFICATION PREFERENCES
+    # =========================================================
+    print("\n[25/30] Creating notification preferences...")
+    notif_users = [
+        ("u-admin-01", "acme_admin"),
+        ("u-ciso-01",  "acme_ciso"),
+        ("u-comp-01",  "acme_compliance"),
+        ("u-risk-01",  "acme_risk"),
+        ("u-audit-01", "acme_auditor"),
+    ]
+    count = 0
+    for uid_str, uname in notif_users:
+        try:
+            db.execute(text("""
+                INSERT INTO notification_preferences (tenant_id, user_id,
+                    email_enabled, slack_enabled, slack_channel,
+                    disabled_types, created_at, updated_at)
+                VALUES (:tid, :uid,
+                    true, false, :channel,
+                    :disabled, :now, :now)
+            """), {
+                "tid": TID, "uid": uid_str,
+                "channel": f"#grc-{uname}",
+                "disabled": json.dumps([]),
+                "now": NOW,
+            })
+            count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"    ERR notification {uname}: {e}")
+    try:
+        db.commit()
+        print(f"  OK: {count} notification preferences")
+    except Exception as e:
+        db.rollback()
+        print(f"  ERR notifications commit: {e}")
+
+    # =========================================================
+    # 26. SYNC CONFIGS
+    # =========================================================
     print("\n[26/30] Creating system connectors...")
-    sync_configs = [
-        ("sc-001", "SAP ECC 6.0 Production",  "sap_ecc",    "10.0.1.100", "active"),
-        ("sc-002", "SAP S/4HANA Development", "sap_s4hana", "10.0.1.101", "active"),
-        ("sc-003", "Azure Active Directory",  "azure_ad",   "graph.microsoft.com", "active"),
-        ("sc-004", "ServiceNow ITSM",         "servicenow", "acme.service-now.com","inactive"),
+    syncs = [
+        ("sync-sap-ecc", "SAP ECC 6.0",        "SAP_ECC",  "inbound",  15, "success", dt(hours=1)),
+        ("sync-sap-s4h", "SAP S/4HANA 2023",   "SAP_S4H",  "inbound",  30, "success", dt(hours=1)),
+        ("sync-workday",  "Workday HCM",        "WORKDAY",  "inbound",  60, "success", dt(hours=2)),
+        ("sync-ad",       "Active Directory",   "LDAP",     "inbound",  5,  "success", dt(hours=0)),
     ]
     count = 0
-    for sc_id, name, stype, host, status in sync_configs:
+    for cid, sname, stype, direction, sched, lstatus, lastsync in syncs:
         try:
             db.execute(text("""
-                INSERT INTO sync_configs (id, tenant_id, config_id, system_name,
-                    system_type, direction, status, schedule_minutes,
-                    last_sync_at, created_at, updated_at)
-                VALUES (:id, :tid, :cid, :name, :stype, 'bidirectional',
-                    :status, 1440, :last, :now, :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": sc_id, "tid": TENANT_ID, "cid": sc_id, "name": name,
-                   "stype": stype, "status": status, "last": dt(1), "now": NOW})
+                INSERT INTO sync_configs (tenant_id, config_id, system_name, system_type,
+                    direction, status, schedule_minutes,
+                    last_sync_at, last_sync_status, objects_synced,
+                    sync_scope, connection_config, created_at, updated_at)
+                VALUES (:tid, :cid, :sname, :stype,
+                    :dir, 'active', :sched,
+                    :lastsync, :lstatus, :objs,
+                    :scope, :conn, :now, :now)
+            """), {
+                "tid": TID, "cid": cid, "sname": sname, "stype": stype,
+                "dir": direction, "sched": sched,
+                "lastsync": lastsync, "lstatus": lstatus,
+                "objs": 1250 if stype in ("SAP_ECC", "SAP_S4H") else 450,
+                "scope": json.dumps({"objects": ["users","roles","authorizations"]}),
+                "conn": json.dumps({"host": "erp.acmecorp.com", "client": "100",
+                                    "mode": "rfc", "encrypted": True}),
+                "now": NOW,
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR sync config {cid}: {e}")
     try:
         db.commit()
-        results["sync_configs"] = count
-        print(f"  ✓ {count} system connectors")
+        print(f"  OK: {count} system connectors")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Sync configs: {e}")
+        print(f"  ERR sync configs commit: {e}")
 
-    # ── 27. AUDIT LOGS ────────────────────────────────────────────────────────
+    # =========================================================
+    # 27. AUDIT LOGS
+    # =========================================================
     print("\n[27/30] Creating audit log entries...")
-    audit_actions = [
-        ("u-admin-01",  "acme_admin",       "USER_CREATE",          "user",          "u-ap-01",   "Created user john.smith"),
-        ("u-admin-01",  "acme_admin",       "ROLE_ASSIGN",          "user_role",     "r-fi-ap-full","Assigned Z_FI_AP_FULL to john.smith"),
-        ("u-ciso-01",   "acme_ciso",        "VIOLATION_REVIEW",     "risk_violation","vio-001",   "Reviewed critical SoD violation"),
-        ("u-comp-01",   "acme_compliance",  "CERT_LAUNCH",          "certification", "cc-002",    "Launched SOX certification campaign"),
-        ("u-mgr-01",    "acme_manager",     "ACCESS_APPROVE",       "access_request","ar-req-001","Approved GL posting access request"),
-        ("u-audit-01",  "acme_auditor",     "FINDING_CREATE",       "audit_finding", "af-001",    "Logged critical AP SoD finding"),
-        ("u-ap-01",     "john.smith",       "LOGIN",                "session",       "u-ap-01",   "User login from 10.0.1.50"),
-        ("u-ff-01",     "frank.controller", "FF_SESSION_START",     "ff_session",    "ffs-001",   "Started firefighter session FF_ACME_FI"),
-        ("u-admin-01",  "acme_admin",       "POLICY_PUBLISH",       "policy",        "pol-001",   "Published Information Security Policy v2.0"),
-        ("u-risk-01",   "acme_risk",        "RISK_UPDATE",          "enterprise_risk","er-001",   "Updated risk residual score"),
+    log_entries = [
+        ("acme_admin",    "CREATE",  "tenant_management", "tenant",         TID,           "Acme Corporation Ltd"),
+        ("acme_admin",    "CREATE",  "user_management",   "user",           "u-admin-01",  "Adam Admin"),
+        ("acme_admin",    "CREATE",  "user_management",   "user",           "u-ciso-01",   "Clara CISO"),
+        ("acme_admin",    "ASSIGN",  "access_management", "role_assignment","u-ap-01",     "John Smith -> Z_FI_AP_FULL"),
+        ("acme_ciso",     "TRIGGER", "risk_analysis",     "sod_scan",       "scan-001",    "Full SoD Analysis - Acme Corp"),
+        ("system",        "DETECT",  "risk_analysis",     "violation",      "v-001",       "SoD: AP Create + Approve - John Smith"),
+        ("acme_compliance","REVIEW", "certification",     "campaign",       "camp-001",    "Q4 2026 Full Access Review"),
+        ("acme_auditor",  "CREATE",  "audit_management",  "finding",        "af-001",      "Critical SoD Violation Finding"),
+        ("frank.controller","LOGIN", "authentication",    "session",        "sess-001",    "User login from 10.0.1.15"),
+        ("system",        "ALERT",   "fraud_detection",   "fraud_alert",    al_ids[0],     "Round-trip payment pattern detected"),
     ]
     count = 0
-    for user_id, username, action, target_type, target_id, desc in audit_actions:
+    for actor, action, category, ttype, tid_str, tname in log_entries:
         try:
             db.execute(text("""
-                INSERT INTO audit_logs (id, tenant_id, timestamp, action, action_category,
-                    actor_user_id, actor_username, actor_type, target_type, target_id,
-                    target_name, ip_address, created_at)
-                VALUES (:id, :tid, :ts, :action, 'user_action',
-                    :uid, :uname, 'internal_user', :ttype, :tid2,
-                    :desc, '10.0.0.1', :now)
-                ON CONFLICT DO NOTHING
-            """), {"id": uid(), "tid": TENANT_ID, "ts": dt(random.randint(0, 30)),
-                   "action": action, "uid": user_id, "uname": username,
-                   "ttype": target_type, "tid2": target_id, "desc": desc, "now": NOW})
+                INSERT INTO audit_logs (timestamp, action, action_category,
+                    actor_username, actor_type,
+                    target_type, target_id, target_name,
+                    source_system, source_ip, success,
+                    details)
+                VALUES (:ts, :action, :cat,
+                    :actor, :atype,
+                    :ttype, :tid, :tname,
+                    'GovernexPlus', '10.0.1.15', true,
+                    :details)
+            """), {
+                "ts": dt(days=1), "action": action, "cat": category,
+                "actor": actor, "atype": "human" if actor != "system" else "system",
+                "ttype": ttype, "tid": tid_str, "tname": tname,
+                "details": json.dumps({"tenant": TID, "result": "success"}),
+            })
             count += 1
         except Exception as e:
             db.rollback()
+            print(f"    ERR audit log: {e}")
     try:
         db.commit()
-        results["audit_logs"] = count
-        print(f"  ✓ {count} audit log entries")
+        print(f"  OK: {count} audit log entries")
     except Exception as e:
         db.rollback()
-        print(f"  ✗ Audit logs: {e}")
+        print(f"  ERR audit logs commit: {e}")
 
-    # ── 28. SAP SECURITY CONTROLS ─────────────────────────────────────────────
+    # =========================================================
+    # 28. CHECK SAP SECURITY CONTROLS
+    # =========================================================
     print("\n[28/30] Checking SAP security controls...")
     try:
-        existing = db.execute(text("SELECT COUNT(*) FROM sap_security_controls")).scalar()
-        results["sap_security_controls"] = existing
-        print(f"  ✓ {existing} SAP security controls (pre-seeded by ANAO import)")
+        row = db.execute(text(
+            "SELECT COUNT(*) FROM sap_security_controls WHERE tenant_id IS NULL OR tenant_id = ''")
+        ).fetchone()
+        global_count = row[0]
+        row2 = db.execute(text("SELECT COUNT(*) FROM sap_security_controls")).fetchone()
+        print(f"  OK: {row2[0]} SAP security controls (global library)")
     except Exception as e:
-        print(f"  ✗ {e}")
-        results["sap_security_controls"] = 0
+        print(f"  INFO: {e}")
 
-    # ── 29. TEMPLATE LIBRARY ──────────────────────────────────────────────────
+    # =========================================================
+    # 29. CHECK TEMPLATE LIBRARY
+    # =========================================================
     print("\n[29/30] Checking template library...")
     try:
-        existing = db.execute(text("SELECT COUNT(*) FROM template_items")).scalar()
-        results["template_items"] = existing
-        print(f"  ✓ {existing} template items (pre-seeded by library seeder)")
+        row = db.execute(text("SELECT COUNT(*) FROM template_items")).fetchone()
+        print(f"  OK: {row[0]} template items (pre-seeded by library seeder)")
     except Exception as e:
-        print(f"  ✗ {e}")
-        results["template_items"] = 0
+        print(f"  INFO: {e}")
 
-    # ── 30. TENANT RULE PREFERENCES ───────────────────────────────────────────
-    print("\n[30/30] Creating tenant rule preferences...")
+    # =========================================================
+    # 30. CHECK PLATFORM USERS (admin login)
+    # =========================================================
+    print("\n[30/30] Verifying tenant admin login capability...")
     try:
-        count_rules = db.execute(text("SELECT COUNT(*) FROM risk_rule_models WHERE tenant_id = :tid"), {"tid": TENANT_ID}).scalar()
-        if count_rules == 0:
-            for i, (rule_id, name, sev) in enumerate([
-                ("SoD-FI-001", "Create Vendor AND Approve Payment",         "critical"),
-                ("SoD-FI-003", "Post JE AND Approve JE",                    "high"),
-                ("SoD-MM-003", "Create PO AND Post GR",                     "high"),
-                ("SoD-HR-001", "Maintain Employee AND Process Payroll",      "critical"),
-                ("SoD-SD-005", "Create SO AND Release Billing",             "medium"),
-                ("SoD-TR-001", "Initiate Payment AND Release Treasury Run",  "critical"),
-            ]):
-                try:
-                    db.execute(text("""
-                        INSERT INTO risk_rule_models (id, tenant_id, rule_id, rule_name,
-                            severity, is_active, created_at, updated_at)
-                        VALUES (:id, :tid, :rid, :rname, :sev, true, :now, :now)
-                        ON CONFLICT DO NOTHING
-                    """), {"id": uid(), "tid": TENANT_ID, "rid": rule_id,
-                           "rname": name, "sev": sev, "now": NOW})
-                except Exception:
-                    db.rollback()
-            db.commit()
-            count_rules = 6
-        results["risk_rule_models"] = count_rules
-        print(f"  ✓ {count_rules} risk rules active")
+        row = db.execute(text(
+            "SELECT user_id, username, password_hash FROM users "
+            "WHERE tenant_id = :tid AND username = 'acme_admin'"
+        ), {"tid": TID}).fetchone()
+        if row:
+            print(f"  OK: Admin user '{row[1]}' ready (user_id={row[0]})")
+        else:
+            print("  WARN: Admin user not found")
     except Exception as e:
-        db.rollback()
-        print(f"  ✗ Risk rules: {e}")
-        results["risk_rule_models"] = 0
+        print(f"  ERR: {e}")
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # =========================================================
+    # VALIDATION
+    # =========================================================
+    tables_to_check = [
+        "tenants", "users", "roles", "user_roles",
+        "risk_violations", "org_units", "enterprise_risks",
+        "key_risk_indicators", "risk_appetites", "risk_incidents",
+        "process_controls", "control_tests", "control_deficiencies",
+        "mitigation_controls", "firefighter_requests", "firefighter_sessions",
+        "certification_campaigns",
+        "audit_plans", "audit_engagements", "audit_findings",
+        "jml_policies", "jml_events",
+        "vendors", "vendor_assessments", "vendor_issues",
+        "fraud_rules", "fraud_alerts", "fraud_cases",
+        "bia_records", "bcm_plans", "bcm_test_exercises",
+        "whistleblower_cases", "standalone_surveys",
+        "policy_documents", "notification_preferences", "sync_configs",
+        "audit_logs", "sap_security_controls", "template_items",
+    ]
+
     print("\n" + "=" * 60)
-    print("VALIDATION — Row Counts Per Table")
+    print("VALIDATION -- Row Counts Per Table")
     print("=" * 60)
-    total = sum(results.values())
-    ok = sum(1 for v in results.values() if v > 0)
-    for table, count in sorted(results.items()):
-        icon = "✓" if count > 0 else "✗"
-        print(f"  {icon}  {table:<40} {count:>5} rows")
+    total_rows = 0
+    populated = 0
+    for tbl in tables_to_check:
+        try:
+            if tbl in ("sap_security_controls", "template_items", "audit_logs"):
+                row = db.execute(text(f"SELECT COUNT(*) FROM {tbl}")).fetchone()
+            else:
+                row = db.execute(text(f"SELECT COUNT(*) FROM {tbl} WHERE tenant_id = :tid"),
+                                 {"tid": TID}).fetchone()
+            n = row[0]
+            symbol = "OK" if n > 0 else "--"
+            print(f"  {symbol}  {tbl:<40} {n:>5} rows")
+            total_rows += n
+            if n > 0:
+                populated += 1
+        except Exception as e:
+            print(f"  ??  {tbl:<40} (error: {e})")
+
     print("=" * 60)
-    print(f"  Tables with data:  {ok}/{len(results)}")
-    print(f"  Total rows seeded: {total}")
+    print(f"  Tables with data:  {populated}/{len(tables_to_check)}")
+    print(f"  Total rows seeded: {total_rows}")
     print()
     print("  TENANT CREDENTIALS")
-    print(f"  Tenant ID:   {TENANT_ID}")
+    print(f"  Tenant ID:   {TID}")
     print(f"  Admin login: acme_admin / AcmeP@ss2026!")
     print(f"  CISO login:  acme_ciso  / AcmeP@ss2026!")
     print(f"  Auditor:     acme_auditor / AcmeP@ss2026!")

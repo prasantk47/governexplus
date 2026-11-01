@@ -168,7 +168,7 @@ class AuditableEntity(Base, TimestampMixin):
     entity_id = Column(String(100), nullable=False, index=True)   # unique within tenant
     name = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
-    entity_type = Column(SQLEnum(AuditableEntityType), nullable=False)
+    entity_type = Column(String(50), nullable=False)
 
     # Organisational link
     org_unit_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
@@ -203,7 +203,7 @@ class AuditableEntity(Base, TimestampMixin):
             'entity_id': self.entity_id,
             'name': self.name,
             'description': self.description,
-            'entity_type': self.entity_type.value if self.entity_type else None,
+            'entity_type': getattr(self.entity_type, "value", self.entity_type) if self.entity_type else None,
             'org_unit_id': self.org_unit_id,
             'risk_score': self.risk_score,
             'last_audited_at': self.last_audited_at.isoformat() if self.last_audited_at else None,
@@ -241,7 +241,7 @@ class AuditPlan(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    plan_type = Column(SQLEnum(AuditPlanType), nullable=False)
+    plan_type = Column(String(50), nullable=False)
     fiscal_year = Column(Integer, nullable=False)
     period_start = Column(DateTime, nullable=True)
     period_end = Column(DateTime, nullable=True)
@@ -251,7 +251,7 @@ class AuditPlan(Base, TimestampMixin):
     allocated_budget = Column(Float, nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(AuditPlanStatus), nullable=False, default=AuditPlanStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=AuditPlanStatus.DRAFT)
     prepared_by = Column(String(100), nullable=True)
     approved_by = Column(String(100), nullable=True)
     approved_at = Column(DateTime, nullable=True)
@@ -284,13 +284,13 @@ class AuditPlan(Base, TimestampMixin):
             'plan_id': self.plan_id,
             'name': self.name,
             'description': self.description,
-            'plan_type': self.plan_type.value if self.plan_type else None,
+            'plan_type': getattr(self.plan_type, "value", self.plan_type) if self.plan_type else None,
             'fiscal_year': self.fiscal_year,
             'period_start': self.period_start.isoformat() if self.period_start else None,
             'period_end': self.period_end.isoformat() if self.period_end else None,
             'total_audit_hours': self.total_audit_hours,
             'allocated_budget': self.allocated_budget,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'prepared_by': self.prepared_by,
             'approved_by': self.approved_by,
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
@@ -335,10 +335,10 @@ class AuditEngagement(Base, TimestampMixin):
     scope = Column(Text, nullable=True)
 
     # Classification
-    engagement_type = Column(SQLEnum(EngagementType), nullable=False)
+    engagement_type = Column(String(50), nullable=False)
 
     # Lifecycle
-    status = Column(SQLEnum(EngagementStatus), nullable=False, default=EngagementStatus.PLANNED)
+    status = Column(String(50), nullable=False, default=EngagementStatus.PLANNED)
 
     # Team
     lead_auditor_id = Column(String(100), nullable=True)
@@ -389,8 +389,8 @@ class AuditEngagement(Base, TimestampMixin):
             'title': self.title,
             'objective': self.objective,
             'scope': self.scope,
-            'engagement_type': self.engagement_type.value if self.engagement_type else None,
-            'status': self.status.value if self.status else None,
+            'engagement_type': getattr(self.engagement_type, "value", self.engagement_type) if self.engagement_type else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'lead_auditor_id': self.lead_auditor_id,
             'lead_auditor_name': self.lead_auditor_name,
             'team_members': self.team_members,
@@ -510,7 +510,7 @@ class AuditProcedure(Base, TimestampMixin):
     assigned_to_name = Column(String(255), nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(ProcedureStatus), nullable=False, default=ProcedureStatus.NOT_STARTED)
+    status = Column(String(50), nullable=False, default=ProcedureStatus.NOT_STARTED)
     conclusion = Column(Text, nullable=True)
 
     # Time tracking
@@ -552,7 +552,7 @@ class AuditProcedure(Base, TimestampMixin):
             'description': self.description,
             'assigned_to_id': self.assigned_to_id,
             'assigned_to_name': self.assigned_to_name,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'conclusion': self.conclusion,
             'hours_spent': self.hours_spent,
             'preparer_id': self.preparer_id,
@@ -620,13 +620,13 @@ class AuditWorkpaper(Base, TimestampMixin):
     reviewer_id = Column(String(100), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
     review_status = Column(
-        SQLEnum(WorkpaperReviewStatus), nullable=False, default=WorkpaperReviewStatus.PENDING_REVIEW
+        String(50), nullable=False, default=WorkpaperReviewStatus.PENDING_REVIEW
     )
     review_notes = Column(JSON, nullable=True)       # [{reviewer_id, note, timestamp}]
 
     # Cross-references and status
     cross_references = Column(JSON, nullable=True)
-    status = Column(SQLEnum(WorkpaperStatus), nullable=False, default=WorkpaperStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=WorkpaperStatus.DRAFT)
 
     # Relationships
     engagement = relationship('AuditEngagement', back_populates='workpapers')
@@ -659,10 +659,10 @@ class AuditWorkpaper(Base, TimestampMixin):
             'prepared_at': self.prepared_at.isoformat() if self.prepared_at else None,
             'reviewer_id': self.reviewer_id,
             'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
-            'review_status': self.review_status.value if self.review_status else None,
+            'review_status': getattr(self.review_status, "value", self.review_status) if self.review_status else None,
             'review_notes': self.review_notes,
             'cross_references': self.cross_references,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -708,7 +708,7 @@ class AuditFinding(Base, TimestampMixin):
     recommendation = Column(Text, nullable=True)
 
     # Classification
-    severity = Column(SQLEnum(FindingSeverity), nullable=False)
+    severity = Column(String(50), nullable=False)
     category = Column(String(100), nullable=True)    # financial, operational, compliance, it
 
     # Cross-module links (all optional)
@@ -722,7 +722,7 @@ class AuditFinding(Base, TimestampMixin):
     management_target_date = Column(DateTime, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(FindingStatus), nullable=False, default=FindingStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=FindingStatus.DRAFT)
 
     # Repeat finding tracking
     repeat_finding = Column(Boolean, default=False, nullable=False)
@@ -754,7 +754,7 @@ class AuditFinding(Base, TimestampMixin):
             'cause': self.cause,
             'effect': self.effect,
             'recommendation': self.recommendation,
-            'severity': self.severity.value if self.severity else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
             'category': self.category,
             'risk_id': self.risk_id,
             'control_id': self.control_id,
@@ -762,7 +762,7 @@ class AuditFinding(Base, TimestampMixin):
             'management_response': self.management_response,
             'management_action_owner': self.management_action_owner,
             'management_target_date': self.management_target_date.isoformat() if self.management_target_date else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'repeat_finding': self.repeat_finding,
             'prior_finding_id': self.prior_finding_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -810,7 +810,7 @@ class AuditManagementAction(Base, TimestampMixin):
     evidence_ids = Column(JSON, nullable=True)    # list of grc_evidence IDs
 
     # Lifecycle
-    status = Column(SQLEnum(ActionStatus), nullable=False, default=ActionStatus.OPEN)
+    status = Column(String(50), nullable=False, default=ActionStatus.OPEN)
 
     # Verification
     verified_by = Column(String(100), nullable=True)
@@ -843,7 +843,7 @@ class AuditManagementAction(Base, TimestampMixin):
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'evidence_of_closure': self.evidence_of_closure,
             'evidence_ids': self.evidence_ids,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'verified_by': self.verified_by,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
             'escalation_level': self.escalation_level,
@@ -996,7 +996,7 @@ class AuditDimension(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    dimension_type = Column(SQLEnum(DimensionType), nullable=False)
+    dimension_type = Column(String(50), nullable=False)
 
     # Tree structure — [{id, name, parent_id, children: [...]}]
     hierarchy = Column(JSON, nullable=True)
@@ -1016,7 +1016,7 @@ class AuditDimension(Base, TimestampMixin):
             'dimension_id': self.dimension_id,
             'name': self.name,
             'description': self.description,
-            'dimension_type': self.dimension_type.value if self.dimension_type else None,
+            'dimension_type': getattr(self.dimension_type, "value", self.dimension_type) if self.dimension_type else None,
             'hierarchy': self.hierarchy,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -1065,7 +1065,7 @@ class AuditAnnouncement(Base, TimestampMixin):
     acknowledgments = Column(JSON, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(AnnouncementStatus), nullable=False, default=AnnouncementStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=AnnouncementStatus.DRAFT)
 
     # Relationships
     engagement = relationship('AuditEngagement')
@@ -1088,7 +1088,7 @@ class AuditAnnouncement(Base, TimestampMixin):
             'sent_at': self.sent_at.isoformat() if self.sent_at else None,
             'sent_by': self.sent_by,
             'acknowledgments': self.acknowledgments,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

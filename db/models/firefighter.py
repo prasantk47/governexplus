@@ -74,11 +74,11 @@ class FirefighterRequest(Base, TimestampMixin):
     needed_by = Column(DateTime, nullable=True)
 
     # Priority and category
-    priority = Column(SQLEnum(FFPriority), default=FFPriority.MEDIUM)
+    priority = Column(String(50), default=FFPriority.MEDIUM)
     category = Column(String(50), default='general')  # incident, change, audit
 
     # Status
-    status = Column(SQLEnum(FFRequestStatus), default=FFRequestStatus.REQUESTED)
+    status = Column(String(50), default=FFRequestStatus.REQUESTED)
 
     # Risk assessment
     risk_score = Column(Float, default=0.0)
@@ -148,7 +148,7 @@ class FirefighterSession(Base, TimestampMixin):
     actual_end_time = Column(DateTime, nullable=True)
 
     # Status
-    status = Column(SQLEnum(FFSessionStatus), default=FFSessionStatus.ACTIVE)
+    status = Column(String(50), default=FFSessionStatus.ACTIVE)
 
     # Security
     session_token_hash = Column(String(255), nullable=True)  # Hash of session token

@@ -43,6 +43,23 @@ export const riskManagementApi = {
   updateIncident: (id: string, data: any) => api.put(`/risk-management/incidents/${id}`, data),
   getIncidents: (params?: any) => api.get('/risk-management/incidents', { params }),
   linkIncidentToRisk: (id: string, data: any) => api.post(`/risk-management/incidents/${id}/link-risk`, data),
+  // Workflows
+  createWorkflow: (data: any) => api.post('/risk-management/workflows', data),
+  listWorkflows: (params?: any) => api.get('/risk-management/workflows', { params }),
+  getWorkflow: (id: string) => api.get(`/risk-management/workflows/${id}`),
+  decideWorkflowStep: (workflowId: string, step: number, data: any) =>
+    api.post(`/risk-management/workflows/${workflowId}/steps/${step}/decide`, data),
+  withdrawWorkflow: (workflowId: string) => api.post(`/risk-management/workflows/${workflowId}/withdraw`),
+  getWorkflowInbox: (params?: any) => api.get('/risk-management/workflows/inbox/pending', { params }),
+  // KRI Data Sources
+  createKRISource: (data: any) => api.post('/risk-management/kri-sources', data),
+  listKRISources: (params?: any) => api.get('/risk-management/kri-sources', { params }),
+  pullKRISource: (sourceId: string) => api.post(`/risk-management/kri-sources/${sourceId}/pull`),
+  // Aggregation & Contingency
+  aggregateChildren: (riskId: string) => api.post(`/risk-management/risks/${riskId}/aggregate-children`),
+  getChildRisks: (riskId: string) => api.get(`/risk-management/risks/${riskId}/children`),
+  updateContingencyPlan: (riskId: string, plan: string) =>
+    api.put(`/risk-management/risks/${riskId}/contingency-plan`, { contingency_plan: plan }),
   // Reporting
   getHeatmap: () => api.get('/risk-management/heatmap'),
   getTrends: (months?: number) => api.get('/risk-management/trends', { params: { period_months: months } }),

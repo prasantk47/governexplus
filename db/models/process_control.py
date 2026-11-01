@@ -222,9 +222,9 @@ class ProcessControl(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    control_type = Column(SQLEnum(ControlType), nullable=False)
-    control_nature = Column(SQLEnum(ControlNature), nullable=False)
-    frequency = Column(SQLEnum(ControlFrequency), nullable=False)
+    control_type = Column(String(50), nullable=False)
+    control_nature = Column(String(50), nullable=False)
+    frequency = Column(String(50), nullable=False)
 
     # Organisational scope
     org_unit_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
@@ -250,7 +250,7 @@ class ProcessControl(Base, TimestampMixin):
     next_review_date = Column(DateTime, nullable=True)
 
     # Status
-    status = Column(SQLEnum(ControlStatus), nullable=False, default=ControlStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=ControlStatus.DRAFT)
 
     # Key / material control flag (relevant for SOX scoping)
     key_control = Column(Boolean, default=False, nullable=False)
@@ -285,9 +285,9 @@ class ProcessControl(Base, TimestampMixin):
             'name': self.name,
             'objective': self.objective,
             'description': self.description,
-            'control_type': self.control_type.value if self.control_type else None,
-            'control_nature': self.control_nature.value if self.control_nature else None,
-            'frequency': self.frequency.value if self.frequency else None,
+            'control_type': getattr(self.control_type, "value", self.control_type) if self.control_type else None,
+            'control_nature': getattr(self.control_nature, "value", self.control_nature) if self.control_nature else None,
+            'frequency': getattr(self.frequency, "value", self.frequency) if self.frequency else None,
             'org_unit_id': self.org_unit_id,
             'process_name': self.process_name,
             'subprocess_name': self.subprocess_name,
@@ -301,7 +301,7 @@ class ProcessControl(Base, TimestampMixin):
             'effective_date': self.effective_date.isoformat() if self.effective_date else None,
             'review_date': self.review_date.isoformat() if self.review_date else None,
             'next_review_date': self.next_review_date.isoformat() if self.next_review_date else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'key_control': self.key_control,
             'is_active': self.is_active,
             'change_history': self.change_history,
@@ -335,7 +335,7 @@ class ControlTest(Base, TimestampMixin):
     control_id = Column(Integer, ForeignKey('process_controls.id'), nullable=False, index=True)
 
     # Test parameters
-    test_type = Column(SQLEnum(TestType), nullable=False)
+    test_type = Column(String(50), nullable=False)
     testing_period_start = Column(DateTime, nullable=True)
     testing_period_end = Column(DateTime, nullable=True)
     sample_size = Column(Integer, nullable=True)
@@ -349,7 +349,7 @@ class ControlTest(Base, TimestampMixin):
     test_steps = Column(JSON, nullable=True)
 
     # Result
-    result = Column(SQLEnum(TestResult), nullable=True)
+    result = Column(String(50), nullable=True)
     exceptions_found = Column(Integer, nullable=False, default=0)
     exception_details = Column(JSON, nullable=True)  # list of exception descriptions
     conclusion = Column(Text, nullable=True)
@@ -362,7 +362,7 @@ class ControlTest(Base, TimestampMixin):
     reviewed_at = Column(DateTime, nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(TestStatus), nullable=False, default=TestStatus.PLANNED)
+    status = Column(String(50), nullable=False, default=TestStatus.PLANNED)
 
     # Relationships
     control = relationship('ProcessControl', back_populates='tests')
@@ -385,7 +385,7 @@ class ControlTest(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'test_id': self.test_id,
             'control_id': self.control_id,
-            'test_type': self.test_type.value if self.test_type else None,
+            'test_type': getattr(self.test_type, "value", self.test_type) if self.test_type else None,
             'testing_period_start': self.testing_period_start.isoformat() if self.testing_period_start else None,
             'testing_period_end': self.testing_period_end.isoformat() if self.testing_period_end else None,
             'sample_size': self.sample_size,
@@ -393,14 +393,14 @@ class ControlTest(Base, TimestampMixin):
             'tester_id': self.tester_id,
             'tester_name': self.tester_name,
             'test_steps': self.test_steps,
-            'result': self.result.value if self.result else None,
+            'result': getattr(self.result, "value", self.result) if self.result else None,
             'exceptions_found': self.exceptions_found,
             'exception_details': self.exception_details,
             'conclusion': self.conclusion,
             'evidence_ids': self.evidence_ids,
             'reviewed_by': self.reviewed_by,
             'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -440,7 +440,7 @@ class ControlDeficiency(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Severity
-    severity = Column(SQLEnum(DeficiencySeverity), nullable=False)
+    severity = Column(String(50), nullable=False)
     root_cause = Column(Text, nullable=True)
 
     # Remediation
@@ -451,7 +451,7 @@ class ControlDeficiency(Base, TimestampMixin):
     completed_at = Column(DateTime, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(DeficiencyStatus), nullable=False, default=DeficiencyStatus.OPEN)
+    status = Column(String(50), nullable=False, default=DeficiencyStatus.OPEN)
 
     # Verification
     verified_by = Column(String(100), nullable=True)
@@ -481,14 +481,14 @@ class ControlDeficiency(Base, TimestampMixin):
             'source': self.source,
             'title': self.title,
             'description': self.description,
-            'severity': self.severity.value if self.severity else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
             'root_cause': self.root_cause,
             'remediation_plan': self.remediation_plan,
             'remediation_owner_id': self.remediation_owner_id,
             'remediation_owner_name': self.remediation_owner_name,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'verified_by': self.verified_by,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
             'related_risk_ids': self.related_risk_ids,
@@ -541,7 +541,7 @@ class ControlSelfAssessment(Base, TimestampMixin):
     attested_at = Column(DateTime, nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(CSAStatus), nullable=False, default=CSAStatus.PENDING)
+    status = Column(String(50), nullable=False, default=CSAStatus.PENDING)
     due_date = Column(DateTime, nullable=True)
 
     # Reviewer
@@ -573,7 +573,7 @@ class ControlSelfAssessment(Base, TimestampMixin):
             'questionnaire_responses': self.questionnaire_responses,
             'attestation': self.attestation,
             'attested_at': self.attested_at.isoformat() if self.attested_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'reviewer_id': self.reviewer_id,
             'reviewer_comments': self.reviewer_comments,
@@ -615,7 +615,7 @@ class CCMRule(Base, TimestampMixin):
     source_system = Column(String(100), nullable=True)   # SAP, AzureAD, ServiceNow
 
     # Rule logic
-    rule_type = Column(SQLEnum(CCMRuleType), nullable=False)
+    rule_type = Column(String(50), nullable=False)
     rule_definition = Column(JSON, nullable=False)        # check logic / params
 
     # Threshold evaluation
@@ -657,7 +657,7 @@ class CCMRule(Base, TimestampMixin):
             'description': self.description,
             'control_id': self.control_id,
             'source_system': self.source_system,
-            'rule_type': self.rule_type.value if self.rule_type else None,
+            'rule_type': getattr(self.rule_type, "value", self.rule_type) if self.rule_type else None,
             'rule_definition': self.rule_definition,
             'threshold_operator': self.threshold_operator,
             'threshold_value': self.threshold_value,
@@ -701,7 +701,7 @@ class CCMExecution(Base, TimestampMixin):
     execution_duration_ms = Column(Integer, nullable=True)
 
     # Result
-    result = Column(SQLEnum(CCMResult), nullable=False)
+    result = Column(String(50), nullable=False)
     findings_count = Column(Integer, nullable=False, default=0)
     findings_detail = Column(JSON, nullable=True)   # list of finding summaries
 
@@ -724,7 +724,7 @@ class CCMExecution(Base, TimestampMixin):
             'rule_id': self.rule_id,
             'executed_at': self.executed_at.isoformat() if self.executed_at else None,
             'execution_duration_ms': self.execution_duration_ms,
-            'result': self.result.value if self.result else None,
+            'result': getattr(self.result, "value", self.result) if self.result else None,
             'findings_count': self.findings_count,
             'findings_detail': self.findings_detail,
             'deficiency_id': self.deficiency_id,
@@ -786,7 +786,7 @@ class GRCEvidence(Base, TimestampMixin):
     previous_version_id = Column(Integer, ForeignKey('grc_evidence.id'), nullable=True)
 
     # Status
-    status = Column(SQLEnum(EvidenceStatus), nullable=False, default=EvidenceStatus.ACTIVE)
+    status = Column(String(50), nullable=False, default=EvidenceStatus.ACTIVE)
 
     # Evidence pull metadata (XL-D): source, filters, row_count, generated_at, generated_by, data snapshot
     extract_metadata = Column(JSON, nullable=True)
@@ -822,7 +822,7 @@ class GRCEvidence(Base, TimestampMixin):
             'legal_hold': self.legal_hold,
             'version': self.version,
             'previous_version_id': self.previous_version_id,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'extract_metadata': self.extract_metadata,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -876,7 +876,7 @@ class SignOffCertification(Base, TimestampMixin):
     certified_at = Column(DateTime, nullable=True)
 
     # Status
-    status = Column(SQLEnum(SignOffStatus), nullable=False, default=SignOffStatus.PENDING)
+    status = Column(String(50), nullable=False, default=SignOffStatus.PENDING)
 
     # Exceptions and notes
     exceptions = Column(JSON, nullable=True)         # list of exception descriptions
@@ -913,7 +913,7 @@ class SignOffCertification(Base, TimestampMixin):
             'deficiencies_open': self.deficiencies_open,
             'statement': self.statement,
             'certified_at': self.certified_at.isoformat() if self.certified_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'exceptions': self.exceptions,
             'comments': self.comments,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -961,7 +961,7 @@ class ControlObjective(Base, TimestampMixin):
     owner_name = Column(String(255), nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(ObjectiveStatus), nullable=False, default=ObjectiveStatus.ACTIVE)
+    status = Column(String(50), nullable=False, default=ObjectiveStatus.ACTIVE)
     is_active = Column(Boolean, default=True, nullable=False)
 
     def __repr__(self):
@@ -984,7 +984,7 @@ class ControlObjective(Base, TimestampMixin):
             'control_ids': self.control_ids,
             'owner_id': self.owner_id,
             'owner_name': self.owner_name,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -1096,7 +1096,7 @@ class PolicyDocument(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    policy_type = Column(SQLEnum(PolicyType), nullable=False)
+    policy_type = Column(String(50), nullable=False)
 
     # Optional framework / regulation linkage
     regulation_id = Column(String(100), nullable=True)
@@ -1109,7 +1109,7 @@ class PolicyDocument(Base, TimestampMixin):
     version_history = Column(JSON, nullable=True)   # [{version, changed_by, changed_at, summary}]
 
     # Lifecycle
-    status = Column(SQLEnum(PolicyStatus), nullable=False, default=PolicyStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=PolicyStatus.DRAFT)
 
     # Authorship
     author_id = Column(String(100), nullable=True)
@@ -1151,12 +1151,12 @@ class PolicyDocument(Base, TimestampMixin):
             'policy_id': self.policy_id,
             'title': self.title,
             'description': self.description,
-            'policy_type': self.policy_type.value if self.policy_type else None,
+            'policy_type': getattr(self.policy_type, "value", self.policy_type) if self.policy_type else None,
             'regulation_id': self.regulation_id,
             'content': self.content,
             'version': self.version,
             'version_history': self.version_history,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'author_id': self.author_id,
             'author_name': self.author_name,
             'approved_by': self.approved_by,
@@ -1205,7 +1205,7 @@ class QuestionLibrary(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Question parameters
-    question_type = Column(SQLEnum(QuestionType), nullable=False)
+    question_type = Column(String(50), nullable=False)
     category = Column(String(100), nullable=False)   # control, risk, compliance, audit, general
 
     # Options for multiple_choice; null for other types
@@ -1239,7 +1239,7 @@ class QuestionLibrary(Base, TimestampMixin):
             'question_id': self.question_id,
             'question_text': self.question_text,
             'description': self.description,
-            'question_type': self.question_type.value if self.question_type else None,
+            'question_type': getattr(self.question_type, "value", self.question_type) if self.question_type else None,
             'category': self.category,
             'options': self.options,
             'scale_min': self.scale_min,
@@ -1280,7 +1280,7 @@ class Questionnaire(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    questionnaire_type = Column(SQLEnum(QuestionnaireType), nullable=False)
+    questionnaire_type = Column(String(50), nullable=False)
 
     # Ordered question list — [{question_id, sort_order, required_override, ...}]
     questions = Column(JSON, nullable=True)
@@ -1313,7 +1313,7 @@ class Questionnaire(Base, TimestampMixin):
             'questionnaire_id': self.questionnaire_id,
             'title': self.title,
             'description': self.description,
-            'questionnaire_type': self.questionnaire_type.value if self.questionnaire_type else None,
+            'questionnaire_type': getattr(self.questionnaire_type, "value", self.questionnaire_type) if self.questionnaire_type else None,
             'questions': self.questions,
             'target_module': self.target_module,
             'linked_object_type': self.linked_object_type,
@@ -1363,7 +1363,7 @@ class QuestionnaireResponse(Base, TimestampMixin):
     score = Column(Float, nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(ResponseStatus), nullable=False, default=ResponseStatus.PENDING)
+    status = Column(String(50), nullable=False, default=ResponseStatus.PENDING)
     submitted_at = Column(DateTime, nullable=True)
 
     # Review
@@ -1391,7 +1391,7 @@ class QuestionnaireResponse(Base, TimestampMixin):
             'respondent_email': self.respondent_email,
             'responses': self.responses,
             'score': self.score,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
             'reviewed_by': self.reviewed_by,
             'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,

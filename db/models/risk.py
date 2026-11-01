@@ -62,7 +62,7 @@ class RiskViolation(Base, TimestampMixin):
     username = Column(String(100), nullable=True)
 
     # Risk details
-    severity = Column(SQLEnum(RiskSeverityLevel), nullable=False)
+    severity = Column(String(50), nullable=False)
     severity_score = Column(Integer, default=0)  # 0-100
     risk_category = Column(String(50), nullable=False)  # Financial, HR, IT, etc.
 
@@ -75,7 +75,7 @@ class RiskViolation(Base, TimestampMixin):
     affected_systems = Column(JSON, nullable=True)
 
     # Status tracking
-    status = Column(SQLEnum(ViolationStatus), default=ViolationStatus.OPEN)
+    status = Column(String(50), default=ViolationStatus.OPEN)
 
     # Detection
     detected_at = Column(DateTime, default=datetime.utcnow)
@@ -227,7 +227,7 @@ class RiskRuleModel(Base, TimestampMixin):
 
     # Rule type and severity
     rule_type = Column(String(50), nullable=False)  # sod, sensitive, critical_action
-    severity = Column(SQLEnum(RiskSeverityLevel), nullable=False)
+    severity = Column(String(50), nullable=False)
     risk_category = Column(String(50), nullable=False)
 
     # Rule definition (stored as JSON)

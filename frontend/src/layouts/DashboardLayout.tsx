@@ -185,6 +185,7 @@ const navigation: NavItem[] = [
       { name: 'Risk Heatmap', href: '/risk-management/heatmap' },
       { name: 'KRI Dashboard', href: '/risk-management/kri' },
       { name: 'Incidents', href: '/risk-management/incidents' },
+      { name: 'Approval Workflows', href: '/risk-management/workflows' },
     ],
   },
   {

@@ -64,7 +64,7 @@ class OrgUnit(Base, TimestampMixin):
     # Identity
     unit_id = Column(String(100), nullable=False, index=True)   # unique within tenant
     name = Column(String(255), nullable=False)
-    unit_type = Column(SQLEnum(OrgUnitType), nullable=False)
+    unit_type = Column(String(50), nullable=False)
 
     # Hierarchy
     parent_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
@@ -95,7 +95,7 @@ class OrgUnit(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'unit_id': self.unit_id,
             'name': self.name,
-            'unit_type': self.unit_type.value if self.unit_type else None,
+            'unit_type': getattr(self.unit_type, "value", self.unit_type) if self.unit_type else None,
             'parent_id': self.parent_id,
             'level': self.level,
             'path': self.path,
@@ -135,7 +135,7 @@ class FrameworkDefinition(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    framework_type = Column(SQLEnum(FrameworkType), nullable=False)
+    framework_type = Column(String(50), nullable=False)
 
     # Full hierarchical structure stored as a JSON document
     structure = Column(JSON, nullable=True)
@@ -165,7 +165,7 @@ class FrameworkDefinition(Base, TimestampMixin):
             'name': self.name,
             'version': self.version,
             'description': self.description,
-            'framework_type': self.framework_type.value if self.framework_type else None,
+            'framework_type': getattr(self.framework_type, "value", self.framework_type) if self.framework_type else None,
             'structure': self.structure,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,

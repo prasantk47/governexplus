@@ -13,6 +13,9 @@ Full Risk Management module covering RM-01 through RM-31:
   - RiskScenario            : multi-driver cascading scenarios (RM-SAP-GAP-02)
   - MonteCarloSimulation    : Monte Carlo simulation run results (RM-SAP-GAP-03)
   - RiskOpportunity         : positive risk / opportunity tracking (RM-SAP-GAP-04)
+  - RiskWorkflow            : multi-step approval workflow (RM-WF-01)
+  - RiskWorkflowStep        : individual approval step within a workflow
+  - KRIDataSource           : automated KRI data source config (non-SAP + SAP)
 """
 
 from sqlalchemy import (
@@ -170,6 +173,43 @@ class OpportunityStatus(enum.Enum):
     DECLINED = "declined"
 
 
+class WorkflowType(enum.Enum):
+    """Type of risk approval workflow"""
+    RISK_PROPOSAL = "risk_proposal"
+    RISK_APPROVAL = "risk_approval"
+    ASSESSMENT_APPROVAL = "assessment_approval"
+    RESPONSE_APPROVAL = "response_approval"
+
+
+class WorkflowStatus(enum.Enum):
+    """Overall status of an approval workflow"""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
+
+
+class WorkflowStepStatus(enum.Enum):
+    """Status of a single approval step"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    DELEGATED = "delegated"
+
+
+class KRISourceType(enum.Enum):
+    """Source system type for KRI automation"""
+    SAP_ECC = "SAP_ECC"
+    SAP_S4H = "SAP_S4H"
+    WORKDAY = "WORKDAY"
+    SERVICENOW = "SERVICENOW"
+    SPLUNK = "SPLUNK"
+    REST_API = "REST_API"
+    DATABASE = "DATABASE"
+    MANUAL = "MANUAL"
+
+
 # ---------------------------------------------------------------------------
 # EnterpriseRisk  (RM-01)
 # ---------------------------------------------------------------------------
@@ -197,7 +237,7 @@ class EnterpriseRisk(Base, TimestampMixin):
     description_ar = Column(Text, nullable=True)                # Arabic translation
 
     # Classification
-    category = Column(SQLEnum(RiskCategory), nullable=False)
+    category = Column(String(100), nullable=False)  # stored as string; RiskCategory enum used for validation only
     org_unit_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
 
     # Ownership
@@ -219,7 +259,7 @@ class EnterpriseRisk(Base, TimestampMixin):
     risk_tolerance = Column(Float, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(RiskStatus), nullable=False, default=RiskStatus.IDENTIFIED)
+    status = Column(String(50), nullable=False, default=RiskStatus.IDENTIFIED)
 
     # Review scheduling
     last_assessed_at = Column(DateTime, nullable=True)
@@ -231,7 +271,7 @@ class EnterpriseRisk(Base, TimestampMixin):
     related_finding_ids = Column(JSON, nullable=True)
 
     # Extension bag
-    metadata_ = Column('metadata', JSON, nullable=True)
+    metadata_ = Column(JSON, nullable=True)
 
     # XL-A: Control coverage feedback (Loop A)
     # Reflects degraded coverage when linked PC controls fail — never silently
@@ -242,7 +282,20 @@ class EnterpriseRisk(Base, TimestampMixin):
 
     # GovernexPlus gap: velocity and business objective linkage
     velocity = Column(String(50), nullable=True)            # sudden/rapid/moderate/gradual
+    velocity_numeric = Column(Integer, nullable=True)       # sudden=5,rapid=4,moderate=3,gradual=1
     business_objective_id = Column(String(100), nullable=True)  # links to business_objectives.objective_id
+
+    # Risk hierarchy: parent-child aggregation
+    parent_risk_id = Column(Integer, ForeignKey('enterprise_risks.id'), nullable=True, index=True)
+    aggregated_score = Column(Float, nullable=True)         # roll-up from child risks
+    child_count = Column(Integer, default=0, nullable=False)
+
+    # Contingency planning
+    contingency_plan = Column(Text, nullable=True)
+
+    # Workflow tracking
+    workflow_status = Column(String(50), default='none', nullable=False)
+    workflow_step = Column(Integer, default=0, nullable=False)
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
@@ -252,6 +305,9 @@ class EnterpriseRisk(Base, TimestampMixin):
     responses = relationship('RiskResponse', back_populates='risk')
     incidents = relationship('RiskIncident', back_populates='risk')
     kris = relationship('KeyRiskIndicator', back_populates='risk')
+    child_risks = relationship('EnterpriseRisk',
+                               foreign_keys='[EnterpriseRisk.parent_risk_id]',
+                               lazy='dynamic')
 
     def __repr__(self):
         return (
@@ -267,7 +323,7 @@ class EnterpriseRisk(Base, TimestampMixin):
             'title': self.title,
             'description': self.description,
             'description_ar': self.description_ar,
-            'category': self.category.value if self.category else None,
+            'category': getattr(self.category, "value", self.category) if self.category else None,
             'org_unit_id': self.org_unit_id,
             'risk_owner_id': self.risk_owner_id,
             'risk_owner_name': self.risk_owner_name,
@@ -279,7 +335,7 @@ class EnterpriseRisk(Base, TimestampMixin):
             'residual_score': self.residual_score,
             'risk_appetite': self.risk_appetite,
             'risk_tolerance': self.risk_tolerance,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'last_assessed_at': self.last_assessed_at.isoformat() if self.last_assessed_at else None,
             'next_review_date': self.next_review_date.isoformat() if self.next_review_date else None,
             'review_frequency': self.review_frequency,
@@ -293,7 +349,17 @@ class EnterpriseRisk(Base, TimestampMixin):
             'coverage_computed_at': self.coverage_computed_at.isoformat() if self.coverage_computed_at else None,
             # GovernexPlus gap fields
             'velocity': self.velocity,
+            'velocity_numeric': self.velocity_numeric,
             'business_objective_id': self.business_objective_id,
+            # Risk hierarchy
+            'parent_risk_id': self.parent_risk_id,
+            'aggregated_score': self.aggregated_score,
+            'child_count': self.child_count,
+            # Contingency plan
+            'contingency_plan': self.contingency_plan,
+            # Workflow
+            'workflow_status': self.workflow_status,
+            'workflow_step': self.workflow_step,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -333,7 +399,7 @@ class RiskAssessment(Base, TimestampMixin):
     overall_score = Column(Float, nullable=False)         # computed
 
     # Assessment type
-    assessment_type = Column(SQLEnum(AssessmentType), nullable=False, default=AssessmentType.PERIODIC)
+    assessment_type = Column(String(50), nullable=False, default=AssessmentType.PERIODIC)
 
     # Rationale
     likelihood_rationale = Column(Text, nullable=True)
@@ -344,7 +410,7 @@ class RiskAssessment(Base, TimestampMixin):
     currency = Column(String(3), default='USD', nullable=False)
 
     # Workflow
-    status = Column(SQLEnum(AssessmentStatus), nullable=False, default=AssessmentStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=AssessmentStatus.DRAFT)
     reviewed_by = Column(String(100), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
     comments = Column(Text, nullable=True)
@@ -369,12 +435,12 @@ class RiskAssessment(Base, TimestampMixin):
             'likelihood_score': self.likelihood_score,
             'impact_score': self.impact_score,
             'overall_score': self.overall_score,
-            'assessment_type': self.assessment_type.value if self.assessment_type else None,
+            'assessment_type': getattr(self.assessment_type, "value", self.assessment_type) if self.assessment_type else None,
             'likelihood_rationale': self.likelihood_rationale,
             'impact_rationale': self.impact_rationale,
             'monetary_impact': self.monetary_impact,
             'currency': self.currency,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'reviewed_by': self.reviewed_by,
             'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
             'comments': self.comments,
@@ -486,7 +552,7 @@ class KeyRiskIndicator(Base, TimestampMixin):
     last_measured_at = Column(DateTime, nullable=True)
 
     # Traffic-light status
-    status = Column(SQLEnum(KRIStatus), nullable=False, default=KRIStatus.NORMAL)
+    status = Column(String(50), nullable=False, default=KRIStatus.NORMAL)
 
     # Ownership
     owner_id = Column(String(100), nullable=True)
@@ -525,7 +591,7 @@ class KeyRiskIndicator(Base, TimestampMixin):
             'threshold_red': self.threshold_red,
             'current_value': self.current_value,
             'last_measured_at': self.last_measured_at.isoformat() if self.last_measured_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'owner_id': self.owner_id,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -610,7 +676,7 @@ class RiskResponse(Base, TimestampMixin):
     risk_id = Column(Integer, ForeignKey('enterprise_risks.id'), nullable=False, index=True)
 
     # Strategy
-    response_type = Column(SQLEnum(RiskResponseType), nullable=False)
+    response_type = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
 
     # Ownership
@@ -621,7 +687,7 @@ class RiskResponse(Base, TimestampMixin):
     actions = Column(JSON, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(ResponseStatus), nullable=False, default=ResponseStatus.PLANNED)
+    status = Column(String(50), nullable=False, default=ResponseStatus.PLANNED)
     due_date = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -643,12 +709,12 @@ class RiskResponse(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'response_id': self.response_id,
             'risk_id': self.risk_id,
-            'response_type': self.response_type.value if self.response_type else None,
+            'response_type': getattr(self.response_type, "value", self.response_type) if self.response_type else None,
             'description': self.description,
             'owner_id': self.owner_id,
             'owner_name': self.owner_name,
             'actions': self.actions,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'effectiveness_rating': self.effectiveness_rating,
@@ -685,7 +751,7 @@ class RiskIncident(Base, TimestampMixin):
     risk_id = Column(Integer, ForeignKey('enterprise_risks.id'), nullable=True, index=True)
 
     # Classification
-    severity = Column(SQLEnum(IncidentSeverity), nullable=False)
+    severity = Column(String(50), nullable=False)
 
     # Financial impact
     financial_impact = Column(Float, nullable=True)
@@ -709,7 +775,7 @@ class RiskIncident(Base, TimestampMixin):
     reported_by = Column(String(100), nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(IncidentStatus), nullable=False, default=IncidentStatus.REPORTED)
+    status = Column(String(50), nullable=False, default=IncidentStatus.REPORTED)
 
     # Relationships
     risk = relationship('EnterpriseRisk', back_populates='incidents')
@@ -728,7 +794,7 @@ class RiskIncident(Base, TimestampMixin):
             'title': self.title,
             'description': self.description,
             'risk_id': self.risk_id,
-            'severity': self.severity.value if self.severity else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
             'financial_impact': self.financial_impact,
             'currency': self.currency,
             'recovery_amount': self.recovery_amount,
@@ -740,7 +806,7 @@ class RiskIncident(Base, TimestampMixin):
             'root_cause': self.root_cause,
             'corrective_actions': self.corrective_actions,
             'reported_by': self.reported_by,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -771,7 +837,7 @@ class BusinessObjective(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    category = Column(SQLEnum(ObjectiveCategory), nullable=False)
+    category = Column(String(50), nullable=False)
 
     # Organisational scope
     org_unit_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
@@ -784,7 +850,7 @@ class BusinessObjective(Base, TimestampMixin):
     target_date = Column(DateTime, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(ObjectiveStatus), nullable=False, default=ObjectiveStatus.ACTIVE)
+    status = Column(String(50), nullable=False, default=ObjectiveStatus.ACTIVE)
 
     # Linked risk IDs (JSON array of EnterpriseRisk.risk_id values)
     linked_risk_ids = Column(JSON, nullable=True)
@@ -793,7 +859,7 @@ class BusinessObjective(Base, TimestampMixin):
     is_active = Column(Boolean, default=True, nullable=False)
 
     # Extension bag
-    metadata_ = Column('metadata', JSON, nullable=True)
+    metadata_ = Column(JSON, nullable=True)
 
     def __repr__(self):
         return (
@@ -808,12 +874,12 @@ class BusinessObjective(Base, TimestampMixin):
             'objective_id': self.objective_id,
             'title': self.title,
             'description': self.description,
-            'category': self.category.value if self.category else None,
+            'category': getattr(self.category, "value", self.category) if self.category else None,
             'org_unit_id': self.org_unit_id,
             'owner_id': self.owner_id,
             'owner_name': self.owner_name,
             'target_date': self.target_date.isoformat() if self.target_date else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'linked_risk_ids': self.linked_risk_ids,
             'is_active': self.is_active,
             'metadata': self.metadata_,
@@ -847,7 +913,7 @@ class RiskScenario(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    scenario_type = Column(SQLEnum(ScenarioType), nullable=False)
+    scenario_type = Column(String(50), nullable=False)
 
     # Linked risk IDs (JSON array of EnterpriseRisk.risk_id values)
     risk_ids = Column(JSON, nullable=True)
@@ -866,10 +932,10 @@ class RiskScenario(Base, TimestampMixin):
     time_horizon = Column(String(50), nullable=True)   # immediate/short_term/medium_term/long_term
 
     # Velocity at which the scenario would unfold
-    velocity = Column(SQLEnum(ScenarioVelocity), nullable=True)
+    velocity = Column(String(50), nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(ScenarioStatus), nullable=False, default=ScenarioStatus.DRAFT)
+    status = Column(String(50), nullable=False, default=ScenarioStatus.DRAFT)
 
     # Authorship and simulation tracking
     created_by = Column(String(100), nullable=True)
@@ -894,7 +960,7 @@ class RiskScenario(Base, TimestampMixin):
             'scenario_id': self.scenario_id,
             'name': self.name,
             'description': self.description,
-            'scenario_type': self.scenario_type.value if self.scenario_type else None,
+            'scenario_type': getattr(self.scenario_type, "value", self.scenario_type) if self.scenario_type else None,
             'risk_ids': self.risk_ids,
             'trigger_events': self.trigger_events,
             'cascading_effects': self.cascading_effects,
@@ -903,8 +969,8 @@ class RiskScenario(Base, TimestampMixin):
             'impact_mid': self.impact_mid,
             'impact_high': self.impact_high,
             'time_horizon': self.time_horizon,
-            'velocity': self.velocity.value if self.velocity else None,
-            'status': self.status.value if self.status else None,
+            'velocity': getattr(self.velocity, "value", self.velocity) if self.velocity else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_by': self.created_by,
             'last_simulated_at': self.last_simulated_at.isoformat() if self.last_simulated_at else None,
             'simulation_results': self.simulation_results,
@@ -940,7 +1006,7 @@ class MonteCarloSimulation(Base, TimestampMixin):
     risk_id = Column(Integer, ForeignKey('enterprise_risks.id'), nullable=True, index=True)
 
     # Distribution configuration
-    distribution_type = Column(SQLEnum(DistributionType), nullable=False)
+    distribution_type = Column(String(50), nullable=False)
     iterations = Column(Integer, nullable=False, default=10000)
 
     # Input parameters (distribution-specific: mean/std_dev, low/mid/high, min/max, etc.)
@@ -971,7 +1037,7 @@ class MonteCarloSimulation(Base, TimestampMixin):
             'simulation_id': self.simulation_id,
             'scenario_id': self.scenario_id,
             'risk_id': self.risk_id,
-            'distribution_type': self.distribution_type.value if self.distribution_type else None,
+            'distribution_type': getattr(self.distribution_type, "value", self.distribution_type) if self.distribution_type else None,
             'iterations': self.iterations,
             'input_parameters': self.input_parameters,
             'results': self.results,
@@ -1009,7 +1075,7 @@ class RiskOpportunity(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    category = Column(SQLEnum(OpportunityCategory), nullable=False)
+    category = Column(String(50), nullable=False)
 
     # Organisational scope
     org_unit_id = Column(Integer, ForeignKey('org_units.id'), nullable=True, index=True)
@@ -1028,7 +1094,7 @@ class RiskOpportunity(Base, TimestampMixin):
     time_horizon = Column(String(50), nullable=True)       # immediate/short_term/medium_term/long_term
 
     # Lifecycle
-    status = Column(SQLEnum(OpportunityStatus), nullable=False, default=OpportunityStatus.IDENTIFIED)
+    status = Column(String(50), nullable=False, default=OpportunityStatus.IDENTIFIED)
 
     # Links to risks this opportunity could offset (JSON array of risk_id values)
     linked_risk_ids = Column(JSON, nullable=True)
@@ -1053,7 +1119,7 @@ class RiskOpportunity(Base, TimestampMixin):
             'opportunity_id': self.opportunity_id,
             'title': self.title,
             'description': self.description,
-            'category': self.category.value if self.category else None,
+            'category': getattr(self.category, "value", self.category) if self.category else None,
             'org_unit_id': self.org_unit_id,
             'owner_id': self.owner_id,
             'owner_name': self.owner_name,
@@ -1062,11 +1128,205 @@ class RiskOpportunity(Base, TimestampMixin):
             'investment_required': self.investment_required,
             'currency': self.currency,
             'time_horizon': self.time_horizon,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'linked_risk_ids': self.linked_risk_ids,
             'actions': self.actions,
             'realized_value': self.realized_value,
             'realized_at': self.realized_at.isoformat() if self.realized_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ---------------------------------------------------------------------------
+# RiskWorkflow  (RM-WF-01)
+# ---------------------------------------------------------------------------
+
+class RiskWorkflow(Base, TimestampMixin):
+    """
+    Multi-step approval workflow for risk proposals, approvals, assessments
+    and response plans.  Supports 2- and 3-step approval chains.
+    """
+    __tablename__ = 'risk_workflows'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    tenant_id = Column(String(100), nullable=False, index=True)
+    workflow_id = Column(String(100), nullable=False, index=True)   # unique
+
+    workflow_type = Column(String(50), nullable=False)
+    # risk_proposal | risk_approval | assessment_approval | response_approval
+
+    object_id = Column(String(100), nullable=False, index=True)    # risk_id / assessment_id / response_id
+    object_type = Column(String(50), nullable=False)               # risk | assessment | response
+
+    title = Column(String(500), nullable=True)
+    description = Column(Text, nullable=True)
+
+    total_steps = Column(Integer, default=3, nullable=False)
+    current_step = Column(Integer, default=1, nullable=False)
+
+    status = Column(String(50), nullable=False, default=WorkflowStatus.PENDING)
+
+    submitted_by = Column(String(100), nullable=True)
+    submitted_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    metadata_ = Column(JSON, nullable=True)
+
+    # Relationships
+    steps = relationship('RiskWorkflowStep', back_populates='workflow',
+                         cascade='all, delete-orphan', order_by='RiskWorkflowStep.step_number')
+
+    def __repr__(self):
+        return (
+            f"<RiskWorkflow(workflow_id='{self.workflow_id}', "
+            f"type='{self.workflow_type}', status='{self.status}')>"
+        )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'workflow_id': self.workflow_id,
+            'workflow_type': getattr(self.workflow_type, "value", self.workflow_type) if self.workflow_type else None,
+            'object_id': self.object_id,
+            'object_type': self.object_type,
+            'title': self.title,
+            'description': self.description,
+            'total_steps': self.total_steps,
+            'current_step': self.current_step,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
+            'submitted_by': self.submitted_by,
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'metadata': self.metadata_,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ---------------------------------------------------------------------------
+# RiskWorkflowStep
+# ---------------------------------------------------------------------------
+
+class RiskWorkflowStep(Base, TimestampMixin):
+    """
+    Individual approval step within a RiskWorkflow.  Each step has an
+    assigned approver (by role or user ID) and tracks the decision made.
+    """
+    __tablename__ = 'risk_workflow_steps'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    tenant_id = Column(String(100), nullable=False)
+    workflow_id = Column(String(100), ForeignKey('risk_workflows.workflow_id'), nullable=False, index=True)
+
+    step_number = Column(Integer, nullable=False)
+    step_name = Column(String(255), nullable=True)
+
+    # Approver assignment — either role-based or specific user
+    approver_role = Column(String(100), nullable=True)
+    approver_user_id = Column(String(100), nullable=True)
+    approver_name = Column(String(255), nullable=True)
+
+    status = Column(String(50), nullable=False, default=WorkflowStepStatus.PENDING)
+
+    decision = Column(String(50), nullable=True)     # approve | reject | delegate
+    comments = Column(Text, nullable=True)
+    decided_at = Column(DateTime, nullable=True)
+    due_date = Column(DateTime, nullable=True)
+
+    # Relationships
+    workflow = relationship('RiskWorkflow', back_populates='steps')
+
+    def __repr__(self):
+        return (
+            f"<RiskWorkflowStep(workflow_id='{self.workflow_id}', "
+            f"step={self.step_number}, status='{self.status}')>"
+        )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'workflow_id': self.workflow_id,
+            'step_number': self.step_number,
+            'step_name': self.step_name,
+            'approver_role': self.approver_role,
+            'approver_user_id': self.approver_user_id,
+            'approver_name': self.approver_name,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
+            'decision': self.decision,
+            'comments': self.comments,
+            'decided_at': self.decided_at.isoformat() if self.decided_at else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ---------------------------------------------------------------------------
+# KRIDataSource  (KRI automation — non-SAP + SAP)
+# ---------------------------------------------------------------------------
+
+class KRIDataSource(Base, TimestampMixin):
+    """
+    Automated KRI data source configuration.
+
+    Links a KRI to an external system (SAP, Workday, ServiceNow, REST API,
+    database, etc.) and stores the connection config, query template, and
+    schedule for automated value collection.
+    """
+    __tablename__ = 'kri_data_sources'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    tenant_id = Column(String(100), nullable=False, index=True)
+    source_id = Column(String(100), nullable=False, index=True)   # unique within tenant
+    source_name = Column(String(255), nullable=False)
+
+    source_type = Column(String(50), nullable=False)
+    # SAP_ECC | SAP_S4H | WORKDAY | SERVICENOW | SPLUNK | REST_API | DATABASE | MANUAL
+
+    # Linked KRI (references key_risk_indicators.kri_id)
+    kri_id = Column(String(100), nullable=False, index=True)
+
+    # Connection configuration (encrypted at rest; stored as JSON)
+    connection_config = Column(JSON, nullable=True)
+
+    # Query / fetch template (e.g. ABAP RFC name, SQL, REST path)
+    query_template = Column(Text, nullable=True)
+
+    # Automation schedule (cron expression, e.g. "0 6 * * *" for daily at 06:00)
+    schedule_cron = Column(String(100), nullable=True)
+
+    # Last pull tracking
+    last_pulled_at = Column(DateTime, nullable=True)
+    last_value = Column(Float, nullable=True)
+
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def __repr__(self):
+        return (
+            f"<KRIDataSource(source_id='{self.source_id}', "
+            f"type='{self.source_type}', kri_id='{self.kri_id}')>"
+        )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'source_id': self.source_id,
+            'source_name': self.source_name,
+            'source_type': getattr(self.source_type, "value", self.source_type) if self.source_type else None,
+            'kri_id': self.kri_id,
+            'connection_config': self.connection_config,
+            'query_template': self.query_template,
+            'schedule_cron': self.schedule_cron,
+            'last_pulled_at': self.last_pulled_at.isoformat() if self.last_pulled_at else None,
+            'last_value': self.last_value,
+            'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

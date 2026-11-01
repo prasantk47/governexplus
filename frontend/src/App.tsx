@@ -78,7 +78,7 @@ import { ComplianceAssessment } from './pages/compliance/ComplianceAssessment';
 import { AuditReport } from './pages/audit';
 
 // GRC Suite — Risk Management
-import { RiskRegister, RiskHeatmap, KRIDashboard, IncidentLog } from './pages/risk-management';
+import { RiskRegister, RiskHeatmap, KRIDashboard, IncidentLog, RiskWorkflowApproval } from './pages/risk-management';
 
 // GRC Suite — Process Control
 import { ControlLibrary, ControlTesting, DeficiencyTracker, CCMDashboard } from './pages/process-control';
@@ -330,6 +330,7 @@ function AppRoutes() {
         <Route path="/risk-management/heatmap" element={<RiskHeatmap />} />
         <Route path="/risk-management/kri" element={<KRIDashboard />} />
         <Route path="/risk-management/incidents" element={<IncidentLog />} />
+        <Route path="/risk-management/workflows" element={<RiskWorkflowApproval />} />
 
         {/* GRC Suite — Process Control */}
         <Route path="/process-control" element={<ControlLibrary />} />

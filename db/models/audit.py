@@ -76,7 +76,7 @@ class AuditLog(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     # Action classification
-    action = Column(SQLEnum(AuditAction), nullable=False, index=True)
+    action = Column(String(50), nullable=False, index=True)
     action_category = Column(String(50), nullable=True)  # user, role, risk, firefighter, system
 
     # Actor (who performed the action)

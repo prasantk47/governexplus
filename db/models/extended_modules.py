@@ -92,7 +92,7 @@ class JmlPolicy(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Scope
-    event_type = Column(SQLEnum(JmlEventType), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
     org_unit = Column(String(255), nullable=True)
     position_criteria = Column(JSON, nullable=True)   # {field: value, ...} filter bag
 
@@ -121,7 +121,7 @@ class JmlPolicy(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'policy_name': self.policy_name,
             'description': self.description,
-            'event_type': self.event_type.value if self.event_type else None,
+            'event_type': getattr(self.event_type, "value", self.event_type) if self.event_type else None,
             'org_unit': self.org_unit,
             'position_criteria': self.position_criteria,
             'birthright_roles': self.birthright_roles,
@@ -149,7 +149,7 @@ class JmlEvent(Base, TimestampMixin):
     tenant_id = Column(String(100), nullable=False, index=True)
 
     # Event classification
-    event_type = Column(SQLEnum(JmlEventType), nullable=False, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
 
     # Subject
     employee_id = Column(String(100), nullable=False, index=True)
@@ -169,7 +169,7 @@ class JmlEvent(Base, TimestampMixin):
     raw_payload = Column(JSON, nullable=True)
 
     # Processing
-    status = Column(SQLEnum(JmlEventStatus), nullable=False, default=JmlEventStatus.PENDING, index=True)
+    status = Column(String(50), nullable=False, default=JmlEventStatus.PENDING, index=True)
     matched_policy_id = Column(String(36), nullable=True, index=True)
     actions_taken = Column(JSON, nullable=True)
     error_message = Column(Text, nullable=True)
@@ -185,7 +185,7 @@ class JmlEvent(Base, TimestampMixin):
         return {
             'id': self.id,
             'tenant_id': self.tenant_id,
-            'event_type': self.event_type.value if self.event_type else None,
+            'event_type': getattr(self.event_type, "value", self.event_type) if self.event_type else None,
             'employee_id': self.employee_id,
             'employee_name': self.employee_name,
             'old_position': self.old_position,
@@ -195,7 +195,7 @@ class JmlEvent(Base, TimestampMixin):
             'effective_date': self.effective_date.isoformat() if self.effective_date else None,
             'hr_system': self.hr_system,
             'raw_payload': self.raw_payload,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'matched_policy_id': self.matched_policy_id,
             'actions_taken': self.actions_taken,
             'error_message': self.error_message,
@@ -268,7 +268,7 @@ class Vendor(Base, TimestampMixin):
 
     # Risk classification
     tier = Column(Integer, nullable=True)          # 1 = critical, 2 = important, 3 = standard
-    status = Column(SQLEnum(VendorStatus), nullable=False, default=VendorStatus.ACTIVE, index=True)
+    status = Column(String(50), nullable=False, default=VendorStatus.ACTIVE, index=True)
 
     # Contact
     primary_contact = Column(String(255), nullable=True)
@@ -299,7 +299,7 @@ class Vendor(Base, TimestampMixin):
             'vendor_name': self.vendor_name,
             'vendor_code': self.vendor_code,
             'tier': self.tier,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'primary_contact': self.primary_contact,
             'contact_email': self.contact_email,
             'country': self.country,
@@ -332,14 +332,14 @@ class VendorAssessment(Base, TimestampMixin):
     questionnaire_id = Column(String(36), nullable=True, index=True)
 
     # Workflow
-    status = Column(SQLEnum(VendorAssessmentStatus), nullable=False, default=VendorAssessmentStatus.DRAFT, index=True)
+    status = Column(String(50), nullable=False, default=VendorAssessmentStatus.DRAFT, index=True)
     sent_date = Column(DateTime, nullable=True)
     due_date = Column(DateTime, nullable=True)
     completed_date = Column(DateTime, nullable=True)
 
     # Results
     overall_score = Column(Float, nullable=True)
-    risk_rating = Column(SQLEnum(VendorRiskRating), nullable=True)
+    risk_rating = Column(String(50), nullable=True)
     responses = Column(JSON, nullable=True)   # {question_id: answer}
 
     # Assessor
@@ -359,12 +359,12 @@ class VendorAssessment(Base, TimestampMixin):
             'vendor_id': self.vendor_id,
             'assessment_name': self.assessment_name,
             'questionnaire_id': self.questionnaire_id,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'sent_date': self.sent_date.isoformat() if self.sent_date else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'completed_date': self.completed_date.isoformat() if self.completed_date else None,
             'overall_score': self.overall_score,
-            'risk_rating': self.risk_rating.value if self.risk_rating else None,
+            'risk_rating': getattr(self.risk_rating, "value", self.risk_rating) if self.risk_rating else None,
             'responses': self.responses,
             'assessor': self.assessor,
             'notes': self.notes,
@@ -392,8 +392,8 @@ class VendorIssue(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    severity = Column(SQLEnum(VendorIssueSeverity), nullable=False, index=True)
-    status = Column(SQLEnum(VendorIssueStatus), nullable=False, default=VendorIssueStatus.OPEN, index=True)
+    severity = Column(String(50), nullable=False, index=True)
+    status = Column(String(50), nullable=False, default=VendorIssueStatus.OPEN, index=True)
 
     # Remediation
     due_date = Column(DateTime, nullable=True)
@@ -414,8 +414,8 @@ class VendorIssue(Base, TimestampMixin):
             'vendor_id': self.vendor_id,
             'issue_title': self.issue_title,
             'description': self.description,
-            'severity': self.severity.value if self.severity else None,
-            'status': self.status.value if self.status else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'owner': self.owner,
             'resolution_notes': self.resolution_notes,
@@ -459,7 +459,7 @@ class VendorContract(Base, TimestampMixin):
     key_slas = Column(JSON, nullable=True)   # [{metric, target, measure_frequency}]
 
     # Status
-    status = Column(SQLEnum(VendorContractStatus), nullable=False, default=VendorContractStatus.DRAFT, index=True)
+    status = Column(String(50), nullable=False, default=VendorContractStatus.DRAFT, index=True)
 
     def __repr__(self):
         return (
@@ -481,7 +481,7 @@ class VendorContract(Base, TimestampMixin):
             'auto_renew': self.auto_renew,
             'notice_period_days': self.notice_period_days,
             'key_slas': self.key_slas,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -533,7 +533,7 @@ class FraudRule(Base, TimestampMixin):
 
     # Identity
     rule_name = Column(String(255), nullable=False)
-    rule_type = Column(SQLEnum(FraudRuleType), nullable=False, index=True)
+    rule_type = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
 
     # Logic
@@ -567,7 +567,7 @@ class FraudRule(Base, TimestampMixin):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'rule_name': self.rule_name,
-            'rule_type': self.rule_type.value if self.rule_type else None,
+            'rule_type': getattr(self.rule_type, "value", self.rule_type) if self.rule_type else None,
             'description': self.description,
             'conditions': self.conditions,
             'risk_score': self.risk_score,
@@ -605,7 +605,7 @@ class FraudAlert(Base, TimestampMixin):
     risk_score = Column(Float, nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(FraudAlertStatus), nullable=False, default=FraudAlertStatus.OPEN, index=True)
+    status = Column(String(50), nullable=False, default=FraudAlertStatus.OPEN, index=True)
     triggered_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     reviewed_by = Column(String(100), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
@@ -632,7 +632,7 @@ class FraudAlert(Base, TimestampMixin):
             'alert_type': self.alert_type,
             'description': self.description,
             'risk_score': self.risk_score,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'triggered_at': self.triggered_at.isoformat() if self.triggered_at else None,
             'reviewed_by': self.reviewed_by,
             'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
@@ -661,8 +661,8 @@ class FraudCase(Base, TimestampMixin):
     description = Column(Text, nullable=True)
 
     # Classification
-    severity = Column(SQLEnum(FraudCaseSeverity), nullable=False, index=True)
-    status = Column(SQLEnum(FraudCaseStatus), nullable=False, default=FraudCaseStatus.OPEN, index=True)
+    severity = Column(String(50), nullable=False, index=True)
+    status = Column(String(50), nullable=False, default=FraudCaseStatus.OPEN, index=True)
 
     # Ownership
     assigned_to = Column(String(100), nullable=True)
@@ -692,8 +692,8 @@ class FraudCase(Base, TimestampMixin):
             'case_reference': self.case_reference,
             'title': self.title,
             'description': self.description,
-            'severity': self.severity.value if self.severity else None,
-            'status': self.status.value if self.status else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'assigned_to': self.assigned_to,
             'linked_alert_ids': self.linked_alert_ids,
             'linked_finding_id': self.linked_finding_id,
@@ -772,7 +772,7 @@ class BiaRecord(Base, TimestampMixin):
     process_owner = Column(String(255), nullable=True)
 
     # Impact classification
-    criticality = Column(SQLEnum(BcmCriticality), nullable=False, index=True)
+    criticality = Column(String(50), nullable=False, index=True)
 
     # Recovery objectives (hours)
     rto_hours = Column(Float, nullable=True)    # Recovery Time Objective
@@ -797,7 +797,7 @@ class BiaRecord(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'process_name': self.process_name,
             'process_owner': self.process_owner,
-            'criticality': self.criticality.value if self.criticality else None,
+            'criticality': getattr(self.criticality, "value", self.criticality) if self.criticality else None,
             'rto_hours': self.rto_hours,
             'rpo_hours': self.rpo_hours,
             'mtpd_hours': self.mtpd_hours,
@@ -823,7 +823,7 @@ class BcmPlan(Base, TimestampMixin):
 
     # Identity
     plan_name = Column(String(255), nullable=False)
-    plan_type = Column(SQLEnum(BcmPlanType), nullable=False, index=True)
+    plan_type = Column(String(50), nullable=False, index=True)
     scope = Column(Text, nullable=True)
 
     # Ownership
@@ -831,7 +831,7 @@ class BcmPlan(Base, TimestampMixin):
 
     # Versioning
     version = Column(String(50), nullable=True, default='1.0')
-    status = Column(SQLEnum(BcmPlanStatus), nullable=False, default=BcmPlanStatus.DRAFT, index=True)
+    status = Column(String(50), nullable=False, default=BcmPlanStatus.DRAFT, index=True)
 
     # Testing schedule
     last_tested = Column(DateTime, nullable=True)
@@ -856,11 +856,11 @@ class BcmPlan(Base, TimestampMixin):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'plan_name': self.plan_name,
-            'plan_type': self.plan_type.value if self.plan_type else None,
+            'plan_type': getattr(self.plan_type, "value", self.plan_type) if self.plan_type else None,
             'scope': self.scope,
             'owner': self.owner,
             'version': self.version,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'last_tested': self.last_tested.isoformat() if self.last_tested else None,
             'next_test_date': self.next_test_date.isoformat() if self.next_test_date else None,
             'call_tree': self.call_tree,
@@ -888,7 +888,7 @@ class BcmTestExercise(Base, TimestampMixin):
 
     # Exercise identity
     exercise_name = Column(String(255), nullable=False)
-    exercise_type = Column(SQLEnum(BcmExerciseType), nullable=False)
+    exercise_type = Column(String(50), nullable=False)
 
     # Dates
     scheduled_date = Column(DateTime, nullable=True)
@@ -899,7 +899,7 @@ class BcmTestExercise(Base, TimestampMixin):
     participants = Column(JSON, nullable=True)   # [{name, role, org_unit}]
 
     # Results
-    outcome = Column(SQLEnum(BcmExerciseOutcome), nullable=True)
+    outcome = Column(String(50), nullable=True)
     findings = Column(Text, nullable=True)
     lessons_learned = Column(Text, nullable=True)
 
@@ -915,12 +915,12 @@ class BcmTestExercise(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'plan_id': self.plan_id,
             'exercise_name': self.exercise_name,
-            'exercise_type': self.exercise_type.value if self.exercise_type else None,
+            'exercise_type': getattr(self.exercise_type, "value", self.exercise_type) if self.exercise_type else None,
             'scheduled_date': self.scheduled_date.isoformat() if self.scheduled_date else None,
             'completed_date': self.completed_date.isoformat() if self.completed_date else None,
             'facilitator': self.facilitator,
             'participants': self.participants,
-            'outcome': self.outcome.value if self.outcome else None,
+            'outcome': getattr(self.outcome, "value", self.outcome) if self.outcome else None,
             'findings': self.findings,
             'lessons_learned': self.lessons_learned,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -948,8 +948,8 @@ class IncidentActivation(Base, TimestampMixin):
     # Activation metadata
     activated_by = Column(String(100), nullable=False)
     activation_reason = Column(Text, nullable=True)
-    severity = Column(SQLEnum(BcmActivationSeverity), nullable=False, index=True)
-    status = Column(SQLEnum(BcmActivationStatus), nullable=False, default=BcmActivationStatus.ACTIVE, index=True)
+    severity = Column(String(50), nullable=False, index=True)
+    status = Column(String(50), nullable=False, default=BcmActivationStatus.ACTIVE, index=True)
 
     # Timeline
     activated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -974,8 +974,8 @@ class IncidentActivation(Base, TimestampMixin):
             'plan_id': self.plan_id,
             'activated_by': self.activated_by,
             'activation_reason': self.activation_reason,
-            'severity': self.severity.value if self.severity else None,
-            'status': self.status.value if self.status else None,
+            'severity': getattr(self.severity, "value", self.severity) if self.severity else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'activated_at': self.activated_at.isoformat() if self.activated_at else None,
             'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
             'impacted_processes': self.impacted_processes,
@@ -1034,7 +1034,7 @@ class WhistleblowerCase(Base, TimestampMixin):
     case_reference = Column(String(100), nullable=False, unique=True, index=True)
 
     # Classification
-    category = Column(SQLEnum(WhistleblowerCategory), nullable=False, index=True)
+    category = Column(String(50), nullable=False, index=True)
     submission_channel = Column(String(50), nullable=True)   # web / email / phone
 
     # Content
@@ -1047,9 +1047,9 @@ class WhistleblowerCase(Base, TimestampMixin):
     submitter_email = Column(String(255), nullable=True)
 
     # Workflow
-    status = Column(SQLEnum(WhistleblowerStatus), nullable=False, default=WhistleblowerStatus.OPEN, index=True)
+    status = Column(String(50), nullable=False, default=WhistleblowerStatus.OPEN, index=True)
     assigned_to = Column(String(100), nullable=True)
-    priority = Column(SQLEnum(WhistleblowerPriority), nullable=True)
+    priority = Column(String(50), nullable=True)
 
     # Resolution
     resolution = Column(Text, nullable=True)
@@ -1066,16 +1066,16 @@ class WhistleblowerCase(Base, TimestampMixin):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'case_reference': self.case_reference,
-            'category': self.category.value if self.category else None,
+            'category': getattr(self.category, "value", self.category) if self.category else None,
             'submission_channel': self.submission_channel,
             'summary': self.summary,
             'details': self.details,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
             'is_anonymous': self.is_anonymous,
             'submitter_email': self.submitter_email,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'assigned_to': self.assigned_to,
-            'priority': self.priority.value if self.priority else None,
+            'priority': getattr(self.priority, "value", self.priority) if self.priority else None,
             'resolution': self.resolution,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -1101,7 +1101,7 @@ class WhistleblowerMessage(Base, TimestampMixin):
     case_id = Column(String(36), nullable=False, index=True)
 
     # Message
-    sender = Column(SQLEnum(WhistleblowerSender), nullable=False)
+    sender = Column(String(50), nullable=False)
     message_text = Column(Text, nullable=False)
     sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     is_read = Column(Boolean, nullable=False, default=False)
@@ -1117,7 +1117,7 @@ class WhistleblowerMessage(Base, TimestampMixin):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'case_id': self.case_id,
-            'sender': self.sender.value if self.sender else None,
+            'sender': getattr(self.sender, "value", self.sender) if self.sender else None,
             'message_text': self.message_text,
             'sent_at': self.sent_at.isoformat() if self.sent_at else None,
             'is_read': self.is_read,
@@ -1166,13 +1166,13 @@ class StandaloneSurvey(Base, TimestampMixin):
     # Identity
     survey_name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    survey_type = Column(SQLEnum(SurveyType), nullable=False, index=True)
+    survey_type = Column(String(50), nullable=False, index=True)
 
     # Questions — [{id, text, type, required, options, ...}]
     questions = Column(JSON, nullable=True)
 
     # Lifecycle
-    status = Column(SQLEnum(SurveyStatus), nullable=False, default=SurveyStatus.DRAFT, index=True)
+    status = Column(String(50), nullable=False, default=SurveyStatus.DRAFT, index=True)
     created_by = Column(String(100), nullable=True)
     created_at_override = Column('survey_created_at', DateTime, nullable=True)   # alias to avoid clash with TimestampMixin
     due_date = Column(DateTime, nullable=True)
@@ -1195,9 +1195,9 @@ class StandaloneSurvey(Base, TimestampMixin):
             'tenant_id': self.tenant_id,
             'survey_name': self.survey_name,
             'description': self.description,
-            'survey_type': self.survey_type.value if self.survey_type else None,
+            'survey_type': getattr(self.survey_type, "value", self.survey_type) if self.survey_type else None,
             'questions': self.questions,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'created_by': self.created_by,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'allow_anonymous': self.allow_anonymous,
@@ -1229,7 +1229,7 @@ class SurveyDistribution(Base, TimestampMixin):
     sent_at = Column(DateTime, nullable=True)
     due_date = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    status = Column(SQLEnum(SurveyDistributionStatus), nullable=False, default=SurveyDistributionStatus.PENDING, index=True)
+    status = Column(String(50), nullable=False, default=SurveyDistributionStatus.PENDING, index=True)
 
     # Reminders
     reminder_count = Column(Integer, nullable=False, default=0)
@@ -1252,7 +1252,7 @@ class SurveyDistribution(Base, TimestampMixin):
             'sent_at': self.sent_at.isoformat() if self.sent_at else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'reminder_count': self.reminder_count,
             'last_reminder_at': self.last_reminder_at.isoformat() if self.last_reminder_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,

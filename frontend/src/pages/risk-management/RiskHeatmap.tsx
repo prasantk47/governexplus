@@ -112,11 +112,18 @@ function Sparkline({ data, field }: { data: TrendPoint[]; field: 'avg_inherent' 
   );
 }
 
+interface AppetiteRecord {
+  category: string;
+  appetite_score: number;
+  tolerance_score: number;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function RiskHeatmap() {
   const [view, setView] = useState<'inherent' | 'residual'>('inherent');
   const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
+  const [showThresholds, setShowThresholds] = useState(true);
 
   const { data: heatmapData, isLoading: heatmapLoading, refetch } = useQuery<HeatmapData>({
     queryKey: ['risk-heatmap'],
@@ -132,6 +139,17 @@ export function RiskHeatmap() {
     queryKey: ['risk-top'],
     queryFn: () => riskManagementApi.getTopRisks(10).then(r => (() => { const d = r.data; return Array.isArray(d) ? d : Array.isArray(d?.risks) ? d.risks : []; })()),
   });
+
+  const { data: appetiteData } = useQuery<AppetiteRecord[]>({
+    queryKey: ['risk-appetites'],
+    queryFn: () => riskManagementApi.getAppetite().then(r => {
+      const d = r.data;
+      return Array.isArray(d) ? d : Array.isArray(d?.appetites) ? d.appetites : [];
+    }),
+  });
+
+  // Use 'all' appetite record as the global threshold, fallback to first record
+  const globalAppetite = appetiteData?.find(a => a.category === 'all') ?? appetiteData?.[0] ?? null;
 
   const cells: HeatmapCell[] = heatmapData?.cells ?? [];
   const topRisks: TopRisk[] = Array.isArray(topRisksData) ? topRisksData : Array.isArray(heatmapData?.top_risks) ? heatmapData.top_risks : [];
@@ -180,30 +198,62 @@ export function RiskHeatmap() {
               title="Risk Matrix (5×5)"
               subtitle={view === 'inherent' ? 'Inherent risk — before controls' : 'Residual risk — after controls'}
               action={
-                <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
-                  <button
-                    onClick={() => setView('inherent')}
-                    className={`px-3 py-1.5 transition-colors ${
-                      view === 'inherent'
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    Inherent
-                  </button>
-                  <button
-                    onClick={() => setView('residual')}
-                    className={`px-3 py-1.5 transition-colors ${
-                      view === 'residual'
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    Residual
-                  </button>
+                <div className="flex gap-2 items-center">
+                  {globalAppetite && (
+                    <button
+                      onClick={() => setShowThresholds(t => !t)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        showThresholds
+                          ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 border-violet-300 dark:border-violet-700'
+                          : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      Appetite Thresholds
+                    </button>
+                  )}
+                  <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
+                    <button
+                      onClick={() => setView('inherent')}
+                      className={`px-3 py-1.5 transition-colors ${
+                        view === 'inherent'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      Inherent
+                    </button>
+                    <button
+                      onClick={() => setView('residual')}
+                      className={`px-3 py-1.5 transition-colors ${
+                        view === 'residual'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      Residual
+                    </button>
+                  </div>
                 </div>
               }
             />
+            {/* Appetite threshold banner */}
+            {showThresholds && globalAppetite && (
+              <div className="mt-3 flex items-center gap-4 text-xs px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                <span className="font-medium text-violet-700 dark:text-violet-400">Risk Appetite Thresholds:</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded border-2 border-amber-500 inline-block" />
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Appetite ≥ {globalAppetite.appetite_score}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded border-2 border-red-600 inline-block" />
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Tolerance ≥ {globalAppetite.tolerance_score}
+                  </span>
+                </span>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="flex items-center justify-center h-72">
@@ -239,12 +289,24 @@ export function RiskHeatmap() {
                           {[1, 2, 3, 4, 5].map(impact => {
                             const score = likelihood * impact;
                             const count = getCellCount(likelihood, impact);
+                            // Threshold overlay
+                            let thresholdBorder = 'border-transparent';
+                            let thresholdRing = '';
+                            if (showThresholds && globalAppetite) {
+                              if (score >= globalAppetite.tolerance_score) {
+                                thresholdBorder = 'border-red-600 dark:border-red-500';
+                                thresholdRing = 'ring-1 ring-red-600/30';
+                              } else if (score >= globalAppetite.appetite_score) {
+                                thresholdBorder = 'border-amber-500 dark:border-amber-400';
+                                thresholdRing = 'ring-1 ring-amber-400/30';
+                              }
+                            }
                             return (
                               <button
                                 key={impact}
                                 onClick={() => handleCellClick(likelihood, impact)}
-                                className={`flex-1 aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-150 border-2 ${
-                                  count > 0 ? 'border-transparent cursor-pointer' : 'border-transparent cursor-default'
+                                className={`flex-1 aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-150 border-2 ${thresholdBorder} ${thresholdRing} ${
+                                  count > 0 ? 'cursor-pointer' : 'cursor-default'
                                 } ${cellColor(score)}`}
                                 title={`L${likelihood} × I${impact} = ${score} (${scoreLabel(score)}) — ${count} risk${count !== 1 ? 's' : ''}`}
                               >

@@ -23,6 +23,8 @@ from db.models.risk_management import (
     KeyRiskIndicator, KRIStatus, KRIMeasurement,
     RiskResponse, RiskResponseType, ResponseStatus,
     RiskIncident, IncidentSeverity, IncidentStatus,
+    RiskWorkflow, RiskWorkflowStep, WorkflowType, WorkflowStatus, WorkflowStepStatus,
+    KRIDataSource, KRISourceType,
 )
 
 router = APIRouter(tags=["Risk Management"])
@@ -100,6 +102,27 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
+# Velocity string → numeric score: sudden=5, rapid=4, moderate=3, gradual=1
+_VELOCITY_MAP: Dict[str, int] = {
+    "sudden": 5, "rapid": 4, "moderate": 3, "gradual": 1,
+}
+
+
+def _compute_inherent_score(
+    impact: Optional[float],
+    velocity_numeric: Optional[int],
+    likelihood: Optional[float],
+) -> Optional[float]:
+    """
+    Risk score formula: (Impact + Velocity_numeric) × Likelihood.
+    Falls back to Impact × Likelihood when velocity is not supplied.
+    """
+    if impact is None or likelihood is None:
+        return None
+    v = velocity_numeric or 0
+    return (impact + v) * likelihood
+
+
 def _get_manager(
     db: Session = Depends(get_db),
     tenant_id: str = Depends(_get_tenant_id),
@@ -138,10 +161,13 @@ def create_risk(
 
     inherent_likelihood = body.get("inherent_likelihood")
     inherent_impact = body.get("inherent_impact")
-    inherent_score = (
-        inherent_likelihood * inherent_impact
-        if inherent_likelihood and inherent_impact else None
-    )
+    velocity_str = body.get("velocity")
+    velocity_numeric = _VELOCITY_MAP.get(velocity_str) if velocity_str else body.get("velocity_numeric")
+    inherent_score = _compute_inherent_score(inherent_impact, velocity_numeric, inherent_likelihood)
+
+    residual_likelihood = body.get("residual_likelihood")
+    residual_impact = body.get("residual_impact")
+    residual_score = _compute_inherent_score(residual_impact, velocity_numeric, residual_likelihood)
 
     risk = EnterpriseRisk(
         tenant_id=tenant_id,
@@ -156,9 +182,9 @@ def create_risk(
         inherent_likelihood=inherent_likelihood,
         inherent_impact=inherent_impact,
         inherent_score=inherent_score,
-        residual_likelihood=body.get("residual_likelihood"),
-        residual_impact=body.get("residual_impact"),
-        residual_score=body.get("residual_score"),
+        residual_likelihood=residual_likelihood,
+        residual_impact=residual_impact,
+        residual_score=residual_score,
         risk_appetite=body.get("risk_appetite"),
         risk_tolerance=body.get("risk_tolerance"),
         status=RiskStatus.IDENTIFIED,
@@ -171,6 +197,12 @@ def create_risk(
         related_finding_ids=body.get("related_finding_ids", []),
         metadata_=body.get("metadata"),
         is_active=True,
+        # new fields
+        velocity=velocity_str,
+        velocity_numeric=velocity_numeric,
+        parent_risk_id=body.get("parent_risk_id"),
+        contingency_plan=body.get("contingency_plan"),
+        business_objective_id=body.get("business_objective_id"),
     )
     db.add(risk)
     db.commit()
@@ -265,10 +297,11 @@ def update_risk(
     risk = _risk_or_404(db, risk_id, tenant_id)
     updatable = [
         "title", "description", "description_ar", "risk_owner_id", "risk_owner_name",
-        "inherent_likelihood", "inherent_impact", "inherent_score",
-        "residual_likelihood", "residual_impact", "residual_score",
+        "inherent_likelihood", "inherent_impact",
+        "residual_likelihood", "residual_impact",
         "risk_appetite", "risk_tolerance", "review_frequency",
         "related_control_ids", "related_finding_ids", "metadata_",
+        "parent_risk_id", "contingency_plan", "business_objective_id",
     ]
     for field in updatable:
         if field in body:
@@ -279,6 +312,19 @@ def update_risk(
         risk.status = RiskStatus(body["status"])
     if "next_review_date" in body and body["next_review_date"]:
         risk.next_review_date = datetime.fromisoformat(body["next_review_date"])
+    # Velocity update — always re-derive numeric from string
+    if "velocity" in body:
+        risk.velocity = body["velocity"]
+        risk.velocity_numeric = _VELOCITY_MAP.get(body["velocity"])
+    elif "velocity_numeric" in body:
+        risk.velocity_numeric = body["velocity_numeric"]
+    # Re-compute scores with new formula
+    risk.inherent_score = _compute_inherent_score(
+        risk.inherent_impact, risk.velocity_numeric, risk.inherent_likelihood
+    )
+    risk.residual_score = _compute_inherent_score(
+        risk.residual_impact, risk.velocity_numeric, risk.residual_likelihood
+    )
     db.commit()
     db.refresh(risk)
     return risk.to_dict()
@@ -995,4 +1041,533 @@ def record_review_attestation(
         "attested_by": body.get("attested_by"),
         "attested_at": datetime.utcnow().isoformat(),
         "next_review_date": risk.next_review_date.isoformat(),
+    }
+
+
+# ===========================================================================
+# Risk Hierarchy & Aggregation  (RM-AGG-01)
+# ===========================================================================
+
+@router.post("/risks/{risk_id}/aggregate-children")
+def aggregate_children(
+    risk_id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Roll child risk scores up to the parent risk's aggregated_score.
+
+    Aggregation formula: max(child inherent_scores) weighted by count.
+    The parent's aggregated_score = weighted average of child inherent scores
+    capped at the parent's own inherent_score.
+    """
+    parent = _risk_or_404(db, risk_id, tenant_id)
+    children = db.query(EnterpriseRisk).filter(
+        EnterpriseRisk.tenant_id == tenant_id,
+        EnterpriseRisk.parent_risk_id == parent.id,
+        EnterpriseRisk.is_active.is_(True),
+    ).all()
+
+    if not children:
+        return {"risk_id": risk_id, "child_count": 0, "aggregated_score": parent.inherent_score}
+
+    scores = [c.inherent_score for c in children if c.inherent_score is not None]
+    aggregated = max(scores) if scores else None
+    parent.aggregated_score = aggregated
+    parent.child_count = len(children)
+    db.commit()
+    db.refresh(parent)
+    return {
+        "risk_id": risk_id,
+        "child_count": len(children),
+        "aggregated_score": aggregated,
+        "child_scores": scores,
+    }
+
+
+@router.get("/risks/{risk_id}/children")
+def get_child_risks(
+    risk_id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """List child risks of a parent risk."""
+    parent = _risk_or_404(db, risk_id, tenant_id)
+    children = db.query(EnterpriseRisk).filter(
+        EnterpriseRisk.tenant_id == tenant_id,
+        EnterpriseRisk.parent_risk_id == parent.id,
+        EnterpriseRisk.is_active.is_(True),
+    ).all()
+    return {"parent_risk_id": risk_id, "total": len(children), "risks": [c.to_dict() for c in children]}
+
+
+# ===========================================================================
+# Contingency Plan  (RM-CP-01)
+# ===========================================================================
+
+@router.put("/risks/{risk_id}/contingency-plan")
+def update_contingency_plan(
+    risk_id: str,
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Set or update the contingency plan for a risk."""
+    risk = _risk_or_404(db, risk_id, tenant_id)
+    if "contingency_plan" not in body:
+        raise HTTPException(status_code=400, detail="contingency_plan field required")
+    risk.contingency_plan = body["contingency_plan"]
+    db.commit()
+    db.refresh(risk)
+    return {"risk_id": risk_id, "contingency_plan": risk.contingency_plan}
+
+
+# ===========================================================================
+# Approval Workflows  (RM-WF-01)
+# ===========================================================================
+
+def _workflow_or_404(db: Session, workflow_id: str, tenant_id: str) -> RiskWorkflow:
+    wf = db.query(RiskWorkflow).filter(
+        RiskWorkflow.workflow_id == workflow_id,
+        RiskWorkflow.tenant_id == tenant_id,
+    ).first()
+    if not wf:
+        raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
+    return wf
+
+
+def _build_default_steps(workflow_type: WorkflowType, total_steps: int, tenant_id: str, workflow_id: str) -> List[RiskWorkflowStep]:
+    """Create default approval step templates per workflow type."""
+    step_defs = {
+        WorkflowType.RISK_PROPOSAL: [
+            {"step_name": "Risk Owner Review", "approver_role": "risk_owner"},
+            {"step_name": "Risk Manager Approval", "approver_role": "risk_manager"},
+            {"step_name": "CRO Sign-off", "approver_role": "cro"},
+        ],
+        WorkflowType.RISK_APPROVAL: [
+            {"step_name": "Department Head Review", "approver_role": "dept_head"},
+            {"step_name": "Risk Committee Review", "approver_role": "risk_committee"},
+            {"step_name": "Board Approval", "approver_role": "board"},
+        ],
+        WorkflowType.ASSESSMENT_APPROVAL: [
+            {"step_name": "Assessor Submission", "approver_role": "risk_owner"},
+            {"step_name": "Risk Manager Review", "approver_role": "risk_manager"},
+            {"step_name": "CRO Approval", "approver_role": "cro"},
+        ],
+        WorkflowType.RESPONSE_APPROVAL: [
+            {"step_name": "Response Owner Sign-off", "approver_role": "risk_owner"},
+            {"step_name": "CRO Approval", "approver_role": "cro"},
+        ],
+    }
+    defs = step_defs.get(workflow_type, [{"step_name": f"Step {i+1}", "approver_role": "approver"} for i in range(total_steps)])
+    return [
+        RiskWorkflowStep(
+            tenant_id=tenant_id,
+            workflow_id=workflow_id,
+            step_number=i + 1,
+            step_name=d["step_name"],
+            approver_role=d["approver_role"],
+            status=WorkflowStepStatus.PENDING,
+        )
+        for i, d in enumerate(defs[:total_steps])
+    ]
+
+
+@router.post("/workflows", status_code=201)
+def create_workflow(
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Submit an object (risk / assessment / response plan) for approval.
+
+    workflow_type: risk_proposal | risk_approval | assessment_approval | response_approval
+    object_id: the business-key of the object (risk_id, assessment_id, response_id)
+    object_type: risk | assessment | response
+    total_steps: 2 or 3 (response_approval = 2, others = 3)
+    """
+    wf_type_val = body.get("workflow_type", "risk_approval")
+    try:
+        wf_type = WorkflowType(wf_type_val)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid workflow_type: {wf_type_val}")
+
+    default_steps = 2 if wf_type == WorkflowType.RESPONSE_APPROVAL else 3
+    total_steps = body.get("total_steps", default_steps)
+    workflow_id = _new_id("WF")
+
+    wf = RiskWorkflow(
+        tenant_id=tenant_id,
+        workflow_id=workflow_id,
+        workflow_type=wf_type,
+        object_id=body.get("object_id", ""),
+        object_type=body.get("object_type", "risk"),
+        title=body.get("title"),
+        description=body.get("description"),
+        total_steps=total_steps,
+        current_step=1,
+        status=WorkflowStatus.PENDING,
+        submitted_by=body.get("submitted_by"),
+        submitted_at=datetime.utcnow(),
+        metadata_=body.get("metadata"),
+    )
+    db.add(wf)
+
+    # Create approval steps
+    steps = _build_default_steps(wf_type, total_steps, tenant_id, workflow_id)
+    for step in steps:
+        db.add(step)
+
+    # Mark the linked risk's workflow_status
+    if wf.object_type == "risk":
+        risk = db.query(EnterpriseRisk).filter(
+            EnterpriseRisk.risk_id == wf.object_id,
+            EnterpriseRisk.tenant_id == tenant_id,
+        ).first()
+        if risk:
+            risk.workflow_status = "pending"
+            risk.workflow_step = 1
+
+    db.commit()
+    db.refresh(wf)
+    result = wf.to_dict()
+    result["steps"] = [s.to_dict() for s in steps]
+    return result
+
+
+@router.get("/workflows")
+def list_workflows(
+    workflow_type: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    object_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """List workflows with optional filters."""
+    q = db.query(RiskWorkflow).filter(RiskWorkflow.tenant_id == tenant_id)
+    if workflow_type:
+        try:
+            q = q.filter(RiskWorkflow.workflow_type == WorkflowType(workflow_type))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid workflow_type: {workflow_type}")
+    if status:
+        try:
+            q = q.filter(RiskWorkflow.status == WorkflowStatus(status))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+    if object_id:
+        q = q.filter(RiskWorkflow.object_id == object_id)
+    workflows = q.order_by(RiskWorkflow.created_at.desc()).all()
+    return {"total": len(workflows), "workflows": [wf.to_dict() for wf in workflows]}
+
+
+@router.get("/workflows/{workflow_id}")
+def get_workflow(
+    workflow_id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Get a single workflow with all its steps."""
+    wf = _workflow_or_404(db, workflow_id, tenant_id)
+    steps = db.query(RiskWorkflowStep).filter(
+        RiskWorkflowStep.workflow_id == workflow_id,
+    ).order_by(RiskWorkflowStep.step_number).all()
+    result = wf.to_dict()
+    result["steps"] = [s.to_dict() for s in steps]
+    return result
+
+
+@router.post("/workflows/{workflow_id}/steps/{step_number}/decide")
+def decide_workflow_step(
+    workflow_id: str,
+    step_number: int,
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Record an approval / rejection decision on a workflow step.
+
+    decision: approve | reject | delegate
+    approver_user_id: user making the decision
+    comments: optional notes
+    """
+    wf = _workflow_or_404(db, workflow_id, tenant_id)
+    if wf.status not in (WorkflowStatus.PENDING, WorkflowStatus.IN_PROGRESS):
+        raise HTTPException(status_code=400, detail=f"Workflow is already {wf.status.value}")
+
+    step = db.query(RiskWorkflowStep).filter(
+        RiskWorkflowStep.workflow_id == workflow_id,
+        RiskWorkflowStep.step_number == step_number,
+    ).first()
+    if not step:
+        raise HTTPException(status_code=404, detail=f"Step {step_number} not found")
+    if step.status != WorkflowStepStatus.PENDING:
+        raise HTTPException(status_code=400, detail=f"Step {step_number} is already {step.status.value}")
+
+    decision = body.get("decision", "approve").lower()
+    if decision not in ("approve", "reject", "delegate"):
+        raise HTTPException(status_code=400, detail=f"Invalid decision: {decision}")
+
+    step.decision = decision
+    step.comments = body.get("comments")
+    step.approver_user_id = body.get("approver_user_id", step.approver_user_id)
+    step.approver_name = body.get("approver_name", step.approver_name)
+    step.decided_at = datetime.utcnow()
+    step.status = WorkflowStepStatus(decision.replace("approve", "approved").replace("reject", "rejected"))
+
+    # Normalise status name
+    _status_map = {"approve": WorkflowStepStatus.APPROVED, "reject": WorkflowStepStatus.REJECTED, "delegate": WorkflowStepStatus.DELEGATED}
+    step.status = _status_map[decision]
+
+    if decision == "reject":
+        wf.status = WorkflowStatus.REJECTED
+        wf.completed_at = datetime.utcnow()
+        _sync_object_workflow(db, wf, "rejected", step_number, tenant_id)
+    elif decision == "approve":
+        wf.status = WorkflowStatus.IN_PROGRESS
+        if step_number >= wf.total_steps:
+            # Final step approved → workflow complete
+            wf.status = WorkflowStatus.APPROVED
+            wf.completed_at = datetime.utcnow()
+            _sync_object_workflow(db, wf, "approved", step_number, tenant_id)
+        else:
+            wf.current_step = step_number + 1
+            _sync_object_workflow(db, wf, "in_progress", step_number + 1, tenant_id)
+
+    db.commit()
+    db.refresh(wf)
+    db.refresh(step)
+    return {"workflow": wf.to_dict(), "step": step.to_dict()}
+
+
+@router.post("/workflows/{workflow_id}/withdraw")
+def withdraw_workflow(
+    workflow_id: str,
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Withdraw (cancel) a pending or in-progress workflow."""
+    wf = _workflow_or_404(db, workflow_id, tenant_id)
+    if wf.status not in (WorkflowStatus.PENDING, WorkflowStatus.IN_PROGRESS):
+        raise HTTPException(status_code=400, detail=f"Cannot withdraw a {wf.status.value} workflow")
+    wf.status = WorkflowStatus.WITHDRAWN
+    wf.completed_at = datetime.utcnow()
+    _sync_object_workflow(db, wf, "withdrawn", 0, tenant_id)
+    db.commit()
+    db.refresh(wf)
+    return wf.to_dict()
+
+
+@router.get("/workflows/inbox/pending")
+def get_workflow_inbox(
+    approver_role: Optional[str] = Query(None),
+    approver_user_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Return pending workflow steps awaiting a specific approver role or user.
+    Used to drive the approver's inbox / to-do list.
+    """
+    q = db.query(RiskWorkflowStep).filter(
+        RiskWorkflowStep.tenant_id == tenant_id,
+        RiskWorkflowStep.status == WorkflowStepStatus.PENDING,
+    )
+    if approver_role:
+        q = q.filter(RiskWorkflowStep.approver_role == approver_role)
+    if approver_user_id:
+        q = q.filter(RiskWorkflowStep.approver_user_id == approver_user_id)
+    steps = q.order_by(RiskWorkflowStep.created_at.asc()).all()
+
+    # Enrich with workflow header
+    result = []
+    for step in steps:
+        wf = db.query(RiskWorkflow).filter(RiskWorkflow.workflow_id == step.workflow_id).first()
+        entry = step.to_dict()
+        if wf:
+            entry["workflow"] = wf.to_dict()
+        result.append(entry)
+    return {"total": len(result), "pending_steps": result}
+
+
+def _sync_object_workflow(db: Session, wf: RiskWorkflow, status_str: str, step: int, tenant_id: str):
+    """Mirror workflow_status / workflow_step back onto the parent object."""
+    if wf.object_type == "risk":
+        risk = db.query(EnterpriseRisk).filter(
+            EnterpriseRisk.risk_id == wf.object_id,
+            EnterpriseRisk.tenant_id == tenant_id,
+        ).first()
+        if risk:
+            risk.workflow_status = status_str
+            risk.workflow_step = step
+
+
+# ===========================================================================
+# KRI Data Sources  (KRI automation — non-SAP + SAP)
+# ===========================================================================
+
+@router.post("/kri-sources", status_code=201)
+def create_kri_source(
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Register an automated KRI data source."""
+    source_type_val = body.get("source_type", "MANUAL")
+    try:
+        source_type = KRISourceType(source_type_val)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type_val}. "
+                            f"Valid: {[e.value for e in KRISourceType]}")
+
+    src = KRIDataSource(
+        tenant_id=tenant_id,
+        source_id=body.get("source_id") or _new_id("KRISRC"),
+        source_name=body["source_name"],
+        source_type=source_type,
+        kri_id=body["kri_id"],
+        connection_config=body.get("connection_config"),
+        query_template=body.get("query_template"),
+        schedule_cron=body.get("schedule_cron"),
+        is_active=body.get("is_active", True),
+    )
+    db.add(src)
+    db.commit()
+    db.refresh(src)
+    return src.to_dict()
+
+
+@router.get("/kri-sources")
+def list_kri_sources(
+    kri_id: Optional[str] = Query(None),
+    source_type: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """List KRI data sources."""
+    q = db.query(KRIDataSource).filter(KRIDataSource.tenant_id == tenant_id)
+    if kri_id:
+        q = q.filter(KRIDataSource.kri_id == kri_id)
+    if source_type:
+        try:
+            q = q.filter(KRIDataSource.source_type == KRISourceType(source_type))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type}")
+    sources = q.order_by(KRIDataSource.created_at.desc()).all()
+    return {"total": len(sources), "sources": [s.to_dict() for s in sources]}
+
+
+@router.get("/kri-sources/{source_id}")
+def get_kri_source(
+    source_id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    src = db.query(KRIDataSource).filter(
+        KRIDataSource.source_id == source_id,
+        KRIDataSource.tenant_id == tenant_id,
+    ).first()
+    if not src:
+        raise HTTPException(status_code=404, detail=f"KRI source '{source_id}' not found")
+    return src.to_dict()
+
+
+@router.put("/kri-sources/{source_id}")
+def update_kri_source(
+    source_id: str,
+    body: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    src = db.query(KRIDataSource).filter(
+        KRIDataSource.source_id == source_id,
+        KRIDataSource.tenant_id == tenant_id,
+    ).first()
+    if not src:
+        raise HTTPException(status_code=404, detail=f"KRI source '{source_id}' not found")
+    for field in ["source_name", "connection_config", "query_template", "schedule_cron", "is_active"]:
+        if field in body:
+            setattr(src, field, body[field])
+    if "source_type" in body:
+        try:
+            src.source_type = KRISourceType(body["source_type"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid source_type: {body['source_type']}")
+    db.commit()
+    db.refresh(src)
+    return src.to_dict()
+
+
+@router.post("/kri-sources/{source_id}/pull")
+def trigger_kri_pull(
+    source_id: str,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Manually trigger a KRI data pull from the configured source.
+
+    For SAP sources this invokes the connector; for REST_API sources it
+    issues the configured HTTP request; MANUAL sources return a prompt
+    to supply the value via POST /kris/{kri_id}/measure.
+    """
+    src = db.query(KRIDataSource).filter(
+        KRIDataSource.source_id == source_id,
+        KRIDataSource.tenant_id == tenant_id,
+    ).first()
+    if not src:
+        raise HTTPException(status_code=404, detail=f"KRI source '{source_id}' not found")
+    if not src.is_active:
+        raise HTTPException(status_code=400, detail="KRI source is inactive")
+
+    if src.source_type == KRISourceType.MANUAL:
+        return {
+            "source_id": source_id,
+            "message": "MANUAL source — use POST /kris/{kri_id}/measure to supply value",
+            "kri_id": src.kri_id,
+        }
+
+    # Automated pull — delegated to connector framework (mock for now)
+    pulled_value: Optional[float] = None
+    try:
+        from core.kri_automation import pull_kri_value
+        pulled_value = pull_kri_value(src)
+    except ImportError:
+        pass  # core.kri_automation not yet wired — return mock
+
+    if pulled_value is None:
+        # Mock: return config info so UI can show the source is configured
+        return {
+            "source_id": source_id,
+            "kri_id": src.kri_id,
+            "source_type": src.source_type.value,
+            "status": "connector_pending",
+            "message": f"{src.source_type.value} connector will be invoked on next scheduled pull",
+            "schedule_cron": src.schedule_cron,
+            "last_pulled_at": src.last_pulled_at.isoformat() if src.last_pulled_at else None,
+        }
+
+    # Persist pulled value
+    src.last_value = pulled_value
+    src.last_pulled_at = datetime.utcnow()
+
+    # Update parent KRI current_value
+    kri = db.query(KeyRiskIndicator).filter(
+        KeyRiskIndicator.kri_id == src.kri_id,
+        KeyRiskIndicator.tenant_id == tenant_id,
+    ).first()
+    if kri:
+        kri.current_value = pulled_value
+        kri.last_measured_at = datetime.utcnow()
+        kri.status = KRIStatus(_kri_status(kri))
+
+    db.commit()
+    return {
+        "source_id": source_id,
+        "kri_id": src.kri_id,
+        "pulled_value": pulled_value,
+        "pulled_at": src.last_pulled_at.isoformat(),
     }

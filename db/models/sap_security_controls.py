@@ -86,12 +86,12 @@ class SAPSecurityControl(Base, TimestampMixin):
     expected_value = Column(Text, nullable=True)
 
     # Risk and compliance
-    default_risk_rating = Column(SQLEnum(RiskRating), default=RiskRating.YELLOW)
+    default_risk_rating = Column(String(50), default=RiskRating.YELLOW)
     recommendation = Column(Text, nullable=True)
     comment = Column(Text, nullable=True)
 
     # Status
-    status = Column(SQLEnum(ControlStatus), default=ControlStatus.ACTIVE)
+    status = Column(String(50), default=ControlStatus.ACTIVE)
     is_automated = Column(Boolean, default=False)
 
     # Compliance frameworks
@@ -123,10 +123,10 @@ class SAPSecurityControl(Base, TimestampMixin):
             'procedure': self.procedure,
             'profile_parameter': self.profile_parameter,
             'expected_value': self.expected_value,
-            'default_risk_rating': self.default_risk_rating.value if self.default_risk_rating else None,
+            'default_risk_rating': getattr(self.default_risk_rating, "value", self.default_risk_rating) if self.default_risk_rating else None,
             'recommendation': self.recommendation,
             'comment': self.comment,
-            'status': self.status.value if self.status else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'is_automated': self.is_automated,
             'compliance_frameworks': self.compliance_frameworks,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -153,7 +153,7 @@ class ControlValueMapping(Base, TimestampMixin):
     value_pattern = Column(String(500), nullable=True)  # Regex or comparison pattern
 
     # Risk rating for this value
-    risk_rating = Column(SQLEnum(RiskRating), nullable=False)
+    risk_rating = Column(String(50), nullable=False)
 
     # Guidance
     recommendation = Column(Text, nullable=True)
@@ -174,7 +174,7 @@ class ControlValueMapping(Base, TimestampMixin):
             'control_id': self.control_id,
             'value_condition': self.value_condition,
             'value_pattern': self.value_pattern,
-            'risk_rating': self.risk_rating.value if self.risk_rating else None,
+            'risk_rating': getattr(self.risk_rating, "value", self.risk_rating) if self.risk_rating else None,
             'recommendation': self.recommendation,
             'comment': self.comment,
             'evaluation_order': self.evaluation_order
@@ -209,8 +209,8 @@ class ControlEvaluation(Base, TimestampMixin):
     actual_value_details = Column(JSON, nullable=True)  # For complex results
 
     # Result
-    risk_rating = Column(SQLEnum(RiskRating), nullable=False)
-    status = Column(SQLEnum(EvaluationStatus), default=EvaluationStatus.COMPLETED)
+    risk_rating = Column(String(50), nullable=False)
+    status = Column(String(50), default=EvaluationStatus.COMPLETED)
 
     # Findings
     finding_description = Column(Text, nullable=True)
@@ -253,8 +253,8 @@ class ControlEvaluation(Base, TimestampMixin):
             'evaluated_by': self.evaluated_by,
             'actual_value': self.actual_value,
             'actual_value_details': self.actual_value_details,
-            'risk_rating': self.risk_rating.value if self.risk_rating else None,
-            'status': self.status.value if self.status else None,
+            'risk_rating': getattr(self.risk_rating, "value", self.risk_rating) if self.risk_rating else None,
+            'status': getattr(self.status, "value", self.status) if self.status else None,
             'finding_description': self.finding_description,
             'affected_users': self.affected_users,
             'affected_count': self.affected_count,

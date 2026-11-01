@@ -26,7 +26,12 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type RiskCategory = 'strategic' | 'operational' | 'financial' | 'compliance' | 'it_cyber';
-type RiskStatus = 'open' | 'in_review' | 'mitigated' | 'accepted' | 'closed';
+type RiskStatus = 'open' | 'in_review' | 'mitigated' | 'accepted' | 'closed' | 'identified' | 'assessed';
+type RiskVelocity = 'sudden' | 'rapid' | 'moderate' | 'gradual' | '';
+
+const VELOCITY_NUMERIC: Record<string, number> = {
+  sudden: 5, rapid: 4, moderate: 3, gradual: 1,
+};
 
 interface Risk {
   id: string;
@@ -34,17 +39,32 @@ interface Risk {
   title: string;
   description: string;
   category: RiskCategory;
-  owner: string;
+  // API uses risk_owner_name / risk_owner_id
+  owner?: string;
+  risk_owner_name?: string;
+  risk_owner_id?: string;
   owner_email?: string;
   inherent_likelihood: number;
   inherent_impact: number;
+  inherent_score?: number;
   residual_likelihood: number;
   residual_impact: number;
+  residual_score?: number;
   status: RiskStatus;
-  treatment: string;
+  treatment?: string;
   review_date?: string;
+  next_review_date?: string;
   created_at: string;
   updated_at?: string;
+  // New fields
+  velocity?: RiskVelocity;
+  velocity_numeric?: number;
+  contingency_plan?: string;
+  parent_risk_id?: number;
+  aggregated_score?: number;
+  child_count?: number;
+  workflow_status?: string;
+  workflow_step?: number;
 }
 
 interface RiskFormData {
@@ -60,6 +80,9 @@ interface RiskFormData {
   status: RiskStatus;
   treatment: string;
   review_date: string;
+  // New fields
+  velocity: RiskVelocity;
+  contingency_plan: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -77,23 +100,37 @@ const EMPTY_FORM: RiskFormData = {
   status: 'open',
   treatment: '',
   review_date: '',
+  velocity: '',
+  contingency_plan: '',
 };
+
+function computeScore(likelihood: number, impact: number, velocity?: RiskVelocity | string): number {
+  const v = velocity ? (VELOCITY_NUMERIC[velocity] ?? 0) : 0;
+  return (impact + v) * likelihood;
+}
 
 function scoreVariant(score: number): 'success' | 'warning' | 'danger' {
   if (score <= 5) return 'success';
-  if (score <= 12) return 'warning';
+  if (score <= 15) return 'warning';
   return 'danger';
 }
 
 function scoreLabel(score: number): string {
   if (score <= 5) return 'Low';
-  if (score <= 12) return 'Medium';
-  if (score <= 19) return 'High';
+  if (score <= 15) return 'Medium';
+  if (score <= 30) return 'High';
   return 'Critical';
 }
 
-function ScoreBadge({ likelihood, impact }: { likelihood: number; impact: number }) {
-  const score = likelihood * impact;
+function ScoreBadge({
+  likelihood, impact, velocity, score: overrideScore,
+}: {
+  likelihood: number;
+  impact: number;
+  velocity?: string;
+  score?: number;
+}) {
+  const score = overrideScore ?? computeScore(likelihood, impact, velocity);
   return (
     <Badge variant={scoreVariant(score)} size="sm">
       {score} ({scoreLabel(score)})
@@ -115,6 +152,8 @@ const STATUS_LABELS: Record<RiskStatus, string> = {
   mitigated: 'Mitigated',
   accepted: 'Accepted',
   closed: 'Closed',
+  identified: 'Identified',
+  assessed: 'Assessed',
 };
 
 const STATUS_VARIANT: Record<RiskStatus, 'danger' | 'warning' | 'info' | 'success' | 'neutral'> = {
@@ -123,9 +162,19 @@ const STATUS_VARIANT: Record<RiskStatus, 'danger' | 'warning' | 'info' | 'succes
   mitigated: 'success',
   accepted: 'neutral',
   closed: 'neutral',
+  identified: 'warning',
+  assessed: 'info',
 };
 
 const SCALE_OPTIONS = [1, 2, 3, 4, 5].map(n => ({ value: String(n), label: String(n) }));
+
+const VELOCITY_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'sudden', label: 'Sudden (V=5) — materialises within hours/days' },
+  { value: 'rapid', label: 'Rapid (V=4) — materialises within weeks' },
+  { value: 'moderate', label: 'Moderate (V=3) — materialises within months' },
+  { value: 'gradual', label: 'Gradual (V=1) — materialises over years' },
+];
 
 const CATEGORY_OPTIONS = [
   { value: 'strategic', label: 'Strategic' },
@@ -194,10 +243,11 @@ export function RiskRegister() {
   const filteredRisks = risks.filter(r => {
     if (!search) return true;
     const q = search.toLowerCase();
+    const ownerName = r.owner ?? r.risk_owner_name ?? '';
     return (
       r.title.toLowerCase().includes(q) ||
       r.risk_id?.toLowerCase().includes(q) ||
-      r.owner.toLowerCase().includes(q)
+      ownerName.toLowerCase().includes(q)
     );
   });
 
@@ -249,7 +299,7 @@ export function RiskRegister() {
       title: risk.title,
       description: risk.description,
       category: risk.category,
-      owner: risk.owner,
+      owner: risk.owner ?? risk.risk_owner_name ?? '',
       owner_email: risk.owner_email ?? '',
       inherent_likelihood: risk.inherent_likelihood,
       inherent_impact: risk.inherent_impact,
@@ -257,7 +307,9 @@ export function RiskRegister() {
       residual_impact: risk.residual_impact,
       status: risk.status,
       treatment: risk.treatment ?? '',
-      review_date: risk.review_date ?? '',
+      review_date: risk.review_date ?? risk.next_review_date?.split('T')[0] ?? '',
+      velocity: (risk.velocity as RiskVelocity) ?? '',
+      contingency_plan: risk.contingency_plan ?? '',
     });
     setFormErrors({});
     setShowModal(true);
@@ -290,8 +342,11 @@ export function RiskRegister() {
 
   // ── Stats ──
 
-  const openCount = risks.filter(r => r.status === 'open').length;
-  const highCount = risks.filter(r => r.inherent_likelihood * r.inherent_impact >= 13).length;
+  const openCount = risks.filter(r => ['open', 'identified', 'assessed'].includes(r.status)).length;
+  const highCount = risks.filter(r => {
+    const s = r.inherent_score ?? computeScore(r.inherent_likelihood, r.inherent_impact, r.velocity);
+    return s > 15;
+  }).length;
   const mitigatedCount = risks.filter(r => r.status === 'mitigated').length;
   const inReviewCount = risks.filter(r => r.status === 'in_review').length;
 
@@ -333,23 +388,45 @@ export function RiskRegister() {
       key: 'inherent',
       header: 'Inherent Score',
       render: (r: Risk) => (
-        <ScoreBadge likelihood={r.inherent_likelihood} impact={r.inherent_impact} />
+        <div>
+          <ScoreBadge
+            likelihood={r.inherent_likelihood}
+            impact={r.inherent_impact}
+            velocity={r.velocity}
+            score={r.inherent_score}
+          />
+          {r.velocity && (
+            <div className="text-xs text-gray-400 mt-0.5 capitalize">V: {r.velocity}</div>
+          )}
+        </div>
       ),
     },
     {
       key: 'residual',
       header: 'Residual Score',
       render: (r: Risk) => (
-        <ScoreBadge likelihood={r.residual_likelihood} impact={r.residual_impact} />
+        <ScoreBadge
+          likelihood={r.residual_likelihood}
+          impact={r.residual_impact}
+          velocity={r.velocity}
+          score={r.residual_score}
+        />
       ),
     },
     {
       key: 'status',
       header: 'Status',
       render: (r: Risk) => (
-        <Badge variant={STATUS_VARIANT[r.status] ?? 'neutral'} dot size="sm">
-          {STATUS_LABELS[r.status] ?? r.status}
-        </Badge>
+        <div className="space-y-1">
+          <Badge variant={STATUS_VARIANT[r.status as RiskStatus] ?? 'neutral'} dot size="sm">
+            {STATUS_LABELS[r.status as RiskStatus] ?? r.status}
+          </Badge>
+          {r.workflow_status && r.workflow_status !== 'none' && (
+            <div className="text-xs text-indigo-500 dark:text-indigo-400 capitalize">
+              Workflow: {r.workflow_status.replace('_', ' ')}
+            </div>
+          )}
+        </div>
       ),
     },
     {
@@ -540,6 +617,17 @@ export function RiskRegister() {
             placeholder="Describe the risk, its cause, and potential impact..."
           />
 
+          {/* Velocity */}
+          <div>
+            <Select
+              label="Velocity"
+              value={form.velocity}
+              onChange={e => setField('velocity', e.target.value as RiskVelocity)}
+              options={VELOCITY_OPTIONS}
+            />
+            <p className="text-xs text-gray-400 mt-1">How quickly this risk would materialise if triggered</p>
+          </div>
+
           {/* Inherent risk */}
           <div>
             <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">
@@ -560,11 +648,17 @@ export function RiskRegister() {
               />
             </div>
             <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              Inherent Score:
+              <span>Inherent Score <span className="font-mono text-xs">(I+V)×L</span>:</span>
               <ScoreBadge
                 likelihood={form.inherent_likelihood}
                 impact={form.inherent_impact}
+                velocity={form.velocity}
               />
+              {form.velocity && (
+                <span className="text-xs text-gray-400">
+                  ({form.inherent_impact}+{VELOCITY_NUMERIC[form.velocity] ?? 0})×{form.inherent_likelihood}
+                </span>
+              )}
             </div>
           </div>
 
@@ -588,12 +682,25 @@ export function RiskRegister() {
               />
             </div>
             <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              Residual Score:
+              <span>Residual Score <span className="font-mono text-xs">(I+V)×L</span>:</span>
               <ScoreBadge
                 likelihood={form.residual_likelihood}
                 impact={form.residual_impact}
+                velocity={form.velocity}
               />
             </div>
+          </div>
+
+          {/* Contingency Plan */}
+          <div>
+            <Textarea
+              label="Contingency Plan"
+              value={form.contingency_plan}
+              onChange={e => setField('contingency_plan', e.target.value)}
+              rows={3}
+              placeholder="Describe actions to take if this risk materialises..."
+            />
+            <p className="text-xs text-gray-400 mt-1">What will we do if this risk event occurs?</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -664,13 +771,26 @@ export function RiskRegister() {
                 </p>
               </div>
               <div>
+                <p className="text-xs text-gray-500 mb-1">Velocity</p>
+                <p className="text-sm text-gray-800 dark:text-gray-200 capitalize">
+                  {viewingRisk.velocity || '—'}
+                  {viewingRisk.velocity && (
+                    <span className="ml-1.5 text-xs text-gray-400">
+                      (V={VELOCITY_NUMERIC[viewingRisk.velocity] ?? '?'})
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div>
                 <p className="text-xs text-gray-500 mb-1">Inherent Score</p>
                 <ScoreBadge
                   likelihood={viewingRisk.inherent_likelihood}
                   impact={viewingRisk.inherent_impact}
+                  velocity={viewingRisk.velocity}
+                  score={viewingRisk.inherent_score}
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  L{viewingRisk.inherent_likelihood} × I{viewingRisk.inherent_impact}
+                <p className="text-xs text-gray-400 mt-1 font-mono">
+                  ({viewingRisk.inherent_impact}+{viewingRisk.velocity_numeric ?? 0})×{viewingRisk.inherent_likelihood}
                 </p>
               </div>
               <div>
@@ -678,16 +798,39 @@ export function RiskRegister() {
                 <ScoreBadge
                   likelihood={viewingRisk.residual_likelihood}
                   impact={viewingRisk.residual_impact}
+                  velocity={viewingRisk.velocity}
+                  score={viewingRisk.residual_score}
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  L{viewingRisk.residual_likelihood} × I{viewingRisk.residual_impact}
+                <p className="text-xs text-gray-400 mt-1 font-mono">
+                  ({viewingRisk.residual_impact}+{viewingRisk.velocity_numeric ?? 0})×{viewingRisk.residual_likelihood}
                 </p>
               </div>
+              {viewingRisk.aggregated_score != null && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Aggregated Score</p>
+                  <ScoreBadge
+                    likelihood={1}
+                    impact={1}
+                    score={viewingRisk.aggregated_score}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {viewingRisk.child_count ?? 0} child risk{(viewingRisk.child_count ?? 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Description</p>
               <p className="text-sm text-gray-700 dark:text-gray-300">{viewingRisk.description}</p>
             </div>
+            {viewingRisk.contingency_plan && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Contingency Plan</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {viewingRisk.contingency_plan}
+                </p>
+              </div>
+            )}
             {viewingRisk.treatment && (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Treatment</p>

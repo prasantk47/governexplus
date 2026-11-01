@@ -158,13 +158,13 @@ def submit_case(
         id=_new_id("WBC"),
         tenant_id=tenant_id,
         case_reference=case_reference,
-        category=WhistleblowerCategory(body.category) if body.category else WhistleblowerCategory.OTHER,
+        category=body.category or "other",
         summary=body.title,
         details=body.description,
-        priority=_parse_priority(body.priority),
+        priority=_parse_priority(body.priority).value,
         is_anonymous=body.is_anonymous,
         submitter_email=None if body.is_anonymous else body.submitter_email,
-        status=WhistleblowerStatus.OPEN,
+        status="open",
         submitted_at=datetime.utcnow(),
     )
     db.add(case)
@@ -258,7 +258,7 @@ def add_message(
         id=_new_id("WBMSG"),
         tenant_id=tenant_id,
         case_id=case.id,
-        sender=WhistleblowerSender.INVESTIGATOR,
+        sender="investigator",
         message_text=body.message_body,
         sent_at=datetime.utcnow(),
     )
@@ -343,7 +343,8 @@ def anonymous_reply(
     grants access to add messages.
     """
     case = _case_by_reference(db, case_reference, tenant_id)
-    if case.status == WhistleblowerStatus.CLOSED:
+    case_status = getattr(case.status, "value", case.status)
+    if case_status == "closed":
         raise HTTPException(
             status_code=400,
             detail="This case is closed. New messages cannot be added.",
@@ -352,7 +353,7 @@ def anonymous_reply(
         id=_new_id("WBMSG"),
         tenant_id=tenant_id,
         case_id=case.id,
-        sender=WhistleblowerSender.SUBMITTER,
+        sender="submitter",
         message_text=body.message_body,
         sent_at=datetime.utcnow(),
     )

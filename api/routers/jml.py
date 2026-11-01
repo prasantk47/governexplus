@@ -257,17 +257,14 @@ def create_event(
         event_type=body.event_type,
         employee_id=body.employee_id,
         employee_name=body.employee_name,
-        employee_email=body.employee_email,
         effective_date=body.effective_date,
-        source_system=body.source_system or "manual",
-        previous_org_unit=body.previous_org_unit,
+        hr_system=body.source_system or "manual",
+        old_org_unit=body.previous_org_unit,
         new_org_unit=body.new_org_unit,
-        previous_job_function=body.previous_job_function,
-        new_job_function=body.new_job_function,
-        previous_manager_id=body.previous_manager_id,
-        new_manager_id=body.new_manager_id,
+        old_position=body.previous_job_function,
+        new_position=body.new_job_function,
         status="pending",
-        metadata_=body.metadata,
+        raw_payload=body.metadata,
     )
     db.add(event)
     db.commit()

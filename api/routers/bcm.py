@@ -312,11 +312,11 @@ def create_plan(
         id=_new_id("BCMP"),
         tenant_id=tenant_id,
         plan_name=body.plan_name,
-        plan_type=BcmPlanType(body.plan_type) if body.plan_type else BcmPlanType.BCP,
+        plan_type=body.plan_type or "bcp",
         scope=body.scope,
         owner=body.owner_name,
         version=body.version or "1.0",
-        status=BcmPlanStatus(body.status) if body.status else BcmPlanStatus.DRAFT,
+        status=body.status or "draft",
         approved_by=body.approved_by,
         next_test_date=datetime.fromisoformat(body.next_review_date) if body.next_review_date else None,
     )
@@ -487,21 +487,19 @@ def activate_plan(
         id=_new_id("BCMA"),
         tenant_id=tenant_id,
         plan_id=body.plan_id,
+        activation_name=f"Activation: {body.incident_type or body.activation_reason[:40]}",
         activation_reason=body.activation_reason,
-        incident_type=body.incident_type,
-        severity=body.severity,
+        severity=body.severity or "high",
         activated_by=body.activated_by,
-        notification_list=body.notification_list or [],
-        initial_notes=body.initial_notes,
         status="active",
         activated_at=datetime.utcnow(),
-        timeline=[{
+        timeline_events=[{
             "time": datetime.utcnow().isoformat(),
             "actor": body.activated_by or "system",
             "action": "Plan activated",
             "notes": body.initial_notes,
         }],
-        metadata_=body.metadata,
+        communications_log=body.notification_list or [],
     )
     db.add(activation)
     db.commit()

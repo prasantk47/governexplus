@@ -237,7 +237,7 @@ def create_vendor(
         vendor_name=body.vendor_name,
         vendor_code=body.vendor_code,
         tier=tier_val,
-        status=VendorStatus(body.status) if body.status else VendorStatus.ACTIVE,
+        status=body.status or "active",
         country=body.country,
         primary_contact=body.primary_contact_name,
         contact_email=body.primary_contact_email,
@@ -427,16 +427,13 @@ def create_issue(
         id=_new_id("VISS"),
         tenant_id=tenant_id,
         vendor_id=body.vendor_id,
-        assessment_id=body.assessment_id,
-        title=body.title,
+        issue_title=body.title,
         description=body.description,
         severity=body.severity,
-        category=body.category,
-        remediation_plan=body.remediation_plan,
+        resolution_notes=body.remediation_plan,
         due_date=datetime.fromisoformat(body.due_date) if body.due_date else None,
-        owner_id=body.owner_id,
+        owner=body.owner_id,
         status="open",
-        metadata_=body.metadata,
     )
     db.add(issue)
     db.commit()

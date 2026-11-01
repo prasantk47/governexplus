@@ -716,7 +716,7 @@ def record_kri_measurement(
     db.refresh(m)
     return {
         "measurement": m.to_dict(),
-        "kri_status": kri.status.value,
+        "kri_status": getattr(kri.status, "value", kri.status),
     }
 
 
@@ -1167,7 +1167,7 @@ def _build_default_steps(workflow_type: WorkflowType, total_steps: int, tenant_i
             step_number=i + 1,
             step_name=d["step_name"],
             approver_role=d["approver_role"],
-            status=WorkflowStepStatus.PENDING,
+            status="pending",
         )
         for i, d in enumerate(defs[:total_steps])
     ]
@@ -1207,7 +1207,7 @@ def create_workflow(
         description=body.get("description"),
         total_steps=total_steps,
         current_step=1,
-        status=WorkflowStatus.PENDING,
+        status="pending",
         submitted_by=body.get("submitted_by"),
         submitted_at=datetime.utcnow(),
         metadata_=body.get("metadata"),
@@ -1294,8 +1294,9 @@ def decide_workflow_step(
     comments: optional notes
     """
     wf = _workflow_or_404(db, workflow_id, tenant_id)
-    if wf.status not in (WorkflowStatus.PENDING, WorkflowStatus.IN_PROGRESS):
-        raise HTTPException(status_code=400, detail=f"Workflow is already {wf.status.value}")
+    wf_status_str = getattr(wf.status, "value", wf.status) or ""
+    if wf_status_str not in ("pending", "in_progress"):
+        raise HTTPException(status_code=400, detail=f"Workflow is already {wf_status_str}")
 
     step = db.query(RiskWorkflowStep).filter(
         RiskWorkflowStep.workflow_id == workflow_id,
@@ -1303,8 +1304,9 @@ def decide_workflow_step(
     ).first()
     if not step:
         raise HTTPException(status_code=404, detail=f"Step {step_number} not found")
-    if step.status != WorkflowStepStatus.PENDING:
-        raise HTTPException(status_code=400, detail=f"Step {step_number} is already {step.status.value}")
+    step_status_str = getattr(step.status, "value", step.status) or ""
+    if step_status_str not in ("pending", ""):
+        raise HTTPException(status_code=400, detail=f"Step {step_number} is already {step_status_str}")
 
     decision = body.get("decision", "approve").lower()
     if decision not in ("approve", "reject", "delegate"):
@@ -1315,21 +1317,18 @@ def decide_workflow_step(
     step.approver_user_id = body.get("approver_user_id", step.approver_user_id)
     step.approver_name = body.get("approver_name", step.approver_name)
     step.decided_at = datetime.utcnow()
-    step.status = WorkflowStepStatus(decision.replace("approve", "approved").replace("reject", "rejected"))
-
-    # Normalise status name
-    _status_map = {"approve": WorkflowStepStatus.APPROVED, "reject": WorkflowStepStatus.REJECTED, "delegate": WorkflowStepStatus.DELEGATED}
-    step.status = _status_map[decision]
+    _step_status_map = {"approve": "approved", "reject": "rejected", "delegate": "delegated"}
+    step.status = _step_status_map[decision]
 
     if decision == "reject":
-        wf.status = WorkflowStatus.REJECTED
+        wf.status = "rejected"
         wf.completed_at = datetime.utcnow()
         _sync_object_workflow(db, wf, "rejected", step_number, tenant_id)
     elif decision == "approve":
-        wf.status = WorkflowStatus.IN_PROGRESS
+        wf.status = "in_progress"
         if step_number >= wf.total_steps:
             # Final step approved → workflow complete
-            wf.status = WorkflowStatus.APPROVED
+            wf.status = "approved"
             wf.completed_at = datetime.utcnow()
             _sync_object_workflow(db, wf, "approved", step_number, tenant_id)
         else:
@@ -1351,9 +1350,9 @@ def withdraw_workflow(
 ):
     """Withdraw (cancel) a pending or in-progress workflow."""
     wf = _workflow_or_404(db, workflow_id, tenant_id)
-    if wf.status not in (WorkflowStatus.PENDING, WorkflowStatus.IN_PROGRESS):
-        raise HTTPException(status_code=400, detail=f"Cannot withdraw a {wf.status.value} workflow")
-    wf.status = WorkflowStatus.WITHDRAWN
+    if wf.status not in ("pending", "in_progress"):
+        raise HTTPException(status_code=400, detail=f"Cannot withdraw a {getattr(wf.status, "value", wf.status)} workflow")
+    wf.status = "withdrawn"
     wf.completed_at = datetime.utcnow()
     _sync_object_workflow(db, wf, "withdrawn", 0, tenant_id)
     db.commit()
@@ -1374,7 +1373,7 @@ def get_workflow_inbox(
     """
     q = db.query(RiskWorkflowStep).filter(
         RiskWorkflowStep.tenant_id == tenant_id,
-        RiskWorkflowStep.status == WorkflowStepStatus.PENDING,
+        RiskWorkflowStep.status == "pending",
     )
     if approver_role:
         q = q.filter(RiskWorkflowStep.approver_role == approver_role)
@@ -1543,9 +1542,9 @@ def trigger_kri_pull(
         return {
             "source_id": source_id,
             "kri_id": src.kri_id,
-            "source_type": src.source_type.value,
+            "source_type": getattr(src.source_type, "value", src.source_type),
             "status": "connector_pending",
-            "message": f"{src.source_type.value} connector will be invoked on next scheduled pull",
+            "message": f"{getattr(src.source_type, "value", src.source_type)} connector will be invoked on next scheduled pull",
             "schedule_cron": src.schedule_cron,
             "last_pulled_at": src.last_pulled_at.isoformat() if src.last_pulled_at else None,
         }

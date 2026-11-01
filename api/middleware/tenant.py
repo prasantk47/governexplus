@@ -89,6 +89,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         tenant = self.tenant_manager.get_tenant(tenant_id)
         if not tenant:
+            # Fallback: JWT may carry slug instead of id (e.g. seeded tenants)
+            tenant = self.tenant_manager.get_tenant_by_slug(tenant_id)
+        if not tenant:
             return self._error(404, f"Tenant not found: {tenant_id}")
         if tenant.status == TenantStatus.SUSPENDED:
             return self._error(403, "This account has been suspended. Please contact support.")

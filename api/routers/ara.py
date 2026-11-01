@@ -117,10 +117,10 @@ def get_behavioral_analyzer() -> BehavioralAnalyzer:
 # =============================================================================
 
 _SEVERITY_MAP = {
-    "critical": RiskSeverityLevel.CRITICAL,
-    "high": RiskSeverityLevel.HIGH,
-    "medium": RiskSeverityLevel.MEDIUM,
-    "low": RiskSeverityLevel.LOW,
+    "critical": "critical",
+    "high": "high",
+    "medium": "medium",
+    "low": "low",
 }
 
 
@@ -149,7 +149,7 @@ def _persist_risks(risks, user_external_id: str, tenant_id: str = "tenant_defaul
             repo = RiskViolationRepository(db)
             for risk in risks:
                 severity_str = risk.severity.value if hasattr(risk.severity, "value") else str(risk.severity)
-                severity_level = _SEVERITY_MAP.get(severity_str, RiskSeverityLevel.MEDIUM)
+                severity_level = _SEVERITY_MAP.get(severity_str, "medium")
 
                 violation_data = {
                     "violation_id": f"RI-{risk.risk_id}",
@@ -650,14 +650,14 @@ async def create_sod_rule(request: SoDRuleRequest):
     engine = get_ara_engine()
 
     try:
-        severity = RiskSeverity(request.severity)
+        severity = request.severity
     except ValueError:
         severity = RiskSeverity.HIGH
 
     try:
-        category = RiskCategory(request.category)
+        category = request.category
     except ValueError:
-        category = RiskCategory.FINANCIAL
+        category = "financial"
 
     rule = SoDRule(
         rule_id=request.rule_id,
@@ -738,7 +738,7 @@ async def create_mitigation_control(request: MitigationControlRequest):
         description=request.description,
         control_type=request.control_type,
         risk_reduction_pct=request.risk_reduction_pct,
-        applicable_risk_types=[RiskType(rt) for rt in request.applicable_risk_types] if request.applicable_risk_types else [],
+        applicable_risk_types=[rt for rt in request.applicable_risk_types] if request.applicable_risk_types else [],
         requires_approval=request.requires_approval,
         approvers=request.approvers,
     )

@@ -106,7 +106,7 @@ export function RiskSimulation() {
 
       setResult({
         overallRisk: (data.risk_level || 'medium').toLowerCase() as SimulationResult['overallRisk'],
-        riskScore: data.risk_score || 0,
+        riskScore: data.severity_score || data.risk_score || 0,
         sodConflicts: violations.map((v: any, idx: number) => ({
           id: v.id || v.rule_id || `SOD-${idx + 1}`,
           rule: v.rule || v.rule_name || 'SoD Violation',

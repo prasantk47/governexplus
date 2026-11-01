@@ -168,9 +168,9 @@ def create_survey(
         id=_new_id("SRV"),
         tenant_id=tenant_id,
         survey_name=body.title,
-        survey_type=SurveyType(body.survey_type) if body.survey_type else SurveyType.GENERAL,
+        survey_type=body.survey_type if body.survey_type else "general",
         description=body.description,
-        status=SurveyStatus(body.status) if body.status else SurveyStatus.DRAFT,
+        status=body.status if body.status else "draft",
         questions=[q.dict() for q in body.questions] if body.questions else [],
         allow_anonymous=body.allow_anonymous,
         due_date=datetime.fromisoformat(body.due_date) if body.due_date else None,
@@ -263,7 +263,7 @@ def update_survey(
     if body.description is not None:
         survey.description = body.description
     if body.status is not None:
-        survey.status = SurveyStatus(body.status)
+        survey.status = body.status
     if body.questions is not None:
         survey.questions = [q.dict() for q in body.questions]
     if body.allow_anonymous is not None:

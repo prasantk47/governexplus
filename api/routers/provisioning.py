@@ -369,7 +369,7 @@ async def list_tasks(
     status_enum = None
     if status:
         try:
-            status_enum = ProvisioningStatus(status)
+            status_enum = status
         except ValueError:
             pass
 

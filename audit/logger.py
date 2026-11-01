@@ -64,7 +64,8 @@ class AuditLogger:
             success: bool = True,
             error_message: Optional[str] = None,
             compliance_relevant: bool = False,
-            compliance_tags: Optional[List[str]] = None) -> AuditLog:
+            compliance_tags: Optional[List[str]] = None,
+            tenant_id: Optional[str] = None) -> AuditLog:
         """
         Create an audit log entry.
 
@@ -96,9 +97,18 @@ class AuditLogger:
         action_category = self._get_action_category(action)
 
         # Create audit entry
+        # Resolve tenant_id from context if not provided
+        if tenant_id is None:
+            try:
+                from db.tenant_scoping import _current_tenant
+                tenant_id = _current_tenant.get(None)
+            except Exception:
+                pass
+
         audit_entry = AuditLog(
             timestamp=datetime.utcnow(),
-            action=action,
+            tenant_id=tenant_id,
+            action=getattr(action, 'value', action),
             action_category=action_category,
             actor_user_id=actor_user_id,
             actor_username=actor_username,
@@ -128,9 +138,10 @@ class AuditLogger:
 
             # Also log to standard logger for real-time monitoring
             log_level = logging.INFO if success else logging.WARNING
+            action_str = getattr(action, 'value', action)
             logger.log(
                 log_level,
-                f"AUDIT: {action.value} | Actor: {actor_user_id} | "
+                f"AUDIT: {action_str} | Actor: {actor_user_id} | "
                 f"Target: {target_type}:{target_id} | Success: {success}"
             )
 
@@ -139,14 +150,15 @@ class AuditLogger:
         except Exception as e:
             session.rollback()
             logger.error(f"Failed to write audit log: {e}")
-            raise
+            # Audit logging must never crash the main operation
+            return None
         finally:
             if not self._db_session:  # Only close if we created it
                 session.close()
 
-    def _get_action_category(self, action: AuditAction) -> str:
+    def _get_action_category(self, action) -> str:
         """Determine category from action type"""
-        action_name = action.value
+        action_name = getattr(action, 'value', action) or ''
 
         if action_name.startswith('user_'):
             return 'user'

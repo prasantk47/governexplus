@@ -173,7 +173,7 @@ def create_scenario(
 ):
     """Create a new multi-driver cascading risk scenario."""
     try:
-        scenario_type = ScenarioType(body.get("scenario_type", "single_event"))
+        scenario_type = body.get("scenario_type", "single_event")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scenario_type")
 
@@ -199,7 +199,7 @@ def create_scenario(
         impact_high=body.get("impact_high", 0.0),
         time_horizon=body.get("time_horizon"),
         velocity=velocity,
-        status=ScenarioStatus.DRAFT,
+        status="draft",
         created_by=body.get("created_by"),
     )
     db.add(s)
@@ -218,12 +218,12 @@ def list_scenarios(
     q = db.query(RiskScenario).filter(RiskScenario.tenant_id == tenant_id)
     if status:
         try:
-            q = q.filter(RiskScenario.status == ScenarioStatus(status))
+            q = q.filter(RiskScenario.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     if scenario_type:
         try:
-            q = q.filter(RiskScenario.scenario_type == ScenarioType(scenario_type))
+            q = q.filter(RiskScenario.scenario_type == scenario_type)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid scenario_type")
     scenarios = q.order_by(RiskScenario.created_at.desc()).all()
@@ -255,11 +255,11 @@ def update_scenario(
         if field in body:
             setattr(s, field, body[field])
     if "scenario_type" in body:
-        s.scenario_type = ScenarioType(body["scenario_type"])
+        s.scenario_type = body["scenario_type"]
     if "velocity" in body and body["velocity"]:
         s.velocity = ScenarioVelocity(body["velocity"])
     if "status" in body:
-        s.status = ScenarioStatus(body["status"])
+        s.status = body["status"]
     db.commit()
     db.refresh(s)
     return s.to_dict()
@@ -286,7 +286,7 @@ def simulate_scenario(
 
     dist_str = body.get("distribution_type", "triangular")
     try:
-        dist_enum = DistributionType(dist_str)
+        dist_enum = dist_str
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid distribution_type '{dist_str}'")
 
@@ -362,7 +362,7 @@ def create_opportunity(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        category = OpportunityCategory(body.get("category", "strategic"))
+        category = body.get("category", "strategic")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid category")
 
@@ -380,7 +380,7 @@ def create_opportunity(
         investment_required=body.get("investment_required"),
         currency=body.get("currency", "USD"),
         time_horizon=body.get("time_horizon"),
-        status=OpportunityStatus.IDENTIFIED,
+        status="identified",
         linked_risk_ids=body.get("linked_risk_ids", []),
         actions=body.get("actions", []),
     )
@@ -400,12 +400,12 @@ def list_opportunities(
     q = db.query(RiskOpportunity).filter(RiskOpportunity.tenant_id == tenant_id)
     if category:
         try:
-            q = q.filter(RiskOpportunity.category == OpportunityCategory(category))
+            q = q.filter(RiskOpportunity.category == category)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid category")
     if status:
         try:
-            q = q.filter(RiskOpportunity.status == OpportunityStatus(status))
+            q = q.filter(RiskOpportunity.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     opps = q.order_by(RiskOpportunity.created_at.desc()).all()
@@ -429,9 +429,9 @@ def update_opportunity(
         if field in body:
             setattr(o, field, body[field])
     if "category" in body:
-        o.category = OpportunityCategory(body["category"])
+        o.category = body["category"]
     if "status" in body:
-        o.status = OpportunityStatus(body["status"])
+        o.status = body["status"]
     db.commit()
     db.refresh(o)
     return o.to_dict()
@@ -450,7 +450,7 @@ def realize_opportunity(
         raise HTTPException(status_code=400, detail="realized_value is required")
     o.realized_value = body["realized_value"]
     o.realized_at = datetime.utcnow()
-    o.status = OpportunityStatus.REALIZED
+    o.status = "realized"
     db.commit()
     db.refresh(o)
     return o.to_dict()
@@ -467,7 +467,7 @@ def create_objective(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        category = ObjectiveCategory(body.get("category", "strategic"))
+        category = body.get("category", "strategic")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid category")
 
@@ -481,7 +481,7 @@ def create_objective(
         owner_id=body.get("owner_id"),
         owner_name=body.get("owner_name"),
         target_date=datetime.fromisoformat(body["target_date"]) if body.get("target_date") else None,
-        status=ObjectiveStatus.ACTIVE,
+        status="active",
         linked_risk_ids=body.get("linked_risk_ids", []),
         is_active=True,
         metadata_=body.get("metadata"),
@@ -505,12 +505,12 @@ def list_objectives(
     )
     if category:
         try:
-            q = q.filter(BusinessObjective.category == ObjectiveCategory(category))
+            q = q.filter(BusinessObjective.category == category)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid category")
     if status:
         try:
-            q = q.filter(BusinessObjective.status == ObjectiveStatus(status))
+            q = q.filter(BusinessObjective.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     objs = q.order_by(BusinessObjective.created_at.desc()).all()
@@ -530,9 +530,9 @@ def update_objective(
         if field in body:
             setattr(obj, field, body[field])
     if "category" in body:
-        obj.category = ObjectiveCategory(body["category"])
+        obj.category = body["category"]
     if "status" in body:
-        obj.status = ObjectiveStatus(body["status"])
+        obj.status = body["status"]
     if "target_date" in body and body["target_date"]:
         obj.target_date = datetime.fromisoformat(body["target_date"])
     db.commit()

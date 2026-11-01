@@ -242,7 +242,7 @@ def create_bia_record(
         tenant_id=tenant_id,
         process_name=body.process_name,
         process_owner=body.process_owner,
-        criticality=BcmCriticality(body.criticality) if body.criticality else BcmCriticality.MEDIUM,
+        criticality=body.criticality if body.criticality else "medium",
         rto_hours=body.rto_hours,
         rpo_hours=body.rpo_hours,
         mtpd_hours=body.mtpd_hours,
@@ -555,7 +555,7 @@ def get_bcm_dashboard(
 
     critical_processes = db.query(BiaRecord).filter(
         BiaRecord.tenant_id == tenant_id,
-        BiaRecord.criticality == BcmCriticality.CRITICAL,
+        BiaRecord.criticality == "critical",
     ).count()
 
     plans_tested_this_year = db.query(BcmPlan).filter(
@@ -565,18 +565,18 @@ def get_bcm_dashboard(
 
     active_incidents = db.query(IncidentActivation).filter(
         IncidentActivation.tenant_id == tenant_id,
-        IncidentActivation.status == BcmActivationStatus.ACTIVE,
+        IncidentActivation.status == "active",
     ).count()
 
     plans_due_test = db.query(BcmPlan).filter(
         BcmPlan.tenant_id == tenant_id,
-        BcmPlan.status == BcmPlanStatus.ACTIVE,
+        BcmPlan.status == "active",
         BcmPlan.next_test_date <= datetime.utcnow(),
     ).count()
 
     total_plans = db.query(BcmPlan).filter(
         BcmPlan.tenant_id == tenant_id,
-        BcmPlan.status == BcmPlanStatus.ACTIVE,
+        BcmPlan.status == "active",
     ).count()
 
     total_bia = db.query(BiaRecord).filter(BiaRecord.tenant_id == tenant_id).count()

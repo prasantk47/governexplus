@@ -77,7 +77,7 @@ async def list_reports(
 ):
     """List generated reports"""
     try:
-        type_enum = ReportType(report_type) if report_type else None
+        type_enum = report_type if report_type else None
         reports = reporting_engine.list_reports(type_enum, generated_by, from_date, to_date)
         return {"total": len(reports), "items": [r.to_dict() for r in reports]}
     except Exception:
@@ -215,7 +215,7 @@ async def list_templates(
     is_active: Optional[bool] = Query(None)
 ):
     """List report templates"""
-    type_enum = ReportType(report_type) if report_type else None
+    type_enum = report_type if report_type else None
     templates = reporting_engine.list_templates(type_enum, is_active)
     return {"total": len(templates), "templates": [t.to_dict() for t in templates]}
 
@@ -236,7 +236,7 @@ async def create_template(
 ):
     """Create a new report template"""
     try:
-        report_type = ReportType(request.report_type)
+        report_type = request.report_type
         default_format = ReportFormat(request.default_format)
         template = reporting_engine.create_template(
             name=request.name,
@@ -259,7 +259,7 @@ async def update_template(
 ):
     """Update a report template"""
     try:
-        report_type = ReportType(request.report_type)
+        report_type = request.report_type
         default_format = ReportFormat(request.default_format)
         template = reporting_engine.update_template(
             template_id=template_id,

@@ -115,7 +115,7 @@ def create_objective(
         control_ids=body.get("control_ids", []),
         owner_id=body.get("owner_id"),
         owner_name=body.get("owner_name"),
-        status=ObjectiveStatus.ACTIVE,
+        status="active",
         is_active=True,
     )
     db.add(o)
@@ -142,7 +142,7 @@ def list_objectives(
         q = q.filter(ControlObjective.framework_requirement_id == framework_requirement_id)
     if status:
         try:
-            q = q.filter(ControlObjective.status == ObjectiveStatus(status))
+            q = q.filter(ControlObjective.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     objectives = q.order_by(ControlObjective.created_at.asc()).all()
@@ -164,7 +164,7 @@ def get_coverage_gaps(
     q = db.query(ControlObjective).filter(
         ControlObjective.tenant_id == tenant_id,
         ControlObjective.is_active.is_(True),
-        ControlObjective.status == ObjectiveStatus.ACTIVE,
+        ControlObjective.status == "active",
     )
     if process_name:
         q = q.filter(ControlObjective.process_name == process_name)
@@ -221,7 +221,7 @@ def update_objective(
             setattr(obj, field, body[field])
     if "status" in body:
         try:
-            obj.status = ObjectiveStatus(body["status"])
+            obj.status = body["status"]
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     db.commit()

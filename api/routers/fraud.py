@@ -315,8 +315,8 @@ def open_case_from_alert(
         case_reference=f"FRC-{uuid.uuid4().hex[:8].upper()}",
         title=f"Case from Alert {id}",
         description=getattr(alert, "alert_description", None),
-        severity=FraudCaseSeverity.HIGH if alert.risk_score >= 75 else FraudCaseSeverity.MEDIUM,
-        status=FraudCaseStatus.OPEN,
+        severity="high" if alert.risk_score >= 75 else "medium",
+        status="open",
         linked_alert_ids=[id],
     )
     db.add(case)
@@ -406,9 +406,9 @@ def update_case(
     if body.resolution_notes is not None:
         case.outcome = body.resolution_notes
     if body.severity is not None:
-        case.severity = FraudCaseSeverity(body.severity)
+        case.severity = body.severity
     if body.status is not None:
-        case.status = FraudCaseStatus(body.status)
+        case.status = body.status
     if body.status in ("closed", "resolved"):
         case.closed_at = datetime.utcnow()
     db.commit()
@@ -430,23 +430,23 @@ def get_fraud_dashboard(
 
     open_alerts = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status.in_([FraudAlertStatus.OPEN, FraudAlertStatus.INVESTIGATING]),
+        FraudAlert.status.in_(["open", "investigating"]),
     ).count()
 
     open_cases = db.query(FraudCase).filter(
         FraudCase.tenant_id == tenant_id,
-        FraudCase.status == FraudCaseStatus.OPEN,
+        FraudCase.status == "open",
     ).count()
 
     confirmed_fraud_30d = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status == FraudAlertStatus.CONFIRMED_FRAUD,
+        FraudAlert.status == "confirmed_fraud",
         FraudAlert.reviewed_at >= cutoff_30d,
     ).count()
 
     dismissed_30d = db.query(FraudAlert).filter(
         FraudAlert.tenant_id == tenant_id,
-        FraudAlert.status == FraudAlertStatus.DISMISSED,
+        FraudAlert.status == "dismissed",
         FraudAlert.reviewed_at >= cutoff_30d,
     ).count()
 

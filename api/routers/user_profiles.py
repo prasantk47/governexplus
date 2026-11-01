@@ -111,8 +111,8 @@ async def list_profiles(
     """
     from core.identity.user_profile import UserStatus, EmploymentType
 
-    status_enum = UserStatus(status) if status else None
-    emp_type_enum = EmploymentType(employment_type) if employment_type else None
+    status_enum = status if status else None
+    emp_type_enum = employment_type if employment_type else None
 
     profiles = profile_service.search_profiles(
         search=search,
@@ -501,7 +501,7 @@ async def get_inactive_users(
     from core.identity.user_profile import UserStatus
 
     cutoff_date = datetime.now() - timedelta(days=days)
-    status_enum = UserStatus(status) if status else None
+    status_enum = status if status else None
 
     # Get all profiles with the specified status
     all_profiles = profile_service.search_profiles(
@@ -593,7 +593,7 @@ async def get_inactive_users_summary():
 
     # Get all active users
     all_profiles = profile_service.search_profiles(
-        status=UserStatus.ACTIVE,
+        status="active",
         limit=10000
     )
 

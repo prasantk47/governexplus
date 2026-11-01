@@ -86,9 +86,9 @@ async def create_control(
 ):
     """Create a new mitigation control"""
     try:
-        control_type = ControlType(request.control_type)
+        control_type = request.control_type
     except ValueError:
-        control_type = ControlType.DETECTIVE
+        control_type = "detective"
 
     control = mitigation_manager.create_control(
         name=request.name,
@@ -122,14 +122,14 @@ async def list_controls(
     type_enum = None
     if control_type:
         try:
-            type_enum = ControlType(control_type)
+            type_enum = control_type
         except ValueError:
             pass
 
     status_enum = None
     if status:
         try:
-            status_enum = ControlStatus(status)
+            status_enum = status
         except ValueError:
             pass
 
@@ -226,9 +226,9 @@ async def list_control_types():
 
 def _get_type_description(t: ControlType) -> str:
     descriptions = {
-        ControlType.DETECTIVE: "Detects issues after they occur",
-        ControlType.PREVENTIVE: "Prevents issues from occurring",
-        ControlType.CORRECTIVE: "Corrects issues after detection",
+        "detective": "Detects issues after they occur",
+        "preventive": "Prevents issues from occurring",
+        "corrective": "Corrects issues after detection",
         ControlType.MONITORING: "Continuous monitoring",
         ControlType.REVIEW: "Periodic review",
         ControlType.APPROVAL: "Approval-based control",

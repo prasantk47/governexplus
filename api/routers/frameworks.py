@@ -88,7 +88,7 @@ def create_framework(
 ):
     """Create a new GRC framework definition."""
     try:
-        framework_type = FrameworkType(body.get("framework_type", "custom"))
+        framework_type = body.get("framework_type", "custom")
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -133,7 +133,7 @@ def list_frameworks(
     )
     if framework_type:
         try:
-            q = q.filter(FrameworkDefinition.framework_type == FrameworkType(framework_type))
+            q = q.filter(FrameworkDefinition.framework_type == framework_type)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid framework_type: {framework_type}")
     if search:
@@ -183,7 +183,7 @@ def update_framework(
         fw.structure = body["structure"]
     if "framework_type" in body:
         try:
-            fw.framework_type = FrameworkType(body["framework_type"])
+            fw.framework_type = body["framework_type"]
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid framework_type: {body['framework_type']}")
     if "is_active" in body:

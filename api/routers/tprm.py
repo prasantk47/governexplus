@@ -283,7 +283,7 @@ def update_vendor(
         val = getattr(body, pydantic_field, None)
         if val is not None:
             if orm_field == "status":
-                val = VendorStatus(val)
+                val = val
             setattr(vendor, orm_field, val)
     if body.tier is not None:
         tier_map = {"tier1": 1, "tier2": 2, "tier3": 3, "tier4": 4}
@@ -539,24 +539,24 @@ def get_tprm_dashboard(
 
     total_vendors = db.query(Vendor).filter(
         Vendor.tenant_id == tenant_id,
-        Vendor.status == VendorStatus.ACTIVE,
+        Vendor.status == "active",
     ).count()
 
     high_risk_count = db.query(Vendor).filter(
         Vendor.tenant_id == tenant_id,
         Vendor.tier == 1,
-        Vendor.status == VendorStatus.ACTIVE,
+        Vendor.status == "active",
     ).count()
 
     assessments_overdue = db.query(VendorAssessment).filter(
         VendorAssessment.tenant_id == tenant_id,
-        VendorAssessment.status.in_([VendorAssessmentStatus.DRAFT, VendorAssessmentStatus.IN_PROGRESS]),
+        VendorAssessment.status.in_(["draft", "in_progress"]),
         VendorAssessment.due_date < now,
     ).count()
 
     contracts_expiring_30d = db.query(VendorContract).filter(
         VendorContract.tenant_id == tenant_id,
-        VendorContract.status == VendorContractStatus.ACTIVE,
+        VendorContract.status == "active",
         VendorContract.end_date != None,
         VendorContract.end_date <= threshold_30d,
         VendorContract.end_date >= now,
@@ -564,13 +564,13 @@ def get_tprm_dashboard(
 
     open_issues = db.query(VendorIssue).filter(
         VendorIssue.tenant_id == tenant_id,
-        VendorIssue.status == VendorIssueStatus.OPEN,
+        VendorIssue.status == "open",
     ).count()
 
     critical_issues = db.query(VendorIssue).filter(
         VendorIssue.tenant_id == tenant_id,
-        VendorIssue.severity.in_([VendorIssueSeverity.CRITICAL, VendorIssueSeverity.HIGH]),
-        VendorIssue.status == VendorIssueStatus.OPEN,
+        VendorIssue.severity.in_(["critical", "high"]),
+        VendorIssue.status == "open",
     ).count()
 
     return {

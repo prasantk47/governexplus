@@ -134,12 +134,12 @@ def _get_manager(
 
 def _kri_status(kri: KeyRiskIndicator) -> str:
     if kri.current_value is None:
-        return KRIStatus.NORMAL.value
+        return "normal"
     if kri.threshold_red is not None and kri.current_value >= kri.threshold_red:
-        return KRIStatus.BREACH.value
+        return "breach"
     if kri.threshold_amber is not None and kri.current_value >= kri.threshold_amber:
-        return KRIStatus.WARNING.value
-    return KRIStatus.NORMAL.value
+        return "warning"
+    return "normal"
 
 
 # ===========================================================================
@@ -155,7 +155,7 @@ def create_risk(
     """Create a new enterprise risk register entry."""
     category_val = body.get("category", "operational")
     try:
-        category = RiskCategory(category_val)
+        category = category_val
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid category: {category_val}")
 
@@ -187,7 +187,7 @@ def create_risk(
         residual_score=residual_score,
         risk_appetite=body.get("risk_appetite"),
         risk_tolerance=body.get("risk_tolerance"),
-        status=RiskStatus.IDENTIFIED,
+        status="identified",
         next_review_date=(
             datetime.fromisoformat(body["next_review_date"])
             if body.get("next_review_date") else None
@@ -226,9 +226,9 @@ def list_risks(
         EnterpriseRisk.is_active.is_(True),
     )
     if category:
-        q = q.filter(EnterpriseRisk.category == RiskCategory(category))
+        q = q.filter(EnterpriseRisk.category == category)
     if status:
-        q = q.filter(EnterpriseRisk.status == RiskStatus(status))
+        q = q.filter(EnterpriseRisk.status == status)
     if org_unit_id is not None:
         q = q.filter(EnterpriseRisk.org_unit_id == org_unit_id)
     if owner_id:
@@ -307,9 +307,9 @@ def update_risk(
         if field in body:
             setattr(risk, field, body[field])
     if "category" in body:
-        risk.category = RiskCategory(body["category"])
+        risk.category = body["category"]
     if "status" in body:
-        risk.status = RiskStatus(body["status"])
+        risk.status = body["status"]
     if "next_review_date" in body and body["next_review_date"]:
         risk.next_review_date = datetime.fromisoformat(body["next_review_date"])
     # Velocity update — always re-derive numeric from string
@@ -358,7 +358,7 @@ def create_assessment(
     impact = body.get("impact_score", 3)
     assessment_type_val = body.get("assessment_type", "periodic")
     try:
-        assessment_type = AssessmentType(assessment_type_val)
+        assessment_type = assessment_type_val
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid assessment type: {assessment_type_val}")
 
@@ -376,13 +376,13 @@ def create_assessment(
         impact_rationale=body.get("impact_rationale"),
         monetary_impact=body.get("monetary_impact"),
         currency=body.get("currency", "USD"),
-        status=AssessmentStatus.DRAFT,
+        status="draft",
         comments=body.get("comments"),
     )
     db.add(a)
     # Update risk last_assessed
     risk.last_assessed_at = datetime.utcnow()
-    risk.status = RiskStatus.ASSESSED
+    risk.status = "assessed"
     db.commit()
     db.refresh(a)
     return a.to_dict()
@@ -410,9 +410,9 @@ def submit_assessment(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     a = _assessment_or_404(db, assessment_id, tenant_id)
-    if a.status != AssessmentStatus.DRAFT:
+    if a.status != "draft":
         raise HTTPException(status_code=400, detail="Only DRAFT assessments can be submitted")
-    a.status = AssessmentStatus.SUBMITTED
+    a.status = "submitted"
     db.commit()
     db.refresh(a)
     return a.to_dict()
@@ -426,7 +426,7 @@ def review_assessment(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     a = _assessment_or_404(db, assessment_id, tenant_id)
-    a.status = AssessmentStatus.REVIEWED
+    a.status = "reviewed"
     a.reviewed_by = body.get("reviewed_by")
     a.reviewed_at = datetime.utcnow()
     a.comments = body.get("comments", a.comments)
@@ -454,7 +454,7 @@ def run_assessment_campaign(
     )
     if category:
         try:
-            q = q.filter(EnterpriseRisk.category == RiskCategory(category))
+            q = q.filter(EnterpriseRisk.category == category)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
     risks = q.all()
@@ -469,8 +469,8 @@ def run_assessment_campaign(
             likelihood_score=risk.residual_likelihood or risk.inherent_likelihood or 3,
             impact_score=risk.residual_impact or risk.inherent_impact or 3,
             overall_score=(risk.residual_likelihood or 3) * (risk.residual_impact or 3),
-            assessment_type=AssessmentType.PERIODIC,
-            status=AssessmentStatus.DRAFT,
+            assessment_type="periodic",
+            status="draft",
             comments=f"Campaign: {campaign_id}",
         )
         db.add(a)
@@ -647,7 +647,7 @@ def create_kri(
         threshold_red=body.get("threshold_red"),
         owner_id=body.get("owner_id"),
         is_active=True,
-        status=KRIStatus.NORMAL,
+        status="normal",
     )
     db.add(kri)
     db.commit()
@@ -670,9 +670,9 @@ def get_kri_dashboard(
     items = []
     for k in kris:
         current_status = _kri_status(k)
-        if current_status == KRIStatus.NORMAL.value:
+        if current_status == "normal":
             normal += 1
-        elif current_status == KRIStatus.WARNING.value:
+        elif current_status == "warning":
             warning += 1
         else:
             breach += 1
@@ -711,7 +711,7 @@ def record_kri_measurement(
     # Update current value and status
     kri.current_value = value
     kri.last_measured_at = datetime.utcnow()
-    kri.status = KRIStatus(_kri_status(kri))
+    kri.status = _kri_status(kri)
     db.commit()
     db.refresh(m)
     return {
@@ -752,7 +752,7 @@ def create_response(
 ):
     risk = _risk_or_404(db, risk_id, tenant_id)
     try:
-        response_type = RiskResponseType(body.get("response_type", "mitigate"))
+        response_type = body.get("response_type", "mitigate")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid response_type")
     resp = RiskResponse(
@@ -764,7 +764,7 @@ def create_response(
         owner_id=body.get("owner_id"),
         owner_name=body.get("owner_name"),
         actions=body.get("actions", []),
-        status=ResponseStatus.PLANNED,
+        status="planned",
         due_date=datetime.fromisoformat(body["due_date"]) if body.get("due_date") else None,
     )
     db.add(resp)
@@ -796,10 +796,10 @@ def update_response_status(
 ):
     resp = _response_or_404(db, response_id, tenant_id)
     try:
-        resp.status = ResponseStatus(body["status"])
+        resp.status = body["status"]
     except (KeyError, ValueError):
         raise HTTPException(status_code=400, detail="Missing or invalid 'status'")
-    if resp.status == ResponseStatus.COMPLETED:
+    if resp.status == "completed":
         resp.completed_at = datetime.utcnow()
     if "effectiveness_rating" in body:
         resp.effectiveness_rating = body["effectiveness_rating"]
@@ -819,7 +819,7 @@ def report_incident(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        severity = IncidentSeverity(body.get("severity", "medium"))
+        severity = body.get("severity", "medium")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid severity")
     inc = RiskIncident(
@@ -835,7 +835,7 @@ def report_incident(
         reported_by=body.get("reported_by"),
         root_cause=body.get("root_cause"),
         corrective_actions=body.get("corrective_actions", []),
-        status=IncidentStatus.REPORTED,
+        status="reported",
     )
     db.add(inc)
     db.commit()
@@ -855,11 +855,11 @@ def update_incident(
         if field in body:
             setattr(inc, field, body[field])
     if "status" in body:
-        inc.status = IncidentStatus(body["status"])
-        if inc.status == IncidentStatus.RESOLVED:
+        inc.status = body["status"]
+        if inc.status == "resolved":
             inc.resolved_at = datetime.utcnow()
     if "severity" in body:
-        inc.severity = IncidentSeverity(body["severity"])
+        inc.severity = body["severity"]
     db.commit()
     db.refresh(inc)
     return inc.to_dict()
@@ -874,9 +874,9 @@ def get_incidents(
 ):
     q = db.query(RiskIncident).filter(RiskIncident.tenant_id == tenant_id)
     if status:
-        q = q.filter(RiskIncident.status == IncidentStatus(status))
+        q = q.filter(RiskIncident.status == status)
     if severity:
-        q = q.filter(RiskIncident.severity == IncidentSeverity(severity))
+        q = q.filter(RiskIncident.severity == severity)
     incidents = q.order_by(RiskIncident.created_at.desc()).all()
     return {"total": len(incidents), "incidents": [i.to_dict() for i in incidents]}
 
@@ -1139,22 +1139,22 @@ def _workflow_or_404(db: Session, workflow_id: str, tenant_id: str) -> RiskWorkf
 def _build_default_steps(workflow_type: WorkflowType, total_steps: int, tenant_id: str, workflow_id: str) -> List[RiskWorkflowStep]:
     """Create default approval step templates per workflow type."""
     step_defs = {
-        WorkflowType.RISK_PROPOSAL: [
+        "risk_proposal": [
             {"step_name": "Risk Owner Review", "approver_role": "risk_owner"},
             {"step_name": "Risk Manager Approval", "approver_role": "risk_manager"},
             {"step_name": "CRO Sign-off", "approver_role": "cro"},
         ],
-        WorkflowType.RISK_APPROVAL: [
+        "risk_approval": [
             {"step_name": "Department Head Review", "approver_role": "dept_head"},
             {"step_name": "Risk Committee Review", "approver_role": "risk_committee"},
             {"step_name": "Board Approval", "approver_role": "board"},
         ],
-        WorkflowType.ASSESSMENT_APPROVAL: [
+        "assessment_approval": [
             {"step_name": "Assessor Submission", "approver_role": "risk_owner"},
             {"step_name": "Risk Manager Review", "approver_role": "risk_manager"},
             {"step_name": "CRO Approval", "approver_role": "cro"},
         ],
-        WorkflowType.RESPONSE_APPROVAL: [
+        "response_approval": [
             {"step_name": "Response Owner Sign-off", "approver_role": "risk_owner"},
             {"step_name": "CRO Approval", "approver_role": "cro"},
         ],
@@ -1189,11 +1189,11 @@ def create_workflow(
     """
     wf_type_val = body.get("workflow_type", "risk_approval")
     try:
-        wf_type = WorkflowType(wf_type_val)
+        wf_type = wf_type_val
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid workflow_type: {wf_type_val}")
 
-    default_steps = 2 if wf_type == WorkflowType.RESPONSE_APPROVAL else 3
+    default_steps = 2 if wf_type == "response_approval" else 3
     total_steps = body.get("total_steps", default_steps)
     workflow_id = _new_id("WF")
 
@@ -1248,12 +1248,12 @@ def list_workflows(
     q = db.query(RiskWorkflow).filter(RiskWorkflow.tenant_id == tenant_id)
     if workflow_type:
         try:
-            q = q.filter(RiskWorkflow.workflow_type == WorkflowType(workflow_type))
+            q = q.filter(RiskWorkflow.workflow_type == workflow_type)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid workflow_type: {workflow_type}")
     if status:
         try:
-            q = q.filter(RiskWorkflow.status == WorkflowStatus(status))
+            q = q.filter(RiskWorkflow.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
     if object_id:
@@ -1417,7 +1417,7 @@ def create_kri_source(
     """Register an automated KRI data source."""
     source_type_val = body.get("source_type", "MANUAL")
     try:
-        source_type = KRISourceType(source_type_val)
+        source_type = source_type_val
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type_val}. "
                             f"Valid: {[e.value for e in KRISourceType]}")
@@ -1452,7 +1452,7 @@ def list_kri_sources(
         q = q.filter(KRIDataSource.kri_id == kri_id)
     if source_type:
         try:
-            q = q.filter(KRIDataSource.source_type == KRISourceType(source_type))
+            q = q.filter(KRIDataSource.source_type == source_type)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type}")
     sources = q.order_by(KRIDataSource.created_at.desc()).all()
@@ -1492,7 +1492,7 @@ def update_kri_source(
             setattr(src, field, body[field])
     if "source_type" in body:
         try:
-            src.source_type = KRISourceType(body["source_type"])
+            src.source_type = body["source_type"]
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid source_type: {body['source_type']}")
     db.commit()
@@ -1522,7 +1522,7 @@ def trigger_kri_pull(
     if not src.is_active:
         raise HTTPException(status_code=400, detail="KRI source is inactive")
 
-    if src.source_type == KRISourceType.MANUAL:
+    if src.source_type == "MANUAL":
         return {
             "source_id": source_id,
             "message": "MANUAL source — use POST /kris/{kri_id}/measure to supply value",
@@ -1561,7 +1561,7 @@ def trigger_kri_pull(
     if kri:
         kri.current_value = pulled_value
         kri.last_measured_at = datetime.utcnow()
-        kri.status = KRIStatus(_kri_status(kri))
+        kri.status = _kri_status(kri)
 
     db.commit()
     return {

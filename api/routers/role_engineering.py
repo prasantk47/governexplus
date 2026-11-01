@@ -110,7 +110,7 @@ async def create_role(
 ):
     """Create a new role"""
     try:
-        role_type = RoleType(request.role_type)
+        role_type = request.role_type
     except ValueError:
         role_type = RoleType.SINGLE
 
@@ -137,8 +137,8 @@ async def list_roles(
     search: Optional[str] = Query(None)
 ):
     """List roles with filters"""
-    status_enum = RoleStatus(status) if status else None
-    type_enum = RoleType(role_type) if role_type else None
+    status_enum = status if status else None
+    type_enum = role_type if role_type else None
 
     roles = role_designer.list_roles(
         status=status_enum,
@@ -409,7 +409,7 @@ async def validate_role_name(
 ):
     """Validate role name against conventions"""
     try:
-        type_enum = RoleType(role_type)
+        type_enum = role_type
     except ValueError:
         type_enum = RoleType.SINGLE
 
@@ -424,7 +424,7 @@ async def suggest_role_name(
 ):
     """Suggest a role name based on description"""
     try:
-        type_enum = RoleType(role_type)
+        type_enum = role_type
     except ValueError:
         type_enum = RoleType.SINGLE
 
@@ -464,7 +464,7 @@ async def list_business_roles(
     search: Optional[str] = Query(None)
 ):
     """List business roles with filters"""
-    status_enum = BusinessRoleStatus(status) if status else None
+    status_enum = status if status else None
 
     roles = business_role_manager.list_business_roles(
         status=status_enum,

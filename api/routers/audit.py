@@ -69,7 +69,7 @@ async def get_audit_logs(
     action_enum = None
     if action:
         try:
-            action_enum = AuditAction(action)
+            action_enum = action
         except ValueError:
             for a in AuditAction:
                 if a.value == action or a.name.lower() == action.lower():

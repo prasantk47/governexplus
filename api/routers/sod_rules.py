@@ -150,7 +150,7 @@ async def list_sod_rules(
 
     if risk_level:
         try:
-            level = RiskLevel(risk_level)
+            level = risk_level
             rules = [r for r in rules if r.risk_level == level]
         except ValueError:
             pass

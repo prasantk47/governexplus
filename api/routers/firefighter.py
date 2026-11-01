@@ -842,7 +842,7 @@ async def get_sessions_for_audit(
         # Parse status
         session_status = None
         if status:
-            session_status = SessionStatus(status)
+            session_status = status
 
         sessions = await mgr.get_sessions_for_audit(
             start_date=start,

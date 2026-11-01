@@ -281,7 +281,7 @@ async def list_connections():
 async def add_connection(request: ConnectionRequest):
     """Add a new system connection"""
     try:
-        conn_type = ConnectionType(request.connection_type)
+        conn_type = request.connection_type
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid connection type: {request.connection_type}")
 

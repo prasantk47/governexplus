@@ -43,7 +43,7 @@ def _new_id(prefix: str) -> str:
 def _parse_priority(raw: Optional[str]) -> WhistleblowerPriority:
     priority_map = {"urgent": "HIGH", "high": "HIGH", "normal": "MEDIUM", "medium": "MEDIUM", "low": "LOW"}
     mapped = priority_map.get((raw or "normal").lower(), "MEDIUM")
-    return WhistleblowerPriority(mapped)
+    return mapped
 
 
 def _generate_case_reference() -> str:
@@ -324,7 +324,7 @@ def track_case(
                 "message": m.message_text,
             }
             for m in messages
-            if m.sender == WhistleblowerSender.INVESTIGATOR
+            if m.sender == "investigator"
         ],
     }
 

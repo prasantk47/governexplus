@@ -292,7 +292,7 @@ async def update_alert(alert_id: str, request: AlertStatusRequest):
     from core.ai.anomaly_detector import AlertStatus
 
     try:
-        status = AlertStatus(request.status)
+        status = request.status
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid status: {request.status}")
 

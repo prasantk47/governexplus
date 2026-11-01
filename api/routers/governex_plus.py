@@ -133,12 +133,12 @@ async def create_business_intent(request: CreateIntentRequest):
     making them auditable and reusable.
     """
     try:
-        category = IntentCategory(request.category)
+        category = request.category
     except ValueError:
         category = IntentCategory.DAILY_OPERATIONS
 
     try:
-        risk_level = IntentRiskLevel(request.risk_level)
+        risk_level = request.risk_level
     except ValueError:
         risk_level = IntentRiskLevel.ROUTINE
 
@@ -288,7 +288,7 @@ async def record_approval_behavior(request: RecordApprovalRequest):
     Detects rubber-stamping, bias, and other governance concerns.
     """
     try:
-        action = ApprovalAction(request.action)
+        action = request.action
     except ValueError:
         action = ApprovalAction.APPROVED
 
@@ -468,7 +468,7 @@ async def explain_user_risk(request: ExplainRiskRequest):
     EXPLAINABILITY = TRUST, TRUST = ADOPTION
     """
     try:
-        audience = AudienceLevel(request.audience)
+        audience = request.audience
     except ValueError:
         audience = AudienceLevel.MANAGER
 
@@ -511,7 +511,7 @@ async def explain_approval_decision(
 ):
     """Generate explanation for why an approval decision was made"""
     try:
-        aud = AudienceLevel(audience)
+        aud = audience
     except ValueError:
         aud = AudienceLevel.AUDITOR
 
@@ -548,7 +548,7 @@ async def explain_sod_violation(
 ):
     """Generate plain-English explanation for an SoD violation"""
     try:
-        aud = AudienceLevel(audience)
+        aud = audience
     except ValueError:
         aud = AudienceLevel.MANAGER
 

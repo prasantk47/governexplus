@@ -57,6 +57,8 @@ class SmtpTestRequest(BaseModel):
 def _get_tenant(tenant_id: str, db: Session) -> Tenant:
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
+        tenant = db.query(Tenant).filter(Tenant.slug == tenant_id).first()
+    if not tenant:
         raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
     return tenant
 

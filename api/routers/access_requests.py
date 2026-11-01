@@ -517,6 +517,13 @@ async def process_approval(
         if not the_request:
             raise HTTPException(status_code=404, detail=f"Request {request_id} not found")
 
+        requester_id = getattr(the_request, 'requester_id', None) or getattr(the_request, 'requested_by', None)
+        if requester_id and requester_id == approval.approver_id and action == ApprovalAction.APPROVE:
+            raise HTTPException(
+                status_code=403,
+                detail="Self-approval is not permitted. A different approver must approve this request."
+            )
+
         # Check role prerequisites (warning, not a hard block)
         if action == ApprovalAction.APPROVE:
             import logging as _logging
@@ -568,6 +575,19 @@ async def process_approval(
         raise HTTPException(status_code=400, detail=str(e))
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/{request_id}/reject/{step_id}")
+async def reject_step(
+    request_id: str,
+    step_id: str,
+    approval: ApprovalActionModel,
+    mgr: AccessRequestManager = Depends(_get_manager),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """Reject an approval step. Alias for process_approval with action=reject."""
+    approval.action = "reject"
+    return await process_approval(request_id, step_id, approval, mgr, tenant_id)
 
 
 @router.post("/{request_id}/bulk-approve")

@@ -61,7 +61,7 @@ def _access_risk_summary(db: Session, tenant_id: str) -> Dict[str, Any]:
     """Aggregate access-risk metrics from the SoD violation table."""
     violations = db.query(RiskViolation).filter(
         RiskViolation.tenant_id == tenant_id,
-        RiskViolation.status == ViolationStatus.OPEN,
+        RiskViolation.status == "open",
     ).all()
 
     by_severity: Dict[str, int] = {}
@@ -89,17 +89,17 @@ def _control_health_summary(db: Session, tenant_id: str) -> Dict[str, Any]:
     active = db.query(ProcessControl).filter(
         ProcessControl.tenant_id == tenant_id,
         ProcessControl.is_active.is_(True),
-        ProcessControl.status == ControlStatus.ACTIVE,
+        ProcessControl.status == "active",
     ).count()
 
     open_deficiencies = db.query(ControlDeficiency).filter(
         ControlDeficiency.tenant_id == tenant_id,
-        ControlDeficiency.status == DeficiencyStatus.OPEN,
+        ControlDeficiency.status == "open",
     ).count()
 
     effective_tests = db.query(ControlTest).filter(
         ControlTest.tenant_id == tenant_id,
-        ControlTest.result == TestResult.EFFECTIVE,
+        ControlTest.result == "effective",
     ).count()
 
     total_tested = db.query(ControlTest).filter(
@@ -123,7 +123,7 @@ def _enterprise_risk_summary(db: Session, tenant_id: str) -> Dict[str, Any]:
     all_risks = db.query(EnterpriseRisk).filter(
         EnterpriseRisk.tenant_id == tenant_id,
         EnterpriseRisk.is_active.is_(True),
-        EnterpriseRisk.status.notin_([RiskStatus.CLOSED]),
+        EnterpriseRisk.status.notin_(["closed"]),
     ).order_by(EnterpriseRisk.residual_score.desc().nullslast()).all()
 
     top5 = all_risks[:5]
@@ -168,15 +168,15 @@ def _audit_status_summary(db: Session, tenant_id: str) -> Dict[str, Any]:
     in_progress = db.query(AuditEngagement).filter(
         AuditEngagement.tenant_id == tenant_id,
         AuditEngagement.status.in_([
-            EngagementStatus.ANNOUNCED,
-            EngagementStatus.FIELDWORK,
-            EngagementStatus.DRAFT_REPORT,
+            "announced",
+            "fieldwork",
+            "draft_report",
         ]),
     ).count()
 
     open_findings = db.query(AuditFinding).filter(
         AuditFinding.tenant_id == tenant_id,
-        AuditFinding.status.notin_([FindingStatus.CLOSED]),
+        AuditFinding.status.notin_(["closed"]),
     ).all()
 
     findings_by_severity: Dict[str, int] = {}
@@ -186,7 +186,7 @@ def _audit_status_summary(db: Session, tenant_id: str) -> Dict[str, Any]:
 
     overdue_actions = db.query(AuditManagementAction).filter(
         AuditManagementAction.tenant_id == tenant_id,
-        AuditManagementAction.status == ActionStatus.OVERDUE,
+        AuditManagementAction.status == "overdue",
     ).count()
 
     return {
@@ -244,12 +244,12 @@ def get_risk_control_matrix(
     risk_q = db.query(EnterpriseRisk).filter(
         EnterpriseRisk.tenant_id == tenant_id,
         EnterpriseRisk.is_active.is_(True),
-        EnterpriseRisk.status.notin_([RiskStatus.CLOSED]),
+        EnterpriseRisk.status.notin_(["closed"]),
     )
     if category:
         from db.models.risk_management import RiskCategory
         try:
-            risk_q = risk_q.filter(EnterpriseRisk.category == RiskCategory(category))
+            risk_q = risk_q.filter(EnterpriseRisk.category == category)
         except ValueError:
             pass
     if org_unit_id is not None:
@@ -294,8 +294,8 @@ def get_risk_control_matrix(
             ).order_by(ControlTest.created_at.desc()).first()
             if test and test.result:
                 effectiveness_ratings.append(
-                    1.0 if test.result == TestResult.EFFECTIVE
-                    else 0.5 if test.result == TestResult.PARTIALLY_EFFECTIVE
+                    1.0 if test.result == "effective"
+                    else 0.5 if test.result == "partially_effective"
                     else 0.0
                 )
 

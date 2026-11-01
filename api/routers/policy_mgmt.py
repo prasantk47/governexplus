@@ -71,7 +71,7 @@ def create_policy(
 ):
     """Create a new policy document in draft status."""
     try:
-        policy_type = PolicyType(body.get("policy_type", "corporate"))
+        policy_type = body.get("policy_type", "corporate")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid policy_type")
 
@@ -85,7 +85,7 @@ def create_policy(
         content=body.get("content"),
         version=1,
         version_history=[],
-        status=PolicyStatus.DRAFT,
+        status="draft",
         author_id=body.get("author_id"),
         author_name=body.get("author_name"),
         review_frequency=body.get("review_frequency"),
@@ -125,12 +125,12 @@ def list_policies(
     q = db.query(PolicyDocument).filter(PolicyDocument.tenant_id == tenant_id)
     if policy_type:
         try:
-            q = q.filter(PolicyDocument.policy_type == PolicyType(policy_type))
+            q = q.filter(PolicyDocument.policy_type == policy_type)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid policy_type")
     if status:
         try:
-            q = q.filter(PolicyDocument.status == PolicyStatus(status))
+            q = q.filter(PolicyDocument.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     if regulation_id:
@@ -152,8 +152,8 @@ def list_policies_due_review(
         PolicyDocument.tenant_id == tenant_id,
         PolicyDocument.next_review_date <= now,
         PolicyDocument.status.in_([
-            PolicyStatus.PUBLISHED,
-            PolicyStatus.APPROVED,
+            "published",
+            "approved",
         ]),
     ).order_by(PolicyDocument.next_review_date.asc()).all()
     return {"total": len(overdue), "policies": [p.to_dict() for p in overdue]}
@@ -224,10 +224,10 @@ def submit_policy(
 ):
     """Advance policy from draft to pending_review."""
     p = _policy_or_404(db, policy_id, tenant_id)
-    if p.status != PolicyStatus.DRAFT:
+    if p.status != "draft":
         raise HTTPException(status_code=400, detail="Only draft policies can be submitted")
     _append_version_history(p, changed_by=body.get("submitted_by", "unknown"), summary="Submitted for review")
-    p.status = PolicyStatus.PENDING_REVIEW
+    p.status = "pending_review"
     db.commit()
     db.refresh(p)
     return p.to_dict()
@@ -242,13 +242,13 @@ def approve_policy(
 ):
     """Approve a policy under review."""
     p = _policy_or_404(db, policy_id, tenant_id)
-    if p.status != PolicyStatus.PENDING_REVIEW:
+    if p.status != "pending_review":
         raise HTTPException(status_code=400, detail="Policy must be in pending_review to approve")
     if not body.get("approved_by"):
         raise HTTPException(status_code=400, detail="approved_by is required")
     p.approved_by = body["approved_by"]
     p.approved_at = datetime.utcnow()
-    p.status = PolicyStatus.APPROVED
+    p.status = "approved"
     _append_version_history(p, changed_by=body["approved_by"], summary="Approved")
     db.commit()
     db.refresh(p)
@@ -264,10 +264,10 @@ def publish_policy(
 ):
     """Publish an approved policy."""
     p = _policy_or_404(db, policy_id, tenant_id)
-    if p.status != PolicyStatus.APPROVED:
+    if p.status != "approved":
         raise HTTPException(status_code=400, detail="Policy must be approved before publishing")
     p.published_at = datetime.utcnow()
-    p.status = PolicyStatus.PUBLISHED
+    p.status = "published"
     _append_version_history(
         p,
         changed_by=body.get("published_by", "unknown"),
@@ -290,7 +290,7 @@ def archive_policy(
 ):
     p = _policy_or_404(db, policy_id, tenant_id)
     _append_version_history(p, changed_by=body.get("archived_by", "unknown"), summary="Archived")
-    p.status = PolicyStatus.ARCHIVED
+    p.status = "archived"
     db.commit()
     db.refresh(p)
     return p.to_dict()
@@ -305,7 +305,7 @@ def retire_policy(
 ):
     p = _policy_or_404(db, policy_id, tenant_id)
     _append_version_history(p, changed_by=body.get("retired_by", "unknown"), summary="Retired")
-    p.status = PolicyStatus.RETIRED
+    p.status = "retired"
     db.commit()
     db.refresh(p)
     return p.to_dict()
@@ -331,7 +331,7 @@ def acknowledge_policy(
     key-type record.  The acknowledgment_count is incremented.
     """
     p = _policy_or_404(db, policy_id, tenant_id)
-    if p.status != PolicyStatus.PUBLISHED:
+    if p.status != "published":
         raise HTTPException(status_code=400, detail="Acknowledgments can only be recorded for published policies")
     if not body.get("user_id"):
         raise HTTPException(status_code=400, detail="user_id is required")

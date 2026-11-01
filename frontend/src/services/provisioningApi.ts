@@ -84,12 +84,11 @@ export interface ProvisioningStep {
 
 export interface UserData {
   user_id: string;
-  first_name: string;
-  last_name: string;
+  full_name: string;
   email: string;
   department?: string;
   job_title?: string;
-  manager_id?: string;
+  manager_user_id?: string;
   initial_password?: string;
 }
 

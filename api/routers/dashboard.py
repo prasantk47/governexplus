@@ -45,13 +45,13 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
     # Risk violations from risk_violations table
     active_violations = (
         db.query(func.count(RiskViolation.id))
-        .filter(RiskViolation.status.in_([ViolationStatus.OPEN, ViolationStatus.IN_PROGRESS]))
+        .filter(RiskViolation.status.in_(["open", "in_progress"]))
         .scalar()
     ) or 0
 
     risk_score_avg = (
         db.query(func.avg(RiskViolation.severity_score))
-        .filter(RiskViolation.status.in_([ViolationStatus.OPEN, ViolationStatus.IN_PROGRESS]))
+        .filter(RiskViolation.status.in_(["open", "in_progress"]))
         .scalar()
     ) or 0
 
@@ -83,7 +83,7 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
     # Active firefighter sessions
     active_ff_sessions = (
         db.query(func.count(FirefighterSession.id))
-        .filter(FirefighterSession.status == FFSessionStatus.ACTIVE)
+        .filter(FirefighterSession.status == "active")
         .scalar()
     ) or 0
 
@@ -244,7 +244,7 @@ async def get_category_metrics(category: str):
     Get all metrics for a specific category.
     """
     try:
-        cat = MetricCategory(category)
+        cat = category
     except ValueError:
         raise HTTPException(
             status_code=400,

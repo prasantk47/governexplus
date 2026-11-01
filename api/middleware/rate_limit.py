@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 # Configuration
 RATE_LIMIT_DEFAULT = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
 RATE_LIMIT_AUTH = os.getenv("RATE_LIMIT_AUTH", "10/minute")
-RATE_LIMIT_STORAGE = os.getenv("RATE_LIMIT_STORAGE", "memory://")
+_default_storage = "memory://"
+if os.getenv("APP_ENV") == "production" or os.getenv("REDIS_URL"):
+    _default_storage = os.getenv("REDIS_URL", "redis://localhost:6379")
+RATE_LIMIT_STORAGE = os.getenv("RATE_LIMIT_STORAGE", _default_storage)
 
 
 def _key_func(request: Request) -> str:

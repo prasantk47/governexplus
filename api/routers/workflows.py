@@ -148,7 +148,7 @@ async def create_workflow(request: CreateWorkflowRequest, engine: MSMPEngine = D
         agent_rules = []
         for rule_data in stage_data.get("agent_rules", []):
             try:
-                rule_type = AgentRuleType(rule_data.get("rule_type", "static"))
+                rule_type = rule_data.get("rule_type", "static")
             except ValueError:
                 rule_type = AgentRuleType.STATIC
 
@@ -265,7 +265,7 @@ async def get_agent_rule(rule_id: str, engine: MSMPEngine = Depends(_get_engine)
 async def create_agent_rule(request: AgentRuleRequest, engine: MSMPEngine = Depends(_get_engine)):
     """Create a new agent rule"""
     try:
-        rule_type = AgentRuleType(request.rule_type)
+        rule_type = request.rule_type
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid rule type: {request.rule_type}")
 

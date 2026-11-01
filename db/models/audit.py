@@ -72,6 +72,9 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    # Multi-tenant isolation
+    tenant_id = Column(String(100), nullable=True, index=True)
+
     # Timestamp (indexed for time-based queries)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 

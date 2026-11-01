@@ -80,7 +80,7 @@ class UserPreferencesRequest(BaseModel):
 
 def _parse_notification_type(value: str) -> NotificationType:
     try:
-        return NotificationType(value)
+        return value
     except ValueError:
         valid = [t.value for t in NotificationType]
         raise HTTPException(

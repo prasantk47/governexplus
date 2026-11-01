@@ -323,7 +323,7 @@ def list_clusters(
     clusters = engine.correlate_all()
     if risk_level:
         try:
-            rl = RiskLevel(risk_level.lower())
+            rl = risk_level.lower()
         except ValueError:
             raise HTTPException(
                 status_code=400,
@@ -442,7 +442,7 @@ def list_anomalies(
     anomalies = engine.detect_anomalies()
     if anomaly_type:
         try:
-            at = AnomalyType(anomaly_type.lower())
+            at = anomaly_type.lower()
         except ValueError:
             raise HTTPException(
                 status_code=400,

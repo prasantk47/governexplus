@@ -77,10 +77,10 @@ async def list_users(
 
     filters = UserFilters(
         search=search,
-        status=UserStatus(status) if status else None,
+        status=status if status else None,
         department=department,
-        risk_level=RiskLevel(risk_level) if risk_level else None,
-        user_type=UserType(user_type) if user_type else None,
+        risk_level=risk_level if risk_level else None,
+        user_type=user_type if user_type else None,
         has_violations=has_violations
     )
 

@@ -65,7 +65,7 @@ async def list_notifications(
     # Apply type filter
     if notification_type:
         try:
-            n_type = NotificationType(notification_type)
+            n_type = notification_type
             notifications = [n for n in notifications if n.notification_type == n_type]
         except ValueError:
             pass
@@ -167,7 +167,7 @@ async def send_notification(request: SendNotificationRequest):
     Supports multiple channels (email, in_app, teams, slack).
     """
     try:
-        n_type = NotificationType(request.notification_type)
+        n_type = request.notification_type
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -175,7 +175,7 @@ async def send_notification(request: SendNotificationRequest):
         )
 
     try:
-        priority = NotificationPriority(request.priority)
+        priority = request.priority
     except ValueError:
         priority = NotificationPriority.NORMAL
 

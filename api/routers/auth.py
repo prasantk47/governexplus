@@ -243,7 +243,8 @@ async def logout(
         if payload:
             user_id = payload.get("sub", "unknown")
 
-    auth_service.logout(tenant_id, user_id, authorization)
+    raw_token = authorization[7:] if authorization and authorization.startswith("Bearer ") else authorization
+    auth_service.logout(tenant_id, user_id, raw_token)
 
     return {"message": "Logged out successfully"}
 

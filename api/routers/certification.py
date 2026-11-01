@@ -164,7 +164,7 @@ async def list_campaigns(
     status_enum = None
     if status:
         try:
-            status_enum = CampaignStatus(status)
+            status_enum = status
         except ValueError:
             pass
 

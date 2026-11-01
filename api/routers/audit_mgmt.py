@@ -138,12 +138,12 @@ def _action_or_404(db: Session, action_id: str, tenant_id: str) -> AuditManageme
 
 # Engagement status order for advancement
 _ENGAGEMENT_STATUS_ORDER = [
-    EngagementStatus.PLANNED,
-    EngagementStatus.ANNOUNCED,
-    EngagementStatus.FIELDWORK,
-    EngagementStatus.DRAFT_REPORT,
-    EngagementStatus.FINAL_REPORT,
-    EngagementStatus.CLOSED,
+    "planned",
+    "announced",
+    "fieldwork",
+    "draft_report",
+    "final_report",
+    "closed",
 ]
 
 
@@ -159,7 +159,7 @@ def create_entity(
 ):
     """Add an entity to the audit universe."""
     try:
-        entity_type = AuditableEntityType(body.get("entity_type", "org_unit"))
+        entity_type = body.get("entity_type", "org_unit")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid entity_type")
 
@@ -193,7 +193,7 @@ def list_entities(
 ):
     q = db.query(AuditableEntity).filter(AuditableEntity.tenant_id == tenant_id)
     if entity_type:
-        q = q.filter(AuditableEntity.entity_type == AuditableEntityType(entity_type))
+        q = q.filter(AuditableEntity.entity_type == entity_type)
     if is_active is not None:
         q = q.filter(AuditableEntity.is_active == is_active)
     if search:
@@ -247,7 +247,7 @@ def create_plan(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        plan_type = AuditPlanType(body.get("plan_type", "annual"))
+        plan_type = body.get("plan_type", "annual")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid plan_type")
 
@@ -262,7 +262,7 @@ def create_plan(
         period_end=datetime.fromisoformat(body["period_end"]) if body.get("period_end") else None,
         total_audit_hours=body.get("total_audit_hours"),
         allocated_budget=body.get("allocated_budget"),
-        status=AuditPlanStatus.DRAFT,
+        status="draft",
         prepared_by=body.get("prepared_by"),
         risk_methodology=body.get("risk_methodology"),
         metadata_=body.get("metadata"),
@@ -282,7 +282,7 @@ def list_plans(
 ):
     q = db.query(AuditPlan).filter(AuditPlan.tenant_id == tenant_id)
     if status:
-        q = q.filter(AuditPlan.status == AuditPlanStatus(status))
+        q = q.filter(AuditPlan.status == status)
     if fiscal_year:
         q = q.filter(AuditPlan.fiscal_year == fiscal_year)
     plans = q.order_by(AuditPlan.fiscal_year.desc()).all()
@@ -322,7 +322,7 @@ def submit_plan(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     p = _plan_or_404(db, plan_id, tenant_id)
-    p.status = AuditPlanStatus.PENDING_APPROVAL
+    p.status = "pending_approval"
     db.commit()
     db.refresh(p)
     return p.to_dict()
@@ -336,7 +336,7 @@ def approve_plan(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     p = _plan_or_404(db, plan_id, tenant_id)
-    p.status = AuditPlanStatus.APPROVED
+    p.status = "approved"
     p.approved_by = body.get("approved_by")
     p.approved_at = datetime.utcnow()
     db.commit()
@@ -363,9 +363,9 @@ def generate_risk_based_plan(
         plan_id=_new_id("PLAN"),
         name=f"Risk-Based Audit Plan {fiscal_year}",
         description="Auto-generated based on entity risk scores",
-        plan_type=AuditPlanType.ANNUAL,
+        plan_type="annual",
         fiscal_year=fiscal_year,
-        status=AuditPlanStatus.DRAFT,
+        status="draft",
         prepared_by=body.get("prepared_by", "system"),
         risk_methodology="Top-N risk score ranking from audit universe",
     )
@@ -380,8 +380,8 @@ def generate_risk_based_plan(
             plan_id=plan.id,
             entity_id=ent.id,
             title=f"Audit of {ent.name}",
-            engagement_type=EngagementType.OPERATIONAL,
-            status=EngagementStatus.PLANNED,
+            engagement_type="operational",
+            status="planned",
             risk_rating="high" if (ent.risk_score or 0) >= 15 else "medium",
         )
         db.add(eng)
@@ -407,7 +407,7 @@ def create_engagement(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        engagement_type = EngagementType(body.get("engagement_type", "operational"))
+        engagement_type = body.get("engagement_type", "operational")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid engagement_type")
 
@@ -439,7 +439,7 @@ def create_engagement(
         objective=body.get("objective"),
         scope=body.get("scope"),
         engagement_type=engagement_type,
-        status=EngagementStatus.PLANNED,
+        status="planned",
         lead_auditor_id=body.get("lead_auditor_id"),
         lead_auditor_name=body.get("lead_auditor_name"),
         team_members=body.get("team_members", []),
@@ -465,9 +465,9 @@ def list_engagements(
 ):
     q = db.query(AuditEngagement).filter(AuditEngagement.tenant_id == tenant_id)
     if status:
-        q = q.filter(AuditEngagement.status == EngagementStatus(status))
+        q = q.filter(AuditEngagement.status == status)
     if engagement_type:
-        q = q.filter(AuditEngagement.engagement_type == EngagementType(engagement_type))
+        q = q.filter(AuditEngagement.engagement_type == engagement_type)
     if lead_auditor_id:
         q = q.filter(AuditEngagement.lead_auditor_id == lead_auditor_id)
     engagements = q.order_by(AuditEngagement.planned_start.desc().nullslast()).all()
@@ -519,9 +519,9 @@ def advance_engagement(
     if current_index is None or current_index >= len(_ENGAGEMENT_STATUS_ORDER) - 1:
         raise HTTPException(status_code=400, detail="Engagement cannot be advanced further")
     eng.status = _ENGAGEMENT_STATUS_ORDER[current_index + 1]
-    if eng.status == EngagementStatus.FIELDWORK:
+    if eng.status == "fieldwork":
         eng.actual_start = datetime.utcnow()
-    if eng.status == EngagementStatus.CLOSED:
+    if eng.status == "closed":
         eng.actual_end = datetime.utcnow()
     db.commit()
     db.refresh(eng)
@@ -622,7 +622,7 @@ def create_procedure(
         description=body.get("description"),
         assigned_to_id=body.get("assigned_to_id"),
         assigned_to_name=body.get("assigned_to_name"),
-        status=ProcedureStatus.NOT_STARTED,
+        status="not_started",
         hours_spent=0.0,
         evidence_ids=body.get("evidence_ids", []),
     )
@@ -671,7 +671,7 @@ def complete_procedure(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     p = _procedure_or_404(db, procedure_id, tenant_id)
-    p.status = ProcedureStatus.COMPLETED
+    p.status = "completed"
     p.conclusion = body.get("conclusion", p.conclusion)
     p.preparer_id = body.get("preparer_id", p.preparer_id)
     p.prepared_at = datetime.utcnow()
@@ -690,7 +690,7 @@ def review_procedure(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     p = _procedure_or_404(db, procedure_id, tenant_id)
-    p.status = ProcedureStatus.REVIEWED
+    p.status = "reviewed"
     p.reviewer_id = body.get("reviewer_id")
     p.reviewed_at = datetime.utcnow()
     p.review_notes = body.get("review_notes")
@@ -726,8 +726,8 @@ def create_workpaper(
         version=1,
         preparer_id=body.get("preparer_id"),
         prepared_at=datetime.utcnow() if body.get("preparer_id") else None,
-        review_status=WorkpaperReviewStatus.PENDING_REVIEW,
-        status=WorkpaperStatus.DRAFT,
+        review_status="pending_review",
+        status="draft",
         cross_references=body.get("cross_references", []),
     )
     db.add(w)
@@ -774,7 +774,7 @@ def submit_workpaper_for_review(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     w = _workpaper_or_404(db, workpaper_id, tenant_id)
-    w.review_status = WorkpaperReviewStatus.PENDING_REVIEW
+    w.review_status = "pending_review"
     db.commit()
     db.refresh(w)
     return w.to_dict()
@@ -800,11 +800,11 @@ def review_workpaper(
     })
     w.review_notes = notes
     w.review_status = (
-        WorkpaperReviewStatus.REVIEWED if approved
-        else WorkpaperReviewStatus.REVISION_NEEDED
+        "reviewed" if approved
+        else "revision_needed"
     )
     if approved:
-        w.status = WorkpaperStatus.FINAL
+        w.status = "final"
     db.commit()
     db.refresh(w)
     return w.to_dict()
@@ -823,7 +823,7 @@ def create_finding(
 ):
     eng = _engagement_or_404(db, engagement_id, tenant_id)
     try:
-        severity = FindingSeverity(body.get("severity", "medium"))
+        severity = body.get("severity", "medium")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid severity")
 
@@ -840,7 +840,7 @@ def create_finding(
         recommendation=body.get("recommendation"),
         severity=severity,
         category=body.get("category"),
-        status=FindingStatus.DRAFT,
+        status="draft",
         repeat_finding=body.get("repeat_finding", False),
     )
     db.add(f)
@@ -859,9 +859,9 @@ def list_findings(
 ):
     q = db.query(AuditFinding).filter(AuditFinding.tenant_id == tenant_id)
     if status:
-        q = q.filter(AuditFinding.status == FindingStatus(status))
+        q = q.filter(AuditFinding.status == status)
     if severity:
-        q = q.filter(AuditFinding.severity == FindingSeverity(severity))
+        q = q.filter(AuditFinding.severity == severity)
     if engagement_id:
         eng = db.query(AuditEngagement).filter(
             AuditEngagement.engagement_id == engagement_id,
@@ -885,9 +885,9 @@ def update_finding(
         if field in body:
             setattr(f, field, body[field])
     if "severity" in body:
-        f.severity = FindingSeverity(body["severity"])
+        f.severity = body["severity"]
     if "status" in body:
-        f.status = FindingStatus(body["status"])
+        f.status = body["status"]
     db.commit()
     db.refresh(f)
     return f.to_dict()
@@ -907,7 +907,7 @@ def record_management_response(
         datetime.fromisoformat(body["management_target_date"])
         if body.get("management_target_date") else None
     )
-    f.status = FindingStatus.MANAGEMENT_RESPONSE_RECEIVED
+    f.status = "management_response_received"
     db.commit()
     db.refresh(f)
     return f.to_dict()
@@ -1010,7 +1010,7 @@ def create_action(
         owner_id=body.get("owner_id"),
         owner_name=body.get("owner_name"),
         due_date=datetime.fromisoformat(body["due_date"]) if body.get("due_date") else None,
-        status=ActionStatus.OPEN,
+        status="open",
         escalation_level=0,
     )
     db.add(a)
@@ -1045,14 +1045,14 @@ def close_action(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     a = _action_or_404(db, action_id, tenant_id)
-    a.status = ActionStatus.COMPLETED
+    a.status = "completed"
     a.completed_at = datetime.utcnow()
     a.evidence_of_closure = body.get("evidence_of_closure")
     a.evidence_ids = body.get("evidence_ids", [])
     a.verified_by = body.get("verified_by")
     a.verified_at = datetime.utcnow() if body.get("verified_by") else None
     if body.get("verified_by"):
-        a.status = ActionStatus.CLOSED_VERIFIED
+        a.status = "closed_verified"
     db.commit()
     db.refresh(a)
     return a.to_dict()
@@ -1067,11 +1067,11 @@ def get_overdue_actions(
     actions = db.query(AuditManagementAction).filter(
         AuditManagementAction.tenant_id == tenant_id,
         AuditManagementAction.due_date < now,
-        AuditManagementAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]),
+        AuditManagementAction.status.in_(["open", "in_progress"]),
     ).all()
     # Mark as OVERDUE
     for a in actions:
-        a.status = ActionStatus.OVERDUE
+        a.status = "overdue"
     db.commit()
     return {"total_overdue": len(actions), "actions": [a.to_dict() for a in actions]}
 
@@ -1087,13 +1087,13 @@ def escalate_actions(
     actions = db.query(AuditManagementAction).filter(
         AuditManagementAction.tenant_id == tenant_id,
         AuditManagementAction.due_date < now,
-        AuditManagementAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS, ActionStatus.OVERDUE]),
+        AuditManagementAction.status.in_(["open", "in_progress", "overdue"]),
     ).all()
     escalated = []
     for a in actions:
         a.escalation_level += 1
         a.last_escalated_at = datetime.utcnow()
-        a.status = ActionStatus.OVERDUE
+        a.status = "overdue"
         escalated.append(a.action_id)
     db.commit()
     return {"escalated_count": len(escalated), "action_ids": escalated}
@@ -1314,23 +1314,23 @@ def get_audit_dashboard(
     in_progress = db.query(AuditEngagement).filter(
         AuditEngagement.tenant_id == tenant_id,
         AuditEngagement.status.in_([
-            EngagementStatus.ANNOUNCED,
-            EngagementStatus.FIELDWORK,
-            EngagementStatus.DRAFT_REPORT,
+            "announced",
+            "fieldwork",
+            "draft_report",
         ]),
     ).count()
     open_findings = db.query(AuditFinding).filter(
         AuditFinding.tenant_id == tenant_id,
-        AuditFinding.status.notin_([FindingStatus.CLOSED]),
+        AuditFinding.status.notin_(["closed"]),
     ).count()
     overdue_actions = db.query(AuditManagementAction).filter(
         AuditManagementAction.tenant_id == tenant_id,
-        AuditManagementAction.status == ActionStatus.OVERDUE,
+        AuditManagementAction.status == "overdue",
     ).count()
     critical_findings = db.query(AuditFinding).filter(
         AuditFinding.tenant_id == tenant_id,
-        AuditFinding.severity == FindingSeverity.CRITICAL,
-        AuditFinding.status != FindingStatus.CLOSED,
+        AuditFinding.severity == "critical",
+        AuditFinding.status != "closed",
     ).count()
     return {
         "total_auditable_entities": total_entities,
@@ -1356,17 +1356,17 @@ def get_committee_report(
     engagements = db.query(AuditEngagement).filter(
         AuditEngagement.tenant_id == tenant_id,
     ).all()
-    closed_engagements = [e for e in engagements if e.status == EngagementStatus.CLOSED]
+    closed_engagements = [e for e in engagements if e.status == "closed"]
     all_findings = db.query(AuditFinding).filter(
         AuditFinding.tenant_id == tenant_id,
     ).all()
-    open_findings = [f for f in all_findings if f.status != FindingStatus.CLOSED]
-    critical = [f for f in open_findings if f.severity == FindingSeverity.CRITICAL]
-    high = [f for f in open_findings if f.severity == FindingSeverity.HIGH]
+    open_findings = [f for f in all_findings if f.status != "closed"]
+    critical = [f for f in open_findings if f.severity == "critical"]
+    high = [f for f in open_findings if f.severity == "high"]
 
     overdue_actions = db.query(AuditManagementAction).filter(
         AuditManagementAction.tenant_id == tenant_id,
-        AuditManagementAction.status == ActionStatus.OVERDUE,
+        AuditManagementAction.status == "overdue",
     ).count()
 
     return {
@@ -1561,7 +1561,7 @@ def roll_forward_plan(
     carry_statuses = []
     for s in carry_statuses_raw:
         try:
-            carry_statuses.append(EngagementStatus(s))
+            carry_statuses.append(s)
         except ValueError:
             pass
 
@@ -1575,7 +1575,7 @@ def roll_forward_plan(
         fiscal_year=int(new_year),
         total_audit_hours=source.total_audit_hours,
         allocated_budget=source.allocated_budget,
-        status=AuditPlanStatus.DRAFT,
+        status="draft",
         prepared_by=body.get("prepared_by", source.prepared_by),
         risk_methodology=source.risk_methodology,
     )
@@ -1600,7 +1600,7 @@ def roll_forward_plan(
             objective=eng.objective,
             scope=eng.scope,
             engagement_type=eng.engagement_type,
-            status=EngagementStatus.PLANNED,
+            status="planned",
             lead_auditor_id=eng.lead_auditor_id,
             lead_auditor_name=eng.lead_auditor_name,
             team_members=eng.team_members,
@@ -1644,7 +1644,7 @@ def create_dimension(
       it_system | geography | regulation | product), hierarchy (optional JSON tree)
     """
     try:
-        dim_type = DimensionType(body.get("dimension_type", "business_process"))
+        dim_type = body.get("dimension_type", "business_process")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid dimension_type")
 
@@ -1674,7 +1674,7 @@ def list_dimensions(
     q = db.query(AuditDimension).filter(AuditDimension.tenant_id == tenant_id)
     if dimension_type:
         try:
-            q = q.filter(AuditDimension.dimension_type == DimensionType(dimension_type))
+            q = q.filter(AuditDimension.dimension_type == dimension_type)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid dimension_type")
     if is_active is not None:
@@ -1723,13 +1723,13 @@ def create_announcement(
         sent_by=body.get("sent_by"),
         sent_at=datetime.utcnow() if send_now else None,
         acknowledgments=[],
-        status=AnnouncementStatus.SENT if send_now else AnnouncementStatus.DRAFT,
+        status="sent" if send_now else "draft",
     )
     db.add(ann)
 
     # Advance engagement to ANNOUNCED status if still PLANNED
-    if send_now and eng.status == EngagementStatus.PLANNED:
-        eng.status = EngagementStatus.ANNOUNCED
+    if send_now and eng.status == "planned":
+        eng.status = "announced"
 
     db.commit()
     db.refresh(ann)

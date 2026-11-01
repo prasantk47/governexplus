@@ -81,7 +81,7 @@ def _compute_score(questions: List[Dict], responses: Dict[str, Any]) -> Optional
     total, count = 0.0, 0
     for q in (questions or []):
         qid = q.get("question_id")
-        if q.get("question_type") == QuestionType.RATING_SCALE.value and qid in (responses or {}):
+        if q.get("question_type") == "rating_scale" and qid in (responses or {}):
             try:
                 val = float(responses[qid])
                 scale_max = float(q.get("scale_max") or 5)
@@ -104,7 +104,7 @@ def create_question(
 ):
     """Add a reusable question to the library."""
     try:
-        q_type = QuestionType(body.get("question_type", "yes_no"))
+        q_type = body.get("question_type", "yes_no")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid question_type")
 
@@ -147,7 +147,7 @@ def list_questions(
         q = q.filter(QuestionLibrary.category == category)
     if question_type:
         try:
-            q = q.filter(QuestionLibrary.question_type == QuestionType(question_type))
+            q = q.filter(QuestionLibrary.question_type == question_type)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid question_type")
     questions = q.order_by(QuestionLibrary.usage_count.desc()).all()
@@ -185,7 +185,7 @@ def update_question(
         if field in body:
             setattr(q, field, body[field])
     if "question_type" in body:
-        q.question_type = QuestionType(body["question_type"])
+        q.question_type = body["question_type"]
     if "is_active" in body:
         q.is_active = body["is_active"]
     db.commit()
@@ -211,7 +211,7 @@ def create_questionnaire(
       target_module, linked_object_type, linked_object_id, is_template, created_by
     """
     try:
-        qnr_type = QuestionnaireType(body.get("questionnaire_type", "control_assessment"))
+        qnr_type = body.get("questionnaire_type", "control_assessment")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid questionnaire_type")
 
@@ -273,7 +273,7 @@ def list_questionnaires(
     )
     if questionnaire_type:
         try:
-            q = q.filter(Questionnaire.questionnaire_type == QuestionnaireType(questionnaire_type))
+            q = q.filter(Questionnaire.questionnaire_type == questionnaire_type)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid questionnaire_type")
     if target_module:
@@ -362,8 +362,8 @@ def submit_response(
         QuestionnaireResponse.respondent_id == body["respondent_id"],
         QuestionnaireResponse.tenant_id == tenant_id,
         QuestionnaireResponse.status.in_([
-            ResponseStatus.PENDING,
-            ResponseStatus.IN_PROGRESS,
+            "pending",
+            "in_progress",
         ]),
     ).first()
     if existing:
@@ -384,7 +384,7 @@ def submit_response(
         respondent_email=body.get("respondent_email"),
         responses=answers,
         score=score,
-        status=ResponseStatus.IN_PROGRESS if answers else ResponseStatus.PENDING,
+        status="in_progress" if answers else "pending",
     )
     db.add(r)
     db.commit()
@@ -406,7 +406,7 @@ def list_responses(
     )
     if status:
         try:
-            q = q.filter(QuestionnaireResponse.status == ResponseStatus(status))
+            q = q.filter(QuestionnaireResponse.status == status)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid status")
     responses = q.order_by(QuestionnaireResponse.created_at.desc()).all()
@@ -422,7 +422,7 @@ def mark_response_submitted(
 ):
     """Mark a response as submitted (finalise answers)."""
     r = _response_or_404(db, response_id, tenant_id)
-    if r.status not in (ResponseStatus.PENDING, ResponseStatus.IN_PROGRESS):
+    if r.status not in ("pending", "in_progress"):
         raise HTTPException(status_code=400, detail="Response is already submitted or reviewed")
 
     # Update answers if provided
@@ -433,7 +433,7 @@ def mark_response_submitted(
         if qnr:
             r.score = _compute_score(qnr.questions or [], r.responses)
 
-    r.status = ResponseStatus.SUBMITTED
+    r.status = "submitted"
     r.submitted_at = datetime.utcnow()
     db.commit()
     db.refresh(r)
@@ -449,14 +449,14 @@ def review_response(
 ):
     """Reviewer sign-off on a submitted response."""
     r = _response_or_404(db, response_id, tenant_id)
-    if r.status != ResponseStatus.SUBMITTED:
+    if r.status != "submitted":
         raise HTTPException(status_code=400, detail="Response must be submitted before review")
     if not body.get("reviewed_by"):
         raise HTTPException(status_code=400, detail="reviewed_by is required")
     r.reviewed_by = body["reviewed_by"]
     r.reviewed_at = datetime.utcnow()
     r.review_comments = body.get("review_comments")
-    r.status = ResponseStatus.REVIEWED
+    r.status = "reviewed"
     db.commit()
     db.refresh(r)
     return r.to_dict()
@@ -473,8 +473,8 @@ def list_pending_responses(
         QuestionnaireResponse.tenant_id == tenant_id,
         QuestionnaireResponse.respondent_id == respondent_id,
         QuestionnaireResponse.status.in_([
-            ResponseStatus.PENDING,
-            ResponseStatus.IN_PROGRESS,
+            "pending",
+            "in_progress",
         ]),
     ).order_by(QuestionnaireResponse.created_at.asc()).all()
     return {"total": len(responses), "responses": [r.to_dict() for r in responses]}

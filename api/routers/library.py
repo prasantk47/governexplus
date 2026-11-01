@@ -191,7 +191,62 @@ async def activate_item(
 
     db.commit()
     db.refresh(act)
+
+    # Wire activated item into operational engine (DEF-C001 fix)
+    _create_operational_record(item, tenant_id, act, db)
+
     return {"status": "activated", "activation": act.to_dict(include_item=True)}
+
+
+def _create_operational_record(item: TemplateItem, tenant_id: str, act, db: Session):
+    """When a template is activated, create the corresponding operational DB record
+    so the engine actually loads and enforces it."""
+    try:
+        payload = act.copy_payload or item.payload or {}
+        if item.item_type == "sod_rule":
+            from db.models.risk import RiskRuleModel
+            existing = db.query(RiskRuleModel).filter_by(
+                tenant_id=tenant_id, source_template_item_id=item.id
+            ).first()
+            if not existing:
+                rule = RiskRuleModel(
+                    id=str(uuid.uuid4()),
+                    tenant_id=tenant_id,
+                    rule_id=payload.get("rule_id", item.item_code),
+                    name=payload.get("name", item.name),
+                    description=payload.get("description", item.description),
+                    business_process=payload.get("business_process", ""),
+                    risk_level=payload.get("risk_level", payload.get("severity", "high")),
+                    conflicting_activities=payload.get("conflicting_activities", []),
+                    is_enabled=True,
+                    source_template_item_id=item.id,
+                    template_version=item.version,
+                    is_customized=False,
+                )
+                db.add(rule)
+                db.commit()
+        elif item.item_type == "mitigation":
+            from db.models.risk import MitigationControl
+            existing = db.query(MitigationControl).filter_by(
+                tenant_id=tenant_id, source_template_item_id=item.id
+            ).first()
+            if not existing:
+                mc = MitigationControl(
+                    control_id=f"MC_{uuid.uuid4().hex[:8].upper()}",
+                    tenant_id=tenant_id,
+                    name=payload.get("name", item.name),
+                    description=payload.get("description", ""),
+                    control_type=payload.get("control_type", "detective"),
+                    is_active=True,
+                    applicable_rule_ids=payload.get("applicable_rule_ids", []),
+                    source_template_item_id=item.id,
+                    template_version=item.version,
+                    is_customized=False,
+                )
+                db.add(mc)
+                db.commit()
+    except Exception as exc:
+        logger.warning("_create_operational_record failed for %s: %s", item.item_code, exc)
 
 
 @router.post("/items/{item_id}/deactivate")
@@ -205,6 +260,24 @@ async def deactivate_item(
     if not act or not act.is_active:
         raise HTTPException(status_code=404, detail="Activation not found or already inactive")
     act.is_active = False
+
+    # Also disable the operational record so the engine stops enforcing it
+    item = db.query(TemplateItem).filter(TemplateItem.id == item_id).first()
+    if item and item.item_type == "sod_rule":
+        from db.models.risk import RiskRuleModel
+        op_rule = db.query(RiskRuleModel).filter_by(
+            tenant_id=tenant_id, source_template_item_id=item_id
+        ).first()
+        if op_rule:
+            op_rule.is_enabled = False
+    elif item and item.item_type == "mitigation":
+        from db.models.risk import MitigationControl
+        op_mc = db.query(MitigationControl).filter_by(
+            tenant_id=tenant_id, source_template_item_id=item_id
+        ).first()
+        if op_mc:
+            op_mc.is_active = False
+
     db.commit()
     return {"status": "deactivated"}
 
@@ -350,13 +423,20 @@ async def review_update(
     act.notes = body.get("notes")
 
     if decision == "accept":
-        # Apply global payload — clears customization unless tenant had changes
         if act.copy_payload is None:
             # No customization — just clear the pending flag
             pass
         else:
-            # Replace copy with new global
-            act.copy_payload = act.template_item.payload
+            # Merge: apply new global values but preserve tenant customizations
+            global_payload = act.template_item.payload or {}
+            tenant_payload = act.copy_payload or {}
+            # Start from new global, overlay tenant-specific changes
+            merged = {**global_payload}
+            for key, val in tenant_payload.items():
+                if key not in global_payload or global_payload[key] != val:
+                    merged[key] = val  # tenant had a custom value — keep it
+            act.copy_payload = merged
+            act.customized_at = datetime.utcnow()
         act.pending_update_version = None
 
     db.commit()

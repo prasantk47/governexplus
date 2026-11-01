@@ -297,7 +297,7 @@ async def saml_acs(
 
     # Audit
     AuditLogger().log(
-        action=AuditAction.USER_LOGIN,
+        action="user_login",
         actor_user_id=user.user_id,
         target_type="auth",
         target_id=user.user_id,
@@ -468,7 +468,7 @@ async def oidc_callback(
     token_response = auth_service._create_tokens(user, tenant_id, user_role)
 
     AuditLogger().log(
-        action=AuditAction.USER_LOGIN,
+        action="user_login",
         actor_user_id=user.user_id,
         target_type="auth",
         target_id=user.user_id,

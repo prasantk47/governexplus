@@ -79,7 +79,7 @@ def get_grc_health(tenant_id: str = Depends(_get_tenant_id)) -> Dict[str, Any]:
             db.query(func.count(RiskViolation.id))
             .filter(
                 RiskViolation.tenant_id == tenant_id,
-                RiskViolation.status == ViolationStatus.OPEN,
+                RiskViolation.status == "open",
             )
             .scalar() or 0
         )
@@ -218,9 +218,9 @@ def get_attention_items(tenant_id: str = Depends(_get_tenant_id)) -> Dict[str, A
             db.query(func.count(RiskViolation.id))
             .filter(
                 RiskViolation.tenant_id == tenant_id,
-                RiskViolation.status == ViolationStatus.OPEN,
+                RiskViolation.status == "open",
                 RiskViolation.severity.in_(
-                    [RiskSeverityLevel.CRITICAL, RiskSeverityLevel.HIGH]
+                    ["critical", "high"]
                 ),
             )
             .scalar() or 0
@@ -666,7 +666,7 @@ def investigate(
                 db.query(func.count(RiskViolation.id))
                 .filter(
                     RiskViolation.tenant_id == tenant_id,
-                    RiskViolation.status == ViolationStatus.OPEN,
+                    RiskViolation.status == "open",
                 )
                 .scalar() or 0
             )
@@ -996,9 +996,9 @@ def get_personalized_dashboard(
                 db.query(func.count(RiskViolation.id))
                 .filter(
                     RiskViolation.tenant_id == tenant_id,
-                    RiskViolation.status == ViolationStatus.OPEN,
+                    RiskViolation.status == "open",
                     RiskViolation.severity.in_(
-                        [RiskSeverityLevel.CRITICAL, RiskSeverityLevel.HIGH]
+                        ["critical", "high"]
                     ),
                 )
                 .scalar() or 0
@@ -1007,7 +1007,7 @@ def get_personalized_dashboard(
                 db.query(func.count(RiskViolation.id))
                 .filter(
                     RiskViolation.tenant_id == tenant_id,
-                    RiskViolation.status == ViolationStatus.OPEN,
+                    RiskViolation.status == "open",
                 )
                 .scalar() or 0
             )

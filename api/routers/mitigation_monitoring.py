@@ -320,14 +320,14 @@ def get_backing_status(
         ControlDeficiency.tenant_id == tenant_id,
         ControlDeficiency.control_id == pc.id,
         ControlDeficiency.status.in_([
-            DeficiencyStatus.OPEN,
-            DeficiencyStatus.IN_REMEDIATION,
+            "open",
+            "in_remediation",
         ]),
     ).all()
 
     from db.models.process_control import DeficiencySeverity
     material_weakness_count = sum(
-        1 for d in open_defs if d.severity == DeficiencySeverity.MATERIAL_WEAKNESS
+        1 for d in open_defs if d.severity == "material_weakness"
     )
 
     return {
@@ -434,7 +434,7 @@ def get_unlinked_report(
             .first()
         )
 
-        if latest_test and latest_test.result == TestResult.INEFFECTIVE:
+        if latest_test and latest_test.result == "ineffective":
             gaps.append({
                 "gap_reason": "ineffective_backing_test",
                 "control_id": m.control_id,

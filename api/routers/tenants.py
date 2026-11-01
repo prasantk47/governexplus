@@ -161,7 +161,7 @@ async def list_tenants(
 
     if status:
         try:
-            status_filter = TenantStatus(status)
+            status_filter = status
         except ValueError:
             pass
 
@@ -332,7 +332,7 @@ async def get_usage_trend(
 ):
     """Get usage trend over time"""
     try:
-        u_type = UsageType(usage_type)
+        u_type = usage_type
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid usage type: {usage_type}")
 
@@ -344,7 +344,7 @@ async def get_usage_trend(
 async def record_usage(tenant_id: str, request: UsageRecordRequest):
     """Record usage event (internal use)"""
     try:
-        u_type = UsageType(request.usage_type)
+        u_type = request.usage_type
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid usage type: {request.usage_type}")
 
@@ -454,7 +454,7 @@ async def list_invoices(
     status_filter = None
     if status:
         try:
-            status_filter = InvoiceStatus(status)
+            status_filter = status
         except ValueError:
             pass
 

@@ -133,7 +133,7 @@ def create_control(
 ):
     """Create a new control library entry."""
     try:
-        control_type = ControlType(body.get("control_type", "preventive"))
+        control_type = body.get("control_type", "preventive")
         control_nature = ControlNature(body.get("control_nature", "manual"))
         frequency = ControlFrequency(body.get("frequency", "monthly"))
     except ValueError as e:
@@ -160,7 +160,7 @@ def create_control(
         version=1,
         effective_date=datetime.fromisoformat(body["effective_date"]) if body.get("effective_date") else None,
         key_control=body.get("key_control", False),
-        status=ControlStatus.DRAFT,
+        status="draft",
         is_active=True,
         change_history=[],
     )
@@ -185,9 +185,9 @@ def list_controls(
         ProcessControl.is_active.is_(True),
     )
     if control_type:
-        q = q.filter(ProcessControl.control_type == ControlType(control_type))
+        q = q.filter(ProcessControl.control_type == control_type)
     if status:
-        q = q.filter(ProcessControl.status == ControlStatus(status))
+        q = q.filter(ProcessControl.status == status)
     if process_name:
         q = q.filter(ProcessControl.process_name.ilike(f"%{process_name}%"))
     if owner_id:
@@ -224,13 +224,13 @@ def update_control(
         if field in body:
             setattr(ctrl, field, body[field])
     if "control_type" in body:
-        ctrl.control_type = ControlType(body["control_type"])
+        ctrl.control_type = body["control_type"]
     if "control_nature" in body:
         ctrl.control_nature = ControlNature(body["control_nature"])
     if "frequency" in body:
         ctrl.frequency = ControlFrequency(body["frequency"])
     if "status" in body:
-        ctrl.status = ControlStatus(body["status"])
+        ctrl.status = body["status"]
     # Version bump on substantive update
     history = ctrl.change_history or []
     history.append({
@@ -254,7 +254,7 @@ def retire_control(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     ctrl = _ctrl_or_404(db, control_id, tenant_id)
-    ctrl.status = ControlStatus.RETIRED
+    ctrl.status = "retired"
     ctrl.is_active = False
     db.commit()
     return {"control_id": control_id, "status": "retired"}
@@ -346,7 +346,7 @@ def create_test(
 ):
     ctrl = _ctrl_or_404(db, control_id, tenant_id)
     try:
-        test_type = TestType(body.get("test_type", "operating_effectiveness"))
+        test_type = body.get("test_type", "operating_effectiveness")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid test_type")
 
@@ -362,7 +362,7 @@ def create_test(
         tester_id=body.get("tester_id"),
         tester_name=body.get("tester_name"),
         test_steps=body.get("test_steps", []),
-        status=TestStatus.PLANNED,
+        status="planned",
         exceptions_found=0,
     )
     db.add(t)
@@ -387,12 +387,12 @@ def record_test_result(
     t.exception_details = body.get("exception_details")
     t.conclusion = body.get("conclusion")
     t.evidence_ids = body.get("evidence_ids", [])
-    t.status = TestStatus.COMPLETED
+    t.status = "completed"
     db.commit()
     db.refresh(t)
     # Auto-create deficiency if ineffective
-    if t.result in (TestResult.INEFFECTIVE, TestResult.PARTIALLY_EFFECTIVE) and body.get("create_deficiency", True):
-        sev = DeficiencySeverity.OBSERVATION if t.result == TestResult.PARTIALLY_EFFECTIVE else DeficiencySeverity.CONTROL_GAP
+    if t.result in ("ineffective", "partially_effective") and body.get("create_deficiency", True):
+        sev = "observation" if t.result == "partially_effective" else "control_gap"
         deficiency = ControlDeficiency(
             tenant_id=tenant_id,
             deficiency_id=_new_id("DEF"),
@@ -402,7 +402,7 @@ def record_test_result(
             title=f"Deficiency from test {test_id}",
             description=t.conclusion,
             severity=sev,
-            status=DeficiencyStatus.OPEN,
+            status="open",
         )
         db.add(deficiency)
         db.commit()
@@ -434,7 +434,7 @@ def create_deficiency(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        severity = DeficiencySeverity(body.get("severity", "control_gap"))
+        severity = body.get("severity", "control_gap")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid severity")
 
@@ -454,7 +454,7 @@ def create_deficiency(
         remediation_owner_id=body.get("remediation_owner_id"),
         remediation_owner_name=body.get("remediation_owner_name"),
         due_date=datetime.fromisoformat(body["due_date"]) if body.get("due_date") else None,
-        status=DeficiencyStatus.OPEN,
+        status="open",
     )
     db.add(d)
     db.commit()
@@ -472,9 +472,9 @@ def list_deficiencies(
 ):
     q = db.query(ControlDeficiency).filter(ControlDeficiency.tenant_id == tenant_id)
     if status:
-        q = q.filter(ControlDeficiency.status == DeficiencyStatus(status))
+        q = q.filter(ControlDeficiency.status == status)
     if severity:
-        q = q.filter(ControlDeficiency.severity == DeficiencySeverity(severity))
+        q = q.filter(ControlDeficiency.severity == severity)
     if control_id:
         ctrl = db.query(ProcessControl).filter(
             ProcessControl.control_id == control_id,
@@ -499,7 +499,7 @@ def update_deficiency(
         if field in body:
             setattr(d, field, body[field])
     if "severity" in body:
-        d.severity = DeficiencySeverity(body["severity"])
+        d.severity = body["severity"]
     if "due_date" in body and body["due_date"]:
         d.due_date = datetime.fromisoformat(body["due_date"])
     db.commit()
@@ -515,7 +515,7 @@ def remediate_deficiency(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     d = _def_or_404(db, deficiency_id, tenant_id)
-    d.status = DeficiencyStatus.REMEDIATED
+    d.status = "remediated"
     d.completed_at = datetime.utcnow()
     d.remediation_plan = body.get("remediation_notes", d.remediation_plan)
     db.commit()
@@ -531,7 +531,7 @@ def verify_deficiency(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     d = _def_or_404(db, deficiency_id, tenant_id)
-    d.status = DeficiencyStatus.VERIFIED_CLOSED
+    d.status = "verified_closed"
     d.verified_by = body.get("verified_by")
     d.verified_at = datetime.utcnow()
     db.commit()
@@ -557,7 +557,7 @@ def create_self_assessment_campaign(
     q = db.query(ProcessControl).filter(
         ProcessControl.tenant_id == tenant_id,
         ProcessControl.is_active.is_(True),
-        ProcessControl.status == ControlStatus.ACTIVE,
+        ProcessControl.status == "active",
     )
     if body.get("control_ids"):
         q = q.filter(ProcessControl.control_id.in_(body["control_ids"]))
@@ -573,7 +573,7 @@ def create_self_assessment_campaign(
             control_id=ctrl.id,
             assessor_id=ctrl.owner_id,
             assessor_name=ctrl.owner_name,
-            status=CSAStatus.PENDING,
+            status="pending",
             due_date=due_date,
         )
         db.add(a)
@@ -600,7 +600,7 @@ def submit_self_assessment(
     a.questionnaire_responses = body.get("questionnaire_responses", {})
     a.attestation = body.get("attestation")
     a.attested_at = datetime.utcnow()
-    a.status = CSAStatus.COMPLETED
+    a.status = "completed"
     db.commit()
     db.refresh(a)
     return a.to_dict()
@@ -614,7 +614,7 @@ def get_pending_self_assessments(
 ):
     q = db.query(ControlSelfAssessment).filter(
         ControlSelfAssessment.tenant_id == tenant_id,
-        ControlSelfAssessment.status == CSAStatus.PENDING,
+        ControlSelfAssessment.status == "pending",
     )
     if assessor_id:
         q = q.filter(ControlSelfAssessment.assessor_id == assessor_id)
@@ -649,7 +649,7 @@ def validate_ccm_rule(
         errors.append("'rule_type' is required")
     else:
         try:
-            CCMRuleType(rule_type_str)
+            rule_type_str
         except ValueError:
             errors.append(f"Invalid rule_type '{rule_type_str}'. Valid: config_check, data_pattern, threshold, sod_bridge")
 
@@ -717,7 +717,7 @@ def create_ccm_rule(
     tenant_id: str = Depends(_get_tenant_id),
 ):
     try:
-        rule_type = CCMRuleType(body.get("rule_type", "config_check"))
+        rule_type = body.get("rule_type", "config_check")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid rule_type")
 
@@ -784,11 +784,11 @@ def execute_ccm_rule(
 
     # Auto-create deficiency on breach
     deficiency_id = None
-    if result == CCMResult.FAIL and rule.auto_create_deficiency:
+    if result == "fail" and rule.auto_create_deficiency:
         try:
-            sev = DeficiencySeverity(rule.severity_on_breach)
+            sev = rule.severity_on_breach
         except ValueError:
-            sev = DeficiencySeverity.OBSERVATION
+            sev = "observation"
         deficiency = ControlDeficiency(
             tenant_id=tenant_id,
             deficiency_id=_new_id("DEF"),
@@ -797,7 +797,7 @@ def execute_ccm_rule(
             title=f"CCM breach: {rule.name}",
             description=f"Rule {rule_id} failed with {findings_count} findings",
             severity=sev,
-            status=DeficiencyStatus.OPEN,
+            status="open",
         )
         db.add(deficiency)
         db.flush()
@@ -829,7 +829,7 @@ def run_all_ccm(
             tenant_id=tenant_id,
             rule_id=rule.id,
             executed_at=datetime.utcnow(),
-            result=CCMResult.PASS,
+            result="pass",
             findings_count=0,
         )
         db.add(exec_record)
@@ -884,7 +884,7 @@ def ccm_sod_bridge(
     # Ensure a SOD_BRIDGE CCM rule exists for this control
     rule = db.query(CCMRule).filter(
         CCMRule.tenant_id == tenant_id,
-        CCMRule.rule_type == CCMRuleType.SOD_BRIDGE,
+        CCMRule.rule_type == "sod_bridge",
         CCMRule.control_id == ctrl_pk,
     ).first()
 
@@ -893,7 +893,7 @@ def ccm_sod_bridge(
             tenant_id=tenant_id,
             rule_id=_new_id("CCM"),
             name=f"SoD Bridge for control {control_id_str or 'N/A'}",
-            rule_type=CCMRuleType.SOD_BRIDGE,
+            rule_type="sod_bridge",
             control_id=ctrl_pk,
             rule_definition={"source": "ara_module"},
             is_active=True,
@@ -903,7 +903,7 @@ def ccm_sod_bridge(
         db.add(rule)
         db.flush()
 
-    result = CCMResult.FAIL if violation_ids else CCMResult.PASS
+    result = "fail" if violation_ids else "pass"
     exec_record = CCMExecution(
         tenant_id=tenant_id,
         rule_id=rule.id,
@@ -951,7 +951,7 @@ def create_evidence(
         upload_date=datetime.utcnow(),
         retention_until=datetime.fromisoformat(body["retention_until"]) if body.get("retention_until") else None,
         legal_hold=body.get("legal_hold", False),
-        status=EvidenceStatus.ACTIVE,
+        status="active",
         version=1,
     )
     db.add(e)
@@ -971,7 +971,7 @@ def list_evidence(
 ):
     q = db.query(GRCEvidence).filter(
         GRCEvidence.tenant_id == tenant_id,
-        GRCEvidence.status == EvidenceStatus.ACTIVE,
+        GRCEvidence.status == "active",
     )
     if source_module:
         q = q.filter(GRCEvidence.source_module == source_module)
@@ -1030,7 +1030,7 @@ def create_signoff(
         controls_in_scope=body.get("controls_in_scope", 0),
         controls_effective=body.get("controls_effective", 0),
         deficiencies_open=body.get("deficiencies_open", 0),
-        status=SignOffStatus.PENDING,
+        status="pending",
     )
     db.add(s)
     db.commit()
@@ -1050,7 +1050,7 @@ def submit_signoff(
     s.exceptions = body.get("exceptions", [])
     s.comments = body.get("comments")
     has_exceptions = bool(s.exceptions)
-    s.status = SignOffStatus.CERTIFIED_WITH_EXCEPTIONS if has_exceptions else SignOffStatus.CERTIFIED
+    s.status = "certified_with_exceptions" if has_exceptions else "certified"
     s.certified_at = datetime.utcnow()
     db.commit()
     db.refresh(s)
@@ -1090,7 +1090,7 @@ def get_pending_signoffs(
 ):
     q = db.query(SignOffCertification).filter(
         SignOffCertification.tenant_id == tenant_id,
-        SignOffCertification.status == SignOffStatus.PENDING,
+        SignOffCertification.status == "pending",
     )
     if certifier_id:
         q = q.filter(SignOffCertification.certifier_id == certifier_id)
@@ -1115,23 +1115,23 @@ def get_dashboard(
     active_controls = db.query(ProcessControl).filter(
         ProcessControl.tenant_id == tenant_id,
         ProcessControl.is_active.is_(True),
-        ProcessControl.status == ControlStatus.ACTIVE,
+        ProcessControl.status == "active",
     ).count()
     open_deficiencies = db.query(ControlDeficiency).filter(
         ControlDeficiency.tenant_id == tenant_id,
-        ControlDeficiency.status == DeficiencyStatus.OPEN,
+        ControlDeficiency.status == "open",
     ).count()
     pending_tests = db.query(ControlTest).filter(
         ControlTest.tenant_id == tenant_id,
-        ControlTest.status == TestStatus.PLANNED,
+        ControlTest.status == "planned",
     ).count()
     pending_signoffs = db.query(SignOffCertification).filter(
         SignOffCertification.tenant_id == tenant_id,
-        SignOffCertification.status == SignOffStatus.PENDING,
+        SignOffCertification.status == "pending",
     ).count()
     effective_count = db.query(ControlTest).filter(
         ControlTest.tenant_id == tenant_id,
-        ControlTest.result == TestResult.EFFECTIVE,
+        ControlTest.result == "effective",
     ).count()
     total_tested = db.query(ControlTest).filter(
         ControlTest.tenant_id == tenant_id,

@@ -40,10 +40,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "camera=(), microphone=(), geolocation=()"
         )
 
-        if _HTTPS_ENABLED:
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+        # HSTS: always set when behind HTTPS reverse proxy (production)
+        # Safe to set even without HTTPS — browsers only enforce on HTTPS responses
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
 
         return response
 

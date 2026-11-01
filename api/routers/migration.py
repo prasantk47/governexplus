@@ -142,7 +142,7 @@ def get_transaction_mapping(
 
     if status:
         try:
-            MigrationStatus(status)
+            status
         except ValueError:
             raise HTTPException(
                 status_code=400,

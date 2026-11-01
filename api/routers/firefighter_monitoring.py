@@ -282,7 +282,7 @@ async def get_alerts(
     severity_enum = None
     if severity:
         try:
-            severity_enum = AlertSeverity(severity)
+            severity_enum = severity
         except ValueError:
             pass
 

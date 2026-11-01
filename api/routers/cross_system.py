@@ -93,7 +93,7 @@ async def list_identities(
     status_enum = None
     if correlation_status:
         try:
-            status_enum = CorrelationStatus(correlation_status)
+            status_enum = correlation_status
         except ValueError:
             pass
 
@@ -135,7 +135,7 @@ async def link_account(
 ):
     """Link a system account to an identity"""
     try:
-        system_type = SystemType(request.system_type)
+        system_type = request.system_type
     except ValueError:
         system_type = SystemType.CUSTOM
 
@@ -261,7 +261,7 @@ async def list_conflicts(
     severity_enum = None
     if severity:
         try:
-            severity_enum = ConflictSeverity(severity)
+            severity_enum = severity
         except ValueError:
             pass
 

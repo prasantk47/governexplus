@@ -92,7 +92,7 @@ def create_org_unit(
 ):
     """Create a new organisational unit."""
     try:
-        unit_type = OrgUnitType(body.get("unit_type", "department"))
+        unit_type = body.get("unit_type", "department")
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -158,7 +158,7 @@ def list_org_units(
 
     if unit_type:
         try:
-            q = q.filter(OrgUnit.unit_type == OrgUnitType(unit_type))
+            q = q.filter(OrgUnit.unit_type == unit_type)
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid unit_type: {unit_type}")
 
@@ -207,7 +207,7 @@ def update_org_unit(
         unit.name = body["name"]
     if "unit_type" in body:
         try:
-            unit.unit_type = OrgUnitType(body["unit_type"])
+            unit.unit_type = body["unit_type"]
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid unit_type: {body['unit_type']}")
     if "manager_user_id" in body:

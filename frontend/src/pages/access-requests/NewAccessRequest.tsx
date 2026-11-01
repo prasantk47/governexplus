@@ -405,12 +405,11 @@ export function NewAccessRequest() {
         await provisioningApi.provisionUser(
           {
             user_id: userProfile.userId,
-            first_name: userProfile.firstName,
-            last_name: userProfile.lastName,
+            full_name: `${userProfile.firstName} ${userProfile.lastName}`.trim(),
             email: userProfile.email,
             department: userProfile.department,
             job_title: userProfile.jobTitle,
-            manager_id: userProfile.manager,
+            manager_user_id: userProfile.manager,
           },
           selectedTargetSystems,
           isCopyUser ? 'copy_user' : 'manual',

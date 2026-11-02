@@ -417,8 +417,8 @@ async def get_coverage_report():
             "business_process": bp.name,
             "functions_count": len(functions),
             "rules_count": len(rules),
-            "critical_rules": len([r for r in rules if r.risk_level == RiskLevel.CRITICAL]),
-            "high_rules": len([r for r in rules if r.risk_level == RiskLevel.HIGH]),
+            "critical_rules": len([r for r in rules if getattr(r.risk_level, 'value', r.risk_level) == "critical"]),
+            "high_rules": len([r for r in rules if getattr(r.risk_level, 'value', r.risk_level) == "high"]),
             "sox_relevant": len([r for r in rules if r.sox_relevant])
         }
 

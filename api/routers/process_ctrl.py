@@ -134,8 +134,8 @@ def create_control(
     """Create a new control library entry."""
     try:
         control_type = body.get("control_type", "preventive")
-        control_nature = ControlNature(body.get("control_nature", "manual"))
-        frequency = ControlFrequency(body.get("frequency", "monthly"))
+        control_nature = body.get("control_nature", "manual")
+        frequency = body.get("frequency", "monthly")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -226,9 +226,9 @@ def update_control(
     if "control_type" in body:
         ctrl.control_type = body["control_type"]
     if "control_nature" in body:
-        ctrl.control_nature = ControlNature(body["control_nature"])
+        ctrl.control_nature = body["control_nature"]
     if "frequency" in body:
-        ctrl.frequency = ControlFrequency(body["frequency"])
+        ctrl.frequency = body["frequency"]
     if "status" in body:
         ctrl.status = body["status"]
     # Version bump on substantive update
@@ -380,7 +380,7 @@ def record_test_result(
 ):
     t = _test_or_404(db, test_id, tenant_id)
     try:
-        t.result = TestResult(body["result"])
+        t.result = body["result"]
     except (KeyError, ValueError):
         raise HTTPException(status_code=400, detail="Missing or invalid 'result'")
     t.exceptions_found = body.get("exceptions_found", 0)

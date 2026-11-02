@@ -154,10 +154,9 @@ def create_risk(
 ):
     """Create a new enterprise risk register entry."""
     category_val = body.get("category", "operational")
-    try:
-        category = category_val
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid category: {category_val}")
+    if category_val not in _VALID_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Invalid category: {category_val}. Valid: {sorted(_VALID_CATEGORIES)}")
+    category = category_val
 
     inherent_likelihood = body.get("inherent_likelihood")
     inherent_impact = body.get("inherent_impact")
@@ -572,7 +571,7 @@ def check_appetite_breach(
     risk = _risk_or_404(db, risk_id, tenant_id)
     appetite = db.query(RiskAppetite).filter(
         RiskAppetite.tenant_id == tenant_id,
-        RiskAppetite.category == risk.category.value,
+        RiskAppetite.category == getattr(risk.category, 'value', risk.category),
     ).first()
     if not appetite:
         appetite = db.query(RiskAppetite).filter(

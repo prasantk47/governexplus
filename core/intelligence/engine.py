@@ -63,10 +63,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _VIOLATION_SEV_ORDER = {
-    RiskSeverityLevel.CRITICAL: 4,
-    RiskSeverityLevel.HIGH: 3,
-    RiskSeverityLevel.MEDIUM: 2,
-    RiskSeverityLevel.LOW: 1,
+    "critical": 4,
+    "high": 3,
+    "medium": 2,
+    "low": 1,
 }
 
 _FINDING_SEV_ORDER = {
@@ -78,7 +78,7 @@ _FINDING_SEV_ORDER = {
 }
 
 _DEFICIENCY_SEV_ORDER = {
-    DeficiencySeverity.MATERIAL_WEAKNESS: 4,
+    "material_weakness": 4,
     DeficiencySeverity.SIGNIFICANT_DEFICIENCY: 3,
     DeficiencySeverity.CONTROL_GAP: 2,
     DeficiencySeverity.OBSERVATION: 1,
@@ -189,13 +189,13 @@ class GRCIntelligenceEngine:
 
         open_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).scalar() or 0
 
         critical_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
-            RiskViolation.severity == RiskSeverityLevel.CRITICAL,
+            RiskViolation.status == "open",
+            RiskViolation.severity == "critical",
         ).scalar() or 0
 
         # Ratio of violations to users — capped at 1.0
@@ -238,7 +238,7 @@ class GRCIntelligenceEngine:
                     DeficiencyStatus.IN_REMEDIATION,
                 ]),
                 ControlDeficiency.severity.in_([
-                    DeficiencySeverity.MATERIAL_WEAKNESS,
+                    "material_weakness",
                     DeficiencySeverity.SIGNIFICANT_DEFICIENCY,
                 ]),
             ).distinct().all()
@@ -266,7 +266,7 @@ class GRCIntelligenceEngine:
                 DeficiencyStatus.OPEN,
                 DeficiencyStatus.IN_REMEDIATION,
             ]),
-            ControlDeficiency.severity == DeficiencySeverity.MATERIAL_WEAKNESS,
+            ControlDeficiency.severity == "material_weakness",
         ).scalar() or 0
 
         penalty = min(material_weaknesses * 5, 20)
@@ -431,8 +431,8 @@ class GRCIntelligenceEngine:
     def _attention_critical_violations(self) -> List[Dict[str, Any]]:
         violations = self.db.query(RiskViolation).filter(
             RiskViolation.tenant_id == self.tenant_id,
-            RiskViolation.status == ViolationStatus.OPEN,
-            RiskViolation.severity == RiskSeverityLevel.CRITICAL,
+            RiskViolation.status == "open",
+            RiskViolation.severity == "critical",
             RiskViolation.is_mitigated.is_(False),
         ).order_by(RiskViolation.detected_at.asc()).limit(20).all()
 
@@ -465,14 +465,14 @@ class GRCIntelligenceEngine:
                 DeficiencyStatus.IN_REMEDIATION,
             ]),
             ControlDeficiency.severity.in_([
-                DeficiencySeverity.MATERIAL_WEAKNESS,
+                "material_weakness",
                 DeficiencySeverity.SIGNIFICANT_DEFICIENCY,
             ]),
         ).order_by(ControlDeficiency.created_at.asc()).limit(20).all()
 
         items = []
         for d in deficiencies:
-            sev = "critical" if d.severity == DeficiencySeverity.MATERIAL_WEAKNESS else "high"
+            sev = "critical" if d.severity == "material_weakness" else "high"
             overdue = (
                 d.due_date and d.due_date < NOW() and
                 d.status != DeficiencyStatus.VERIFIED_CLOSED
@@ -754,7 +754,7 @@ class GRCIntelligenceEngine:
 
         fin_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
             RiskViolation.risk_category.in_(["Financial", "FI", "AP", "Vendor"]),
         ).scalar() or 0
 
@@ -861,8 +861,8 @@ class GRCIntelligenceEngine:
             row[0]
             for row in self.db.query(RiskViolation.user_id).filter(
                 RiskViolation.tenant_id == tid,
-                RiskViolation.status == ViolationStatus.OPEN,
-                RiskViolation.severity == RiskSeverityLevel.CRITICAL,
+                RiskViolation.status == "open",
+                RiskViolation.severity == "critical",
                 RiskViolation.is_mitigated.is_(False),
             ).distinct().all()
         )
@@ -1009,7 +1009,7 @@ class GRCIntelligenceEngine:
         violations_count = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
             RiskViolation.user_id.in_(list(dormant_ids)[:500]),
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).scalar() or 0
 
         if violations_count == 0:
@@ -1261,7 +1261,7 @@ class GRCIntelligenceEngine:
                 + (
                     "A material weakness is the most severe type and may require disclosure "
                     "in financial reports."
-                    if d.severity == DeficiencySeverity.MATERIAL_WEAKNESS else ""
+                    if d.severity == "material_weakness" else ""
                 )
             ),
             "impact": {
@@ -1358,13 +1358,13 @@ class GRCIntelligenceEngine:
 
         open_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.user_id == u.id,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).scalar() or 0
 
         critical_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.user_id == u.id,
-            RiskViolation.status == ViolationStatus.OPEN,
-            RiskViolation.severity == RiskSeverityLevel.CRITICAL,
+            RiskViolation.status == "open",
+            RiskViolation.severity == "critical",
         ).scalar() or 0
 
         days_since_login = (
@@ -1518,7 +1518,7 @@ class GRCIntelligenceEngine:
         # Violations
         violations = self.db.query(RiskViolation).filter(
             RiskViolation.user_id == user.id,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).all()
         nodes.append({
             "step": 2,
@@ -2083,13 +2083,13 @@ class GRCIntelligenceEngine:
 
         open_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).scalar() or 0
 
         critical_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
-            RiskViolation.severity == RiskSeverityLevel.CRITICAL,
+            RiskViolation.status == "open",
+            RiskViolation.severity == "critical",
         ).scalar() or 0
 
         active_ff_sessions = self.db.query(func.count(FirefighterSession.id)).filter(
@@ -2269,7 +2269,7 @@ class GRCIntelligenceEngine:
 
         total_violations = self.db.query(func.count(RiskViolation.id)).filter(
             RiskViolation.tenant_id == tid,
-            RiskViolation.status == ViolationStatus.OPEN,
+            RiskViolation.status == "open",
         ).scalar() or 0
 
         return {

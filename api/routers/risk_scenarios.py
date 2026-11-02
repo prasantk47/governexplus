@@ -180,7 +180,7 @@ def create_scenario(
     velocity = None
     if body.get("velocity"):
         try:
-            velocity = ScenarioVelocity(body["velocity"])
+            velocity = body["velocity"]
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid velocity")
 
@@ -257,7 +257,7 @@ def update_scenario(
     if "scenario_type" in body:
         s.scenario_type = body["scenario_type"]
     if "velocity" in body and body["velocity"]:
-        s.velocity = ScenarioVelocity(body["velocity"])
+        s.velocity = body["velocity"]
     if "status" in body:
         s.status = body["status"]
     db.commit()

@@ -76,7 +76,14 @@ async def get_smtp_config(
     """Return current SMTP configuration for this tenant. Password is masked."""
     tenant = _get_tenant(tenant_id, db)
     settings = tenant.settings or {}
-    cfg = settings.get("smtp") or {}
+    if isinstance(settings, str):
+        import json as _json
+        try:
+            settings = _json.loads(settings)
+        except (ValueError, TypeError):
+            settings = {}
+    cfg = settings.get("smtp") if isinstance(settings, dict) else {}
+    cfg = cfg or {}
 
     return {
         "tenant_id": tenant_id,

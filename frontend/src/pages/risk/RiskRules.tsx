@@ -166,9 +166,9 @@ export function RiskRules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title">Segregation of Duties Rules</h1>
+          <h1 className="page-title">Conflict Rules</h1>
           <p className="page-subtitle">
-            Manage SoD rules and conflict detection policies
+            Manage access conflict rules and detection policies
           </p>
         </div>
         <button

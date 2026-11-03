@@ -161,9 +161,9 @@ export function RiskSimulation() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Risk Simulation</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Access Conflict Simulator</h1>
         <p className="text-sm text-gray-500">
-          Simulate access changes before provisioning to identify potential risks
+          Simulate access changes before provisioning to identify potential conflicts
         </p>
       </div>
 

@@ -19,7 +19,7 @@ interface LibraryItem {
 }
 
 const WIZARD_MODULES = [
-  { id: 'ara', label: 'Access Risk (SoD Rules)', types: ['sod_rule', 'mitigation'] },
+  { id: 'ara', label: 'Risk Intelligence (Conflict Rules)', types: ['sod_rule', 'mitigation'] },
   { id: 'arm', label: 'Access Requests (Workflows)', types: ['workflow'] },
   { id: 'certification', label: 'Certification Templates', types: ['certification_template', 'workflow'] },
   { id: 'privileged_access', label: 'Privileged Access', types: ['workflow', 'notification_template'] },

@@ -41,7 +41,7 @@ const pillars = [
     title: 'Access Governance',
     subtitle: 'Risk Intelligence Engine',
     description: 'Detect access conflicts before they cause damage. Smart risk scoring, automated request workflows, emergency access controls, and continuous certification.',
-    features: ['121 SoD Rules', 'Smart Simulation', 'Automated Workflows', 'Self-Service Requests', 'Shopping Cart', 'Role Mining'],
+    features: ['121 Conflict Rules', 'Access Conflict Simulator', 'Automated Workflows', 'Self-Service Requests', 'Shopping Cart', 'Role Mining'],
     color: 'from-indigo-500 to-violet-600',
     bg: 'bg-indigo-50 dark:bg-indigo-950/30',
     border: 'border-indigo-200 dark:border-indigo-800',
@@ -106,19 +106,19 @@ const modules = [
 
 const stats = [
   { value: '912+', label: 'API Endpoints' },
-  { value: '121', label: 'SoD Rules' },
+  { value: '121', label: 'Conflict Rules' },
   { value: '30+', label: 'Modules' },
-  { value: '<1ms', label: 'Risk Simulation' },
+  { value: '<1ms', label: 'Conflict Simulation' },
   { value: '81+', label: 'Database Tables' },
   { value: '24/7', label: 'Monitoring' },
 ];
 
 const strengths = [
   { feature: 'Deployment', value: 'Live in under 1 week', detail: 'SaaS same-day. On-premise under 5 days.' },
-  { feature: 'SoD Rules', value: '121 pre-built, ready to go', detail: 'FI, MM, SD, HR, BA, TR, WM, QM, PM — all covered.' },
+  { feature: 'Conflict Rules', value: '121 pre-built, ready to go', detail: 'FI, MM, SD, HR, BA, TR, WM, QM, PM — all covered.' },
   { feature: 'AI Engines', value: '8 built-in intelligence engines', detail: 'Remediation, certification, NLP rules, forecasting, copilot.' },
   { feature: 'Multi-System', value: 'Connect any ERP, IDM, ITSM', detail: 'ECC, S/4, Azure AD, ServiceNow, Workday, SuccessFactors.' },
-  { feature: 'Risk Simulation', value: 'Real-time, sub-millisecond', detail: 'What-if analysis before any access change.' },
+  { feature: 'Conflict Simulator', value: 'Real-time, sub-millisecond', detail: 'What-if analysis before any access change.' },
   { feature: 'Certification', value: 'AI recommendations + confidence', detail: 'Managers see usage data and AI suggestion. 80% faster.' },
   { feature: 'Role Mining', value: 'Built-in with AI optimization', detail: 'Discover, consolidate, and redesign roles automatically.' },
   { feature: 'Audit Trail', value: 'Complete + AI-generated narratives', detail: 'Every action logged. Findings auto-generated.' },

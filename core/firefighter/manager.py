@@ -249,6 +249,134 @@ class ReviewStatus(Enum):
     ESCALATED = "escalated"
 
 
+class LogType(Enum):
+    """SAP GRC EAM log types"""
+    TRANSACTION = "transaction"      # Transactions executed (S_TCODE)
+    CHANGE_LOG = "change_log"        # Data changes (CDHDR/CDPOS)
+    SYSTEM_LOG = "system_log"        # System events (SM21)
+    AUDIT_LOG = "audit_log"          # Security audit log (SM20)
+    OS_COMMAND = "os_command"         # OS command execution
+    APPLICATION = "application"      # Application-specific logs
+
+
+class FFIDStatus(Enum):
+    """Firefighter ID lifecycle status"""
+    ACTIVE = "active"
+    LOCKED = "locked"
+    RETIRED = "retired"
+    UNDER_REVIEW = "under_review"
+
+
+@dataclass
+class FirefighterIDRecord:
+    """A registered Firefighter ID with ownership, scope, and governance.
+
+    This replaces the hardcoded FFID list. Each record represents a
+    controlled emergency account in a target SAP system.
+    """
+    ffid: str                                    # e.g. FF_S4_FI_APAC_01
+    description: str = ""                        # Business purpose
+    target_system: str = ""                      # e.g. S4_PRD, ECC_PRD
+    emergency_function: str = ""                 # FI, MM, BASIS, SEC, HR
+    status: FFIDStatus = FFIDStatus.ACTIVE
+
+    # Ownership & governance (SAP GRC EAM standard)
+    owner_id: str = ""                           # Accountable person
+    owner_name: str = ""
+    controller_id: str = ""                      # Independent log reviewer
+    controller_name: str = ""
+    backup_owner_id: str = ""
+    backup_controller_id: str = ""
+
+    # Organizational scope
+    region: str = ""                             # APAC, EMEA, AMER, MEA
+    country: str = ""                            # ISO code: IN, SG, DE
+    company_codes: List[str] = field(default_factory=list)  # ["1000","1100"]
+    scope_description: str = ""                  # "India Manufacturing Finance"
+
+    # Authorization & risk
+    assigned_roles: List[str] = field(default_factory=list)  # SAP roles on this FFID
+    risk_level: str = "high"                     # low, medium, high, critical
+    sod_conflicts: List[str] = field(default_factory=list)
+    sox_relevant: bool = True
+
+    # Assignment governance
+    max_concurrent_users: int = 1                # Only 1 firefighter at a time
+    max_session_hours: int = 4                   # Default max session duration
+    allowed_firefighters: List[str] = field(default_factory=list)  # User IDs who can use this FFID
+    requires_pre_approval: bool = True
+
+    # Certification / periodic review
+    last_certification_date: Optional[str] = None
+    next_certification_due: Optional[str] = None
+    certification_frequency_days: int = 90       # Quarterly
+    last_certified_by: str = ""
+    certification_status: str = "current"        # current, due, overdue, never
+
+    # Log collection config (SAP GRC parameter mapping)
+    collect_change_log: bool = True              # Param 4003
+    collect_system_log: bool = True              # Param 4004
+    collect_audit_log: bool = True               # Param 4005
+    collect_os_command_log: bool = False          # Param 4006
+
+    # Lifecycle
+    created_at: str = ""
+    created_by: str = ""
+    modified_at: str = ""
+
+    def to_dict(self) -> Dict:
+        return {
+            "ffid": self.ffid,
+            "description": self.description,
+            "target_system": self.target_system,
+            "emergency_function": self.emergency_function,
+            "status": self.status.value,
+            "owner_id": self.owner_id,
+            "owner_name": self.owner_name,
+            "controller_id": self.controller_id,
+            "controller_name": self.controller_name,
+            "backup_owner_id": self.backup_owner_id,
+            "backup_controller_id": self.backup_controller_id,
+            "region": self.region,
+            "country": self.country,
+            "company_codes": self.company_codes,
+            "scope_description": self.scope_description,
+            "assigned_roles": self.assigned_roles,
+            "risk_level": self.risk_level,
+            "sod_conflicts": self.sod_conflicts,
+            "sox_relevant": self.sox_relevant,
+            "max_concurrent_users": self.max_concurrent_users,
+            "max_session_hours": self.max_session_hours,
+            "allowed_firefighters": self.allowed_firefighters,
+            "requires_pre_approval": self.requires_pre_approval,
+            "last_certification_date": self.last_certification_date,
+            "next_certification_due": self.next_certification_due,
+            "certification_frequency_days": self.certification_frequency_days,
+            "certification_status": self.certification_status,
+            "collect_change_log": self.collect_change_log,
+            "collect_system_log": self.collect_system_log,
+            "collect_audit_log": self.collect_audit_log,
+            "collect_os_command_log": self.collect_os_command_log,
+            "created_at": self.created_at,
+            "created_by": self.created_by,
+        }
+
+
+# Default FFID catalog — seeded on first access, fully configurable via API
+DEFAULT_FFID_CATALOG: List[Dict] = [
+    {"ffid": "FF_FI_001", "description": "Finance Emergency - AP/GL/AR", "target_system": "SAP_PRD", "emergency_function": "FI", "region": "APAC", "risk_level": "high", "assigned_roles": ["Z_FF_FINANCE"], "company_codes": ["1000", "1100"], "max_session_hours": 4, "sox_relevant": True},
+    {"ffid": "FF_FI_002", "description": "Finance Emergency - Treasury/FX", "target_system": "SAP_PRD", "emergency_function": "FI", "region": "APAC", "risk_level": "high", "assigned_roles": ["Z_FF_TREASURY"], "company_codes": ["1000"], "max_session_hours": 4, "sox_relevant": True},
+    {"ffid": "FF_MM_001", "description": "Procurement Emergency - PO/GR/AP", "target_system": "SAP_PRD", "emergency_function": "MM", "region": "APAC", "risk_level": "high", "assigned_roles": ["Z_FF_PROCUREMENT"], "company_codes": ["1000", "1100", "1200"], "max_session_hours": 4},
+    {"ffid": "FF_HR_001", "description": "HR/Payroll Emergency", "target_system": "SAP_PRD", "emergency_function": "HR", "region": "APAC", "risk_level": "critical", "assigned_roles": ["Z_FF_HR_PAYROLL"], "company_codes": ["1000"], "max_session_hours": 2},
+    {"ffid": "FF_BASIS_001", "description": "Basis Administration Emergency", "target_system": "SAP_PRD", "emergency_function": "BASIS", "region": "GLOBAL", "risk_level": "critical", "assigned_roles": ["Z_FF_BASIS_L2"], "max_session_hours": 8},
+    {"ffid": "FF_SEC_001", "description": "Security Administration Emergency", "target_system": "SAP_PRD", "emergency_function": "SEC", "region": "GLOBAL", "risk_level": "critical", "assigned_roles": ["Z_FF_SECURITY"], "max_session_hours": 4},
+    {"ffid": "FF_SD_001", "description": "Sales & Distribution Emergency", "target_system": "SAP_PRD", "emergency_function": "SD", "region": "APAC", "risk_level": "medium", "assigned_roles": ["Z_FF_SALES"], "company_codes": ["1000", "2000"], "max_session_hours": 4},
+    {"ffid": "FF_ABAP_001", "description": "ABAP Development Emergency Debug", "target_system": "SAP_PRD", "emergency_function": "ABAP", "region": "GLOBAL", "risk_level": "critical", "assigned_roles": ["Z_FF_ABAP_DEBUG"], "max_session_hours": 2},
+    {"ffid": "FF_FI_EMEA_01", "description": "Finance Emergency - EMEA", "target_system": "SAP_EU", "emergency_function": "FI", "region": "EMEA", "country": "DE", "risk_level": "high", "assigned_roles": ["Z_FF_FINANCE"], "company_codes": ["3000", "3100"], "max_session_hours": 4},
+    {"ffid": "FF_FI_AMER_01", "description": "Finance Emergency - Americas", "target_system": "SAP_US", "emergency_function": "FI", "region": "AMER", "country": "US", "risk_level": "high", "assigned_roles": ["Z_FF_FINANCE"], "company_codes": ["4000", "4100"], "max_session_hours": 4},
+]
+
+
 @dataclass
 class ActivityLog:
     """Single activity entry during firefighter session"""
@@ -258,10 +386,20 @@ class ActivityLog:
     action_type: str  # 'TCODE_EXECUTE', 'DATA_CHANGE', 'REPORT_RUN', etc.
     action_details: Dict[str, Any]
 
+    # SAP GRC EAM log classification
+    log_type: str = "transaction"  # transaction, change_log, system_log, audit_log, os_command, application
+
     # Context
     client_ip: Optional[str] = None
     user_agent: Optional[str] = None
     sap_gui_version: Optional[str] = None
+
+    # Change-log specific (CDHDR/CDPOS equivalent)
+    table_name: Optional[str] = None    # e.g. LFBK, BKPF
+    field_name: Optional[str] = None    # Changed field
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    document_number: Optional[str] = None
 
     # Risk indicators
     is_sensitive: bool = False
@@ -550,6 +688,8 @@ class FirefighterManager:
         self.requests: Dict[str, FirefighterRequest] = {}
         self.sessions: Dict[str, FirefighterSession] = {}
         self.active_sessions_by_ff: Dict[str, str] = {}  # firefighter_id -> session_id
+        self.ffid_registry: Dict[str, FirefighterIDRecord] = {}  # FFID inventory
+        self._ffid_seeded = False
 
         self.notification_handler = notification_handler
         self.sap_connector = sap_connector
@@ -2252,5 +2392,277 @@ class FirefighterManager:
             'completed_sessions': completed,
             'revoked_sessions': revoked,
             'pending_reviews': sum(1 for s in self.sessions.values()
-                                  if s.requires_review and s.reviewed_by is None)
+                                  if s.requires_review and s.reviewed_by is None),
+            'total_ffids': len(self.ffid_registry),
+            'active_ffids': sum(1 for f in self.ffid_registry.values() if f.status == FFIDStatus.ACTIVE),
+        }
+
+    # =========================================================================
+    # FFID Registry — replaces hardcoded firefighter ID list
+    # =========================================================================
+
+    def _ensure_ffid_registry(self) -> None:
+        """Seed default FFID catalog on first access."""
+        if self._ffid_seeded:
+            return
+        self._ffid_seeded = True
+        if not self.ffid_registry:
+            now = datetime.now().isoformat()
+            for cat in DEFAULT_FFID_CATALOG:
+                ffid = cat["ffid"]
+                rec = FirefighterIDRecord(
+                    ffid=ffid,
+                    description=cat.get("description", ""),
+                    target_system=cat.get("target_system", ""),
+                    emergency_function=cat.get("emergency_function", ""),
+                    region=cat.get("region", ""),
+                    country=cat.get("country", ""),
+                    company_codes=cat.get("company_codes", []),
+                    assigned_roles=cat.get("assigned_roles", []),
+                    risk_level=cat.get("risk_level", "high"),
+                    max_session_hours=cat.get("max_session_hours", 4),
+                    sox_relevant=cat.get("sox_relevant", True),
+                    created_at=now,
+                    created_by="SYSTEM",
+                )
+                self.ffid_registry[ffid] = rec
+
+    def list_ffids(self, region: str = None, target_system: str = None,
+                   status: str = None, emergency_function: str = None) -> List[Dict]:
+        """List all registered FFIDs with optional filters."""
+        self._ensure_ffid_registry()
+        results = list(self.ffid_registry.values())
+        if region:
+            results = [f for f in results if f.region == region]
+        if target_system:
+            results = [f for f in results if f.target_system == target_system]
+        if status:
+            results = [f for f in results if f.status.value == status]
+        if emergency_function:
+            results = [f for f in results if f.emergency_function == emergency_function]
+
+        # Enrich with live availability
+        enriched = []
+        for f in results:
+            d = f.to_dict()
+            d["in_use"] = f.ffid in self.active_sessions_by_ff
+            d["current_session_id"] = self.active_sessions_by_ff.get(f.ffid)
+            enriched.append(d)
+        return enriched
+
+    def get_ffid(self, ffid: str) -> Optional[Dict]:
+        """Get a single FFID record."""
+        self._ensure_ffid_registry()
+        rec = self.ffid_registry.get(ffid)
+        if not rec:
+            return None
+        d = rec.to_dict()
+        d["in_use"] = ffid in self.active_sessions_by_ff
+        d["current_session_id"] = self.active_sessions_by_ff.get(ffid)
+        return d
+
+    def create_ffid(self, ffid: str, created_by: str, **kwargs) -> Dict:
+        """Register a new Firefighter ID."""
+        self._ensure_ffid_registry()
+        if ffid in self.ffid_registry:
+            raise ValueError(f"FFID {ffid} already exists")
+        rec = FirefighterIDRecord(
+            ffid=ffid,
+            created_at=datetime.now().isoformat(),
+            created_by=created_by,
+        )
+        for k, v in kwargs.items():
+            if hasattr(rec, k):
+                setattr(rec, k, v)
+        self.ffid_registry[ffid] = rec
+        return rec.to_dict()
+
+    def update_ffid(self, ffid: str, modified_by: str, **kwargs) -> Dict:
+        """Update an existing FFID record."""
+        self._ensure_ffid_registry()
+        rec = self.ffid_registry.get(ffid)
+        if not rec:
+            raise ValueError(f"FFID {ffid} not found")
+        for k, v in kwargs.items():
+            if hasattr(rec, k) and k not in ("ffid", "created_at", "created_by"):
+                setattr(rec, k, v)
+        rec.modified_at = datetime.now().isoformat()
+        return rec.to_dict()
+
+    def retire_ffid(self, ffid: str, retired_by: str, reason: str = "") -> Dict:
+        """Retire a FFID — prevents new sessions."""
+        self._ensure_ffid_registry()
+        rec = self.ffid_registry.get(ffid)
+        if not rec:
+            raise ValueError(f"FFID {ffid} not found")
+        if ffid in self.active_sessions_by_ff:
+            raise ValueError(f"FFID {ffid} has an active session — end it first")
+        rec.status = FFIDStatus.RETIRED
+        rec.modified_at = datetime.now().isoformat()
+        return rec.to_dict()
+
+    # =========================================================================
+    # Break-Glass Emergency Bypass
+    # =========================================================================
+
+    def break_glass_activate(self, ffid: str, activated_by: str,
+                             incident_reference: str, reason: str,
+                             target_system: str = "") -> Dict:
+        """Emergency break-glass activation — bypasses normal approval.
+
+        Used ONLY when the GRC approval workflow is unavailable or the
+        situation requires immediate access. Creates a session with
+        break_glass=True flag for enhanced retrospective review.
+        """
+        self._ensure_ffid_registry()
+        self._ensure_loaded()
+
+        rec = self.ffid_registry.get(ffid)
+        if not rec:
+            raise ValueError(f"FFID {ffid} not found in registry")
+        if rec.status != FFIDStatus.ACTIVE:
+            raise ValueError(f"FFID {ffid} is {rec.status.value}, not active")
+        if ffid in self.active_sessions_by_ff:
+            raise ValueError(f"FFID {ffid} already has an active session")
+
+        session_id = f"FFBG-{uuid.uuid4().hex[:8].upper()}"
+        now = datetime.now()
+        session = FirefighterSession(
+            session_id=session_id,
+            request_id=f"BREAK_GLASS_{incident_reference}",
+            requester_user_id=activated_by,
+            firefighter_id=ffid,
+            target_system=target_system or rec.target_system,
+            reason_code=ReasonCode.DISASTER_RECOVERY,
+            reason=reason,
+            ticket_reference=incident_reference,
+            status=SessionStatus.ACTIVE,
+            start_time=now,
+            end_time=now + timedelta(hours=min(rec.max_session_hours, 4)),
+            requires_review=True,
+            controller_id=rec.controller_id,
+        )
+
+        self.sessions[session_id] = session
+        self.active_sessions_by_ff[ffid] = session_id
+
+        logger.warning(
+            f"BREAK-GLASS: FFID {ffid} activated by {activated_by}, "
+            f"incident={incident_reference}, reason={reason}"
+        )
+
+        return {
+            "status": "break_glass_activated",
+            "session_id": session_id,
+            "ffid": ffid,
+            "activated_by": activated_by,
+            "incident_reference": incident_reference,
+            "reason": reason,
+            "expires_at": session.end_time.isoformat(),
+            "controller_id": rec.controller_id,
+            "requires_retrospective_approval": True,
+            "warning": "This session bypassed normal approval. Retrospective review is MANDATORY.",
+        }
+
+    # =========================================================================
+    # FFID Certification / Periodic Review
+    # =========================================================================
+
+    def certify_ffid(self, ffid: str, certified_by: str, decision: str = "retain",
+                     notes: str = "") -> Dict:
+        """Certify (retain/remove) a FFID assignment during periodic review."""
+        self._ensure_ffid_registry()
+        rec = self.ffid_registry.get(ffid)
+        if not rec:
+            raise ValueError(f"FFID {ffid} not found")
+
+        now = datetime.now()
+        rec.last_certification_date = now.strftime("%Y-%m-%d")
+        rec.last_certified_by = certified_by
+        rec.next_certification_due = (now + timedelta(days=rec.certification_frequency_days)).strftime("%Y-%m-%d")
+        rec.certification_status = "current"
+
+        if decision == "remove":
+            rec.status = FFIDStatus.RETIRED
+            rec.certification_status = "removed"
+
+        return {
+            "ffid": ffid,
+            "decision": decision,
+            "certified_by": certified_by,
+            "certification_date": rec.last_certification_date,
+            "next_due": rec.next_certification_due,
+            "notes": notes,
+        }
+
+    def get_certification_due(self) -> List[Dict]:
+        """Get FFIDs that are due or overdue for certification review."""
+        self._ensure_ffid_registry()
+        today = datetime.now().strftime("%Y-%m-%d")
+        due = []
+        for rec in self.ffid_registry.values():
+            if rec.status == FFIDStatus.RETIRED:
+                continue
+            if not rec.next_certification_due:
+                rec.certification_status = "never"
+                due.append(rec.to_dict())
+            elif rec.next_certification_due <= today:
+                rec.certification_status = "overdue" if rec.next_certification_due < today else "due"
+                due.append(rec.to_dict())
+        return due
+
+    # =========================================================================
+    # Regional Monitoring Dashboard KPIs
+    # =========================================================================
+
+    def get_regional_dashboard(self) -> Dict:
+        """Enterprise firefighter monitoring dashboard with regional breakdown."""
+        self._ensure_ffid_registry()
+        self._ensure_loaded()
+
+        # Regional breakdown
+        regions: Dict[str, Dict] = {}
+        for rec in self.ffid_registry.values():
+            r = rec.region or "UNASSIGNED"
+            if r not in regions:
+                regions[r] = {"ffids": 0, "active_sessions": 0, "pending_reviews": 0}
+            regions[r]["ffids"] += 1
+            if rec.ffid in self.active_sessions_by_ff:
+                regions[r]["active_sessions"] += 1
+
+        # Pending reviews by region
+        for sess in self.sessions.values():
+            if sess.requires_review and sess.reviewed_by is None:
+                ff_rec = self.ffid_registry.get(sess.firefighter_id)
+                r = ff_rec.region if ff_rec else "UNASSIGNED"
+                if r in regions:
+                    regions[r]["pending_reviews"] += 1
+
+        # Global KPIs
+        total_sessions = len(self.sessions)
+        active = sum(1 for s in self.sessions.values() if s.status == SessionStatus.ACTIVE)
+        pending_reviews = sum(1 for s in self.sessions.values()
+                              if s.requires_review and s.reviewed_by is None)
+        break_glass_count = sum(1 for s in self.sessions.values()
+                                if s.request_id and s.request_id.startswith("BREAK_GLASS_"))
+
+        # Certification status
+        cert_due = len(self.get_certification_due())
+
+        # FFIDs without controllers
+        no_controller = sum(1 for f in self.ffid_registry.values()
+                            if f.status == FFIDStatus.ACTIVE and not f.controller_id)
+
+        return {
+            "global_kpis": {
+                "total_ffids": len(self.ffid_registry),
+                "active_ffids": sum(1 for f in self.ffid_registry.values() if f.status == FFIDStatus.ACTIVE),
+                "total_sessions_all_time": total_sessions,
+                "active_sessions_now": active,
+                "pending_log_reviews": pending_reviews,
+                "break_glass_sessions": break_glass_count,
+                "certifications_due": cert_due,
+                "ffids_without_controller": no_controller,
+            },
+            "by_region": regions,
         }

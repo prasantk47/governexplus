@@ -604,33 +604,177 @@ async def submit_review(session_id: str, review: SessionReview, mgr: Firefighter
 # =============================================================================
 
 @router.get("/firefighters")
-async def list_firefighter_ids(mgr: FirefighterManager = Depends(_get_manager)):
-    """
-    List available firefighter IDs and their status.
-    """
-    # In production, this would come from configuration
-    firefighter_ids = ['FF_EMERGENCY_01', 'FF_EMERGENCY_02', 'FF_BASIS_01']
+async def list_firefighter_ids(
+    mgr: FirefighterManager = Depends(_get_manager),
+    region: Optional[str] = Query(None),
+    target_system: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    emergency_function: Optional[str] = Query(None),
+):
+    """List all registered Firefighter IDs with live availability status."""
+    ffids = mgr.list_ffids(
+        region=region, target_system=target_system,
+        status=status, emergency_function=emergency_function
+    )
+    return {"firefighter_ids": ffids, "total": len(ffids)}
 
-    results = []
-    for ff_id in firefighter_ids:
-        status = _sap_connector.check_firefighter_availability(ff_id)
-        results.append({
-            'firefighter_id': ff_id,
-            **status
-        })
 
-    return {
-        'firefighter_ids': results
-    }
+@router.get("/firefighters/{firefighter_id}")
+async def get_firefighter_detail(firefighter_id: str, mgr: FirefighterManager = Depends(_get_manager)):
+    """Get full detail for a single Firefighter ID."""
+    result = mgr.get_ffid(firefighter_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"FFID {firefighter_id} not found")
+    return result
+
+
+@router.post("/firefighters", status_code=201)
+async def create_firefighter_id(
+    mgr: FirefighterManager = Depends(_get_manager),
+    ffid: str = Query(...),
+    description: str = Query(""),
+    target_system: str = Query(""),
+    emergency_function: str = Query(""),
+    region: str = Query(""),
+    country: str = Query(""),
+    company_codes: str = Query("", description="Comma-separated: 1000,1100"),
+    owner_id: str = Query(""),
+    owner_name: str = Query(""),
+    controller_id: str = Query(""),
+    controller_name: str = Query(""),
+    risk_level: str = Query("high"),
+    max_session_hours: int = Query(4),
+    created_by: str = Query(...),
+):
+    """Register a new Firefighter ID in the inventory."""
+    cc_list = [c.strip() for c in company_codes.split(",") if c.strip()] if company_codes else []
+    try:
+        return mgr.create_ffid(
+            ffid=ffid, created_by=created_by, description=description,
+            target_system=target_system, emergency_function=emergency_function,
+            region=region, country=country, company_codes=cc_list,
+            owner_id=owner_id, owner_name=owner_name,
+            controller_id=controller_id, controller_name=controller_name,
+            risk_level=risk_level, max_session_hours=max_session_hours,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/firefighters/{firefighter_id}")
+async def update_firefighter_id(
+    firefighter_id: str,
+    mgr: FirefighterManager = Depends(_get_manager),
+    modified_by: str = Query(...),
+    description: Optional[str] = Query(None),
+    owner_id: Optional[str] = Query(None),
+    owner_name: Optional[str] = Query(None),
+    controller_id: Optional[str] = Query(None),
+    controller_name: Optional[str] = Query(None),
+    region: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    max_session_hours: Optional[int] = Query(None),
+):
+    """Update a Firefighter ID configuration."""
+    updates = {}
+    for k, v in {"description": description, "owner_id": owner_id, "owner_name": owner_name,
+                  "controller_id": controller_id, "controller_name": controller_name,
+                  "region": region, "country": country, "risk_level": risk_level,
+                  "max_session_hours": max_session_hours}.items():
+        if v is not None:
+            updates[k] = v
+    try:
+        return mgr.update_ffid(firefighter_id, modified_by, **updates)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/firefighters/{firefighter_id}/retire")
+async def retire_firefighter_id(
+    firefighter_id: str,
+    retired_by: str = Query(...),
+    reason: str = Query(""),
+    mgr: FirefighterManager = Depends(_get_manager),
+):
+    """Retire a Firefighter ID — prevents new sessions."""
+    try:
+        return mgr.retire_ffid(firefighter_id, retired_by, reason)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/firefighters/{firefighter_id}/status")
 async def check_firefighter_status(firefighter_id: str, mgr: FirefighterManager = Depends(_get_manager)):
+    """Check the live availability status of a firefighter ID."""
+    result = mgr.get_ffid(firefighter_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"FFID {firefighter_id} not found")
+    return result
+
+
+# =============================================================================
+# Break-Glass Emergency Bypass
+# =============================================================================
+
+@router.post("/break-glass", status_code=201)
+async def break_glass_activate(
+    ffid: str = Query(..., description="Firefighter ID to activate"),
+    activated_by: str = Query(...),
+    incident_reference: str = Query(..., description="Incident/ticket reference"),
+    reason: str = Query(..., description="Emergency justification"),
+    target_system: str = Query(""),
+    mgr: FirefighterManager = Depends(_get_manager),
+):
+    """Emergency break-glass activation — bypasses normal approval workflow.
+
+    Used ONLY when GRC approval is unavailable or the situation requires
+    immediate access. The session is flagged for mandatory retrospective review.
     """
-    Check the availability status of a firefighter ID.
-    """
-    status = _sap_connector.check_firefighter_availability(firefighter_id)
-    return status
+    try:
+        return mgr.break_glass_activate(
+            ffid=ffid, activated_by=activated_by,
+            incident_reference=incident_reference, reason=reason,
+            target_system=target_system,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# =============================================================================
+# FFID Certification / Periodic Review
+# =============================================================================
+
+@router.get("/certification/due")
+async def get_certification_due(mgr: FirefighterManager = Depends(_get_manager)):
+    """Get FFIDs that are due or overdue for periodic certification review."""
+    due = mgr.get_certification_due()
+    return {"total_due": len(due), "ffids": due}
+
+
+@router.post("/firefighters/{firefighter_id}/certify")
+async def certify_ffid(
+    firefighter_id: str,
+    certified_by: str = Query(...),
+    decision: str = Query("retain", description="retain or remove"),
+    notes: str = Query(""),
+    mgr: FirefighterManager = Depends(_get_manager),
+):
+    """Certify a FFID during periodic access review (retain or remove)."""
+    try:
+        return mgr.certify_ffid(firefighter_id, certified_by, decision, notes)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# =============================================================================
+# Regional Monitoring Dashboard
+# =============================================================================
+
+@router.get("/dashboard/regional")
+async def get_regional_dashboard(mgr: FirefighterManager = Depends(_get_manager)):
+    """Enterprise firefighter monitoring dashboard with regional KPIs."""
+    return mgr.get_regional_dashboard()
 
 
 # =============================================================================

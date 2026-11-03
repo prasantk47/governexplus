@@ -37,6 +37,12 @@ class CreateControlRequest(BaseModel):
     automation_level: str = "manual"
     evidence_requirements: List[str] = Field(default_factory=list)
     compliance_frameworks: List[str] = Field(default_factory=list)
+    # Organizational scope
+    applicable_countries: List[str] = Field(default_factory=list, description="ISO country codes: IN, SG, DE, US, AE")
+    applicable_company_codes: List[str] = Field(default_factory=list, description="SAP company codes: 1000, 2000")
+    applicable_plants: List[str] = Field(default_factory=list)
+    applicable_org_units: List[str] = Field(default_factory=list)
+    scope_model: str = Field(default="global", description="global, country, company_code, local")
 
 
 class AssignControlRequest(BaseModel):
@@ -51,6 +57,12 @@ class AssignControlRequest(BaseModel):
     monitor_id: str = ""
     monitor_name: str = ""
     requires_approval: bool = True
+    # Organizational scope for this assignment
+    company_codes: List[str] = Field(default_factory=list, description="Company codes this assignment covers")
+    country: str = Field(default="", description="ISO country code")
+    plant: str = ""
+    org_unit: str = ""
+    scope_description: str = Field(default="", description="e.g. India Manufacturing Finance Team")
 
 
 class RecordEffectivenessRequest(BaseModel):
@@ -104,7 +116,12 @@ async def create_control(
         risk_reduction_percentage=request.risk_reduction_percentage,
         automation_level=request.automation_level,
         evidence_requirements=request.evidence_requirements,
-        compliance_frameworks=request.compliance_frameworks
+        compliance_frameworks=request.compliance_frameworks,
+        applicable_countries=request.applicable_countries,
+        applicable_company_codes=request.applicable_company_codes,
+        applicable_plants=request.applicable_plants,
+        applicable_org_units=request.applicable_org_units,
+        scope_model=request.scope_model
     )
 
     return control.to_dict()
@@ -260,7 +277,12 @@ async def assign_control(
             valid_to=request.valid_to,
             monitor_id=request.monitor_id,
             monitor_name=request.monitor_name,
-            requires_approval=request.requires_approval
+            requires_approval=request.requires_approval,
+            company_codes=request.company_codes,
+            country=request.country,
+            plant=request.plant,
+            org_unit=request.org_unit,
+            scope_description=request.scope_description
         )
         return assignment.to_dict()
     except ValueError as e:
@@ -465,3 +487,75 @@ async def get_control_coverage():
 async def get_mitigation_statistics():
     """Get mitigation control statistics"""
     return mitigation_manager.get_statistics()
+
+
+# =============================================================================
+# Monitor Inbox — alerts for assigned Control Monitors
+# =============================================================================
+
+@router.get("/monitor-inbox")
+async def get_monitor_inbox(
+    monitor_id: str = Query(..., description="User ID of the control monitor"),
+    acknowledged: Optional[bool] = Query(None),
+    alert_type: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None)
+):
+    """Get alerts for a specific control monitor (Monitor Inbox).
+
+    A Control Monitor is the person assigned to review evidence when a user
+    executes a transaction that is part of a mitigated SoD conflict.
+    """
+    return mitigation_manager.get_monitor_inbox(
+        monitor_id=monitor_id,
+        acknowledged=acknowledged,
+        alert_type=alert_type,
+        severity=severity
+    )
+
+
+@router.post("/monitor-inbox/{alert_id}/acknowledge")
+async def acknowledge_alert(
+    alert_id: str,
+    acknowledged_by: str = Query(...),
+    resolution_action: str = Query("reviewed", description="reviewed, escalated, false_positive"),
+    resolution_notes: str = Query("")
+):
+    """Acknowledge an alert in the monitor inbox."""
+    return mitigation_manager.acknowledge_alert(
+        alert_id=alert_id,
+        acknowledged_by=acknowledged_by,
+        resolution_action=resolution_action,
+        resolution_notes=resolution_notes
+    )
+
+
+@router.get("/monitor-inbox/summary")
+async def get_monitor_inbox_summary(
+    monitor_id: str = Query(..., description="User ID of the control monitor")
+):
+    """Get summary counts for a monitor's inbox."""
+    return mitigation_manager.get_monitor_inbox_summary(monitor_id)
+
+
+@router.post("/alerts/trigger-risk-execution")
+async def trigger_risk_execution_alert(
+    user_id: str = Query(..., description="User who executed the risky transaction"),
+    user_name: str = Query(""),
+    risk_id: str = Query(..., description="SoD risk ID that was triggered"),
+    transaction_code: str = Query("", description="Transaction executed"),
+    company_code: str = Query(""),
+    system_id: str = Query("")
+):
+    """Called when a user executes a transaction covered by a mitigated SoD conflict.
+
+    Finds the assigned Control Monitor for the user+risk combination and
+    generates an alert in their Monitor Inbox.
+    """
+    return mitigation_manager.create_risk_execution_alert(
+        user_id=user_id,
+        user_name=user_name,
+        risk_id=risk_id,
+        transaction_code=transaction_code,
+        company_code=company_code,
+        system_id=system_id
+    )

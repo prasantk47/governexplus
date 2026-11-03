@@ -108,6 +108,26 @@ const mitigationApi = {
     api
       .post(`/controls-monitoring/${controlId}/recertify`)
       .then((r) => r.data),
+
+  // Monitor Inbox API
+  getMonitorInbox: (monitorId: string) =>
+    api
+      .get('/mitigation/monitor-inbox', { params: { monitor_id: monitorId } })
+      .then((r) => r.data)
+      .catch(() => ({ total: 0, unacknowledged: 0, alerts: [] })),
+
+  acknowledgeAlert: (alertId: string, acknowledgedBy: string, action: string, notes: string) =>
+    api
+      .post(`/mitigation/monitor-inbox/${alertId}/acknowledge`, null, {
+        params: { acknowledged_by: acknowledgedBy, resolution_action: action, resolution_notes: notes },
+      })
+      .then((r) => r.data),
+
+  getMonitorSummary: (monitorId: string) =>
+    api
+      .get('/mitigation/monitor-inbox/summary', { params: { monitor_id: monitorId } })
+      .then((r) => r.data)
+      .catch(() => ({ total_alerts: 0, unacknowledged: 0, by_type: {}, by_severity: {} })),
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -429,8 +449,8 @@ export function MitigationMonitoring() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mitigation Control Monitoring"
-        subtitle="Track health, effectiveness, and expiry status of all active mitigating controls"
+        title="Monitor Inbox"
+        subtitle="Control monitoring, alerts, and risk execution reviews"
         actions={
           <div className="flex gap-2">
             <Button
@@ -685,6 +705,160 @@ export function MitigationMonitoring() {
           }
         />
       </Card>
+
+      {/* Monitor Inbox — risk execution alerts for assigned monitors */}
+      <MonitorInboxSection />
     </div>
+  );
+}
+
+
+// =============================================================================
+// Monitor Inbox Section — alerts for the logged-in Control Monitor
+// =============================================================================
+
+function MonitorInboxSection() {
+  const queryClient = useQueryClient();
+  // In production, get from auth context. For now use a query param or default.
+  const monitorId = 'acme_admin';
+
+  const { data: inboxData, isLoading } = useQuery({
+    queryKey: ['monitor-inbox', monitorId],
+    queryFn: () => mitigationApi.getMonitorInbox(monitorId),
+    refetchInterval: 15000, // Poll every 15 seconds for new alerts
+  });
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: ({ alertId, action, notes }: { alertId: string; action: string; notes: string }) =>
+      mitigationApi.acknowledgeAlert(alertId, monitorId, action, notes),
+    onSuccess: () => {
+      toast.success('Alert acknowledged');
+      queryClient.invalidateQueries({ queryKey: ['monitor-inbox'] });
+    },
+    onError: () => toast.error('Failed to acknowledge alert'),
+  });
+
+  const alerts = inboxData?.alerts ?? [];
+  const unacknowledged = inboxData?.unacknowledged ?? 0;
+
+  const severityColor: Record<string, string> = {
+    critical: 'bg-red-100 text-red-800 border-red-200',
+    high: 'bg-orange-100 text-orange-800 border-orange-200',
+    warning: 'bg-amber-100 text-amber-800 border-amber-200',
+    info: 'bg-blue-100 text-blue-800 border-blue-200',
+  };
+
+  return (
+    <Card padding="none">
+      <div className="px-6 py-4 border-b border-white/20 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BellAlertIcon className="h-5 w-5 text-primary-600" />
+          <h2 className="text-sm font-semibold text-gray-900">
+            Monitor Inbox
+            {unacknowledged > 0 && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                {unacknowledged}
+              </span>
+            )}
+          </h2>
+        </div>
+        <span className="text-xs text-gray-400">Auto-refreshing every 15s</span>
+      </div>
+
+      {isLoading ? (
+        <div className="p-8 text-center text-gray-400">Loading alerts...</div>
+      ) : alerts.length === 0 ? (
+        <div className="p-8 text-center">
+          <ShieldCheckIcon className="h-12 w-12 mx-auto text-green-400 mb-2" />
+          <p className="text-sm text-gray-500">No pending alerts. All controls operating normally.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {alerts.map((alert: any) => (
+            <div
+              key={alert.alert_id}
+              className={`px-6 py-4 ${alert.acknowledged ? 'opacity-60' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold border ${
+                        severityColor[alert.severity] || severityColor.info
+                      }`}
+                    >
+                      {alert.severity?.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {alert.alert_type?.replace(/_/g, ' ')}
+                    </span>
+                    {alert.company_code && (
+                      <span className="text-xs text-gray-400">CC: {alert.company_code}</span>
+                    )}
+                    {alert.country && (
+                      <span className="text-xs text-gray-400">{alert.country}</span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 truncate">{alert.title}</h3>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{alert.message}</p>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                    {alert.target_user_name && <span>User: {alert.target_user_name}</span>}
+                    {alert.risk_id && <span>Risk: {alert.risk_id}</span>}
+                    {alert.control_id && <span>Control: {alert.control_id}</span>}
+                    <span>{new Date(alert.generated_at).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {alert.acknowledged ? (
+                    <Badge variant="success" size="sm">
+                      {alert.resolution_action || 'Reviewed'}
+                    </Badge>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() =>
+                          acknowledgeMutation.mutate({
+                            alertId: alert.alert_id,
+                            action: 'reviewed',
+                            notes: '',
+                          })
+                        }
+                        className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100"
+                      >
+                        Reviewed
+                      </button>
+                      <button
+                        onClick={() =>
+                          acknowledgeMutation.mutate({
+                            alertId: alert.alert_id,
+                            action: 'escalated',
+                            notes: '',
+                          })
+                        }
+                        className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100"
+                      >
+                        Escalate
+                      </button>
+                      <button
+                        onClick={() =>
+                          acknowledgeMutation.mutate({
+                            alertId: alert.alert_id,
+                            action: 'false_positive',
+                            notes: '',
+                          })
+                        }
+                        className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100"
+                      >
+                        False Positive
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

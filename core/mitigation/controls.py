@@ -152,6 +152,13 @@ class MitigationControl:
     current_effectiveness: Optional[ControlEffectiveness] = None
     effectiveness_history: List[ControlEffectiveness] = field(default_factory=list)
 
+    # Organizational scope — which entities this control covers
+    applicable_countries: List[str] = field(default_factory=list)  # ["IN", "SG", "DE", "US", "AE"]
+    applicable_company_codes: List[str] = field(default_factory=list)  # ["1000", "2000"]
+    applicable_plants: List[str] = field(default_factory=list)  # ["P001", "P002"]
+    applicable_org_units: List[str] = field(default_factory=list)  # ["Finance", "Procurement"]
+    scope_model: str = "global"  # global, country, company_code, local
+
     # Lifecycle
     created_at: datetime = field(default_factory=datetime.now)
     created_by: str = ""
@@ -191,6 +198,11 @@ class MitigationControl:
             "compliance_frameworks": self.compliance_frameworks,
             "control_objectives": self.control_objectives,
             "current_effectiveness": self.current_effectiveness.to_dict() if self.current_effectiveness else None,
+            "applicable_countries": self.applicable_countries,
+            "applicable_company_codes": self.applicable_company_codes,
+            "applicable_plants": self.applicable_plants,
+            "applicable_org_units": self.applicable_org_units,
+            "scope_model": self.scope_model,
             "created_at": self.created_at.isoformat(),
             "created_by": self.created_by,
             "modified_at": self.modified_at.isoformat(),
@@ -215,6 +227,13 @@ class ControlAssignment:
     target_type: str = ""  # user, role, org_unit
     target_id: str = ""
     target_name: str = ""
+
+    # Organizational scope — which entities this assignment covers
+    company_codes: List[str] = field(default_factory=list)  # ["1000", "1100"]
+    country: str = ""  # "IN", "SG", "DE"
+    plant: str = ""
+    org_unit: str = ""
+    scope_description: str = ""  # "India Manufacturing Finance Team"
 
     # Assignment details
     status: AssignmentStatus = AssignmentStatus.ACTIVE
@@ -254,6 +273,11 @@ class ControlAssignment:
             "target_type": self.target_type,
             "target_id": self.target_id,
             "target_name": self.target_name,
+            "company_codes": self.company_codes,
+            "country": self.country,
+            "plant": self.plant,
+            "org_unit": self.org_unit,
+            "scope_description": self.scope_description,
             "status": self.status.value,
             "assigned_at": self.assigned_at.isoformat(),
             "assigned_by": self.assigned_by,
@@ -356,6 +380,7 @@ class MitigationManager:
         self.assignments: Dict[str, ControlAssignment] = {}
         self.user_assignments: Dict[str, List[str]] = {}  # user_id -> [assignment_ids]
         self.risk_assignments: Dict[str, List[str]] = {}  # risk_id -> [assignment_ids]
+        self._alerts: list = []  # Monitor inbox alerts
         self._initialize_standard_controls()
 
     def _initialize_standard_controls(self):
@@ -505,7 +530,12 @@ class MitigationManager:
         valid_to: datetime = None,
         monitor_id: str = "",
         monitor_name: str = "",
-        requires_approval: bool = True
+        requires_approval: bool = True,
+        company_codes: List[str] = None,
+        country: str = "",
+        plant: str = "",
+        org_unit: str = "",
+        scope_description: str = ""
     ) -> ControlAssignment:
         """Assign a control to mitigate a specific risk for a target"""
         if control_id not in self.controls:
@@ -524,6 +554,11 @@ class MitigationManager:
             monitor_id=monitor_id,
             monitor_name=monitor_name,
             requires_approval=requires_approval,
+            company_codes=company_codes or [],
+            country=country,
+            plant=plant,
+            org_unit=org_unit,
+            scope_description=scope_description,
             status=AssignmentStatus.PENDING_APPROVAL if requires_approval else AssignmentStatus.ACTIVE
         )
 
@@ -1025,4 +1060,130 @@ class MitigationManager:
             "uncovered_risks": len(all_risks - covered_risks),
             "coverage_percentage": round(len(covered_risks) / len(all_risks) * 100, 1) if all_risks else 100,
             "uncovered_risk_ids": list(all_risks - covered_risks)
+        }
+
+    # =========================================================================
+    # Monitor Inbox — alerts for assigned Control Monitors
+    # =========================================================================
+
+    def get_monitor_inbox(
+        self,
+        monitor_id: str,
+        acknowledged: bool = None,
+        alert_type: str = None,
+        severity: str = None
+    ) -> Dict:
+        """Get alerts for a specific Control Monitor."""
+        alerts = [a for a in self._alerts if a.monitor_user_id == monitor_id]
+        if acknowledged is not None:
+            alerts = [a for a in alerts if a.acknowledged == acknowledged]
+        if alert_type:
+            alerts = [a for a in alerts if a.alert_type.value == alert_type]
+        if severity:
+            alerts = [a for a in alerts if a.severity.value == severity]
+        alerts.sort(key=lambda a: a.generated_at, reverse=True)
+        return {
+            "monitor_id": monitor_id,
+            "total": len(alerts),
+            "unacknowledged": len([a for a in alerts if not a.acknowledged]),
+            "alerts": [a.to_dict() for a in alerts]
+        }
+
+    def acknowledge_alert(
+        self,
+        alert_id: str,
+        acknowledged_by: str,
+        resolution_action: str = "reviewed",
+        resolution_notes: str = ""
+    ) -> Dict:
+        """Acknowledge an alert in the monitor inbox."""
+        from datetime import datetime
+        for alert in self._alerts:
+            if alert.alert_id == alert_id:
+                alert.acknowledged = True
+                alert.acknowledged_by = acknowledged_by
+                alert.acknowledged_at = datetime.utcnow()
+                alert.resolution_action = resolution_action
+                alert.resolution_notes = resolution_notes
+                return alert.to_dict()
+        raise ValueError(f"Alert {alert_id} not found")
+
+    def get_monitor_inbox_summary(self, monitor_id: str) -> Dict:
+        """Get summary counts for a monitor's inbox."""
+        alerts = [a for a in self._alerts if a.monitor_user_id == monitor_id]
+        by_type = {}
+        for a in alerts:
+            t = a.alert_type.value
+            by_type[t] = by_type.get(t, 0) + 1
+        by_severity = {}
+        for a in alerts:
+            s = a.severity.value
+            by_severity[s] = by_severity.get(s, 0) + 1
+        return {
+            "monitor_id": monitor_id,
+            "total_alerts": len(alerts),
+            "unacknowledged": len([a for a in alerts if not a.acknowledged]),
+            "by_type": by_type,
+            "by_severity": by_severity,
+            "oldest_unacknowledged": min(
+                (a.generated_at for a in alerts if not a.acknowledged),
+                default=None
+            )
+        }
+
+    def create_risk_execution_alert(
+        self,
+        user_id: str,
+        user_name: str,
+        risk_id: str,
+        transaction_code: str = "",
+        company_code: str = "",
+        system_id: str = ""
+    ) -> Dict:
+        """Create an alert when a user executes a transaction covered by a mitigated conflict.
+
+        Finds the assigned Control Monitor for the user+risk and sends the alert
+        to their Monitor Inbox.
+        """
+        from core.mitigation.monitoring import MitigationAlert, AlertType, AlertSeverity
+
+        # Find all active assignments for this user + risk
+        user_assignments = self.user_assignments.get(user_id, [])
+        matching = []
+        for aid in user_assignments:
+            a = self.assignments.get(aid)
+            if a and a.risk_id == risk_id and a.status == AssignmentStatus.ACTIVE:
+                matching.append(a)
+
+        if not matching:
+            return {"status": "no_assignment", "message": f"No active mitigation for user {user_id} + risk {risk_id}"}
+
+        alerts_created = []
+        for assignment in matching:
+            alert = MitigationAlert(
+                alert_type=AlertType.VIOLATION_DETECTED,
+                severity=AlertSeverity.HIGH,
+                title=f"Risk Execution: {risk_id} by {user_name or user_id}",
+                message=(
+                    f"User {user_name or user_id} executed transaction {transaction_code or 'N/A'} "
+                    f"in {system_id or 'SAP'} (company code: {company_code or 'N/A'}). "
+                    f"This transaction is part of mitigated SoD conflict {risk_id}. "
+                    f"Compensating control {assignment.control_id} requires your review."
+                ),
+                mitigation_id=assignment.assignment_id,
+                monitor_user_id=assignment.monitor_id,
+                monitor_user_name=assignment.monitor_name,
+                target_user_id=user_id,
+                target_user_name=user_name,
+                company_code=company_code,
+                risk_id=risk_id,
+                control_id=assignment.control_id,
+            )
+            self._alerts.append(alert)
+            alerts_created.append(alert.to_dict())
+
+        return {
+            "status": "alerts_created",
+            "count": len(alerts_created),
+            "alerts": alerts_created
         }

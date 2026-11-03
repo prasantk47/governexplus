@@ -161,7 +161,7 @@ def submit_case(
         category=body.category or "other",
         summary=body.title,
         details=body.description,
-        priority=_parse_priority(body.priority).value,
+        priority=_parse_priority(body.priority),
         is_anonymous=body.is_anonymous,
         submitter_email=None if body.is_anonymous else body.submitter_email,
         status="open",

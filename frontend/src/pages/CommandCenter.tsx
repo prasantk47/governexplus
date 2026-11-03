@@ -35,6 +35,7 @@ import {
   FixPreview,
 } from '../services/intelligenceApi';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -443,6 +444,205 @@ function FixModal({ item, preview, loading, onConfirm, onClose }: FixModalProps)
   );
 }
 
+// ─── Unified Workflow Inbox ──────────────────────────────────────────────────
+
+interface WorkflowItem {
+  id: string;
+  module: string;
+  type: string;
+  title: string;
+  description: string;
+  priority: string;
+  created_at: string;
+  link: string;
+}
+
+const MODULE_COLORS: Record<string, string> = {
+  'Access Lifecycle': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Enterprise Risk': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  'Fraud Detection': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'Compensating Controls': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  'Whistleblower': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'Certification': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+};
+
+function UnifiedWorkflowInbox() {
+  const navigate = useNavigate();
+  const { data: inboxItems = [], isLoading } = useQuery<WorkflowItem[]>({
+    queryKey: ['unified-inbox'],
+    queryFn: async () => {
+      const items: WorkflowItem[] = [];
+      const headers = { 'Content-Type': 'application/json' };
+
+      // 1. Access request approvals
+      try {
+        const res = await api.get('/approvals/pending', { headers });
+        const approvals = res.data?.approvals || res.data || [];
+        for (const a of approvals.slice(0, 10)) {
+          items.push({
+            id: a.id || a.request_id,
+            module: 'Access Lifecycle',
+            type: 'Access Approval',
+            title: a.summary || a.title || `Access Request ${a.id}`,
+            description: a.requester_name ? `Requested by ${a.requester_name}` : (a.description || ''),
+            priority: a.priority || a.urgency || 'normal',
+            created_at: a.created_at || a.submitted_at || '',
+            link: '/approvals',
+          });
+        }
+      } catch { /* endpoint may not exist */ }
+
+      // 2. Risk workflow approvals
+      try {
+        const res = await api.get('/risk-management/workflows', { params: { status: 'pending' } });
+        const wfs = Array.isArray(res.data) ? res.data : (res.data?.workflows || []);
+        for (const w of wfs.filter((w: any) => w.status === 'pending' || w.status === 'in_progress').slice(0, 10)) {
+          items.push({
+            id: w.id || w.workflow_id,
+            module: 'Enterprise Risk',
+            type: w.workflow_type || 'Risk Approval',
+            title: w.title || w.workflow_type || 'Risk Workflow',
+            description: w.description || `${w.workflow_type} - Step ${w.current_step || 1}/${w.total_steps || 3}`,
+            priority: 'high',
+            created_at: w.created_at || w.submitted_at || '',
+            link: '/risk-management/workflows',
+          });
+        }
+      } catch { /* */ }
+
+      // 3. Fraud alerts
+      try {
+        const res = await api.get('/fraud/alerts', { params: { status: 'open' } });
+        const alerts = Array.isArray(res.data) ? res.data : (res.data?.alerts || []);
+        for (const a of alerts.slice(0, 5)) {
+          items.push({
+            id: a.id || a.alert_id,
+            module: 'Fraud Detection',
+            type: 'Fraud Alert',
+            title: a.description || a.title || `Alert ${a.id}`,
+            description: `Risk Score: ${a.risk_score || 'N/A'} | ${a.system_id || ''}`,
+            priority: (a.risk_score || 0) >= 75 ? 'critical' : 'high',
+            created_at: a.created_at || a.detected_at || '',
+            link: '/fraud/alerts',
+          });
+        }
+      } catch { /* */ }
+
+      // 4. Monitor inbox alerts
+      try {
+        const res = await api.get('/mitigation/monitor-inbox', { params: { monitor_id: 'acme_admin', acknowledged: false } });
+        const alerts = res.data?.alerts || [];
+        for (const a of alerts.slice(0, 5)) {
+          items.push({
+            id: a.alert_id,
+            module: 'Compensating Controls',
+            type: 'Monitor Alert',
+            title: a.title || 'Control Alert',
+            description: a.message || '',
+            priority: a.severity || 'warning',
+            created_at: a.generated_at || '',
+            link: '/risk/mitigation-monitoring',
+          });
+        }
+      } catch { /* */ }
+
+      // 5. Whistleblower cases pending triage
+      try {
+        const res = await api.get('/whistleblower/cases', { params: { status: 'open' } });
+        const cases = Array.isArray(res.data) ? res.data : (res.data?.cases || []);
+        for (const c of cases.filter((c: any) => c.status === 'open' || c.status === 'triaging').slice(0, 5)) {
+          items.push({
+            id: c.id || c.case_id,
+            module: 'Whistleblower',
+            type: 'Report Triage',
+            title: c.summary || c.title || `Case ${c.case_reference || c.id}`,
+            description: c.category || '',
+            priority: c.priority || 'normal',
+            created_at: c.submitted_at || c.created_at || '',
+            link: '/whistleblower/inbox',
+          });
+        }
+      } catch { /* */ }
+
+      // Sort: critical first, then by date
+      const pOrder: Record<string, number> = { critical: 0, high: 1, urgent: 0, warning: 2, normal: 3, medium: 2, low: 4 };
+      items.sort((a, b) => (pOrder[a.priority] ?? 3) - (pOrder[b.priority] ?? 3));
+      return items;
+    },
+    refetchInterval: 30000,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <Card padding="lg">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-48" />
+          <div className="h-10 bg-gray-100 dark:bg-slate-800 rounded" />
+          <div className="h-10 bg-gray-100 dark:bg-slate-800 rounded" />
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card padding="none" className="overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+            <ClipboardDocumentCheckIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            My Workflow Inbox
+          </h2>
+          {inboxItems.length > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-500 text-white">
+              {inboxItems.length}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-gray-400 dark:text-slate-500">All pending actions across modules</span>
+      </div>
+
+      {inboxItems.length === 0 ? (
+        <div className="px-5 py-8 text-center">
+          <ShieldCheckIcon className="h-10 w-10 mx-auto text-green-400 mb-2" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">No pending actions. You're all caught up.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 dark:divide-slate-700/50">
+          {inboxItems.slice(0, 8).map((item) => (
+            <button
+              key={`${item.module}-${item.id}`}
+              onClick={() => navigate(item.link)}
+              className="w-full px-5 py-3 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${MODULE_COLORS[item.module] || 'bg-gray-100 text-gray-600'}`}>
+                    {item.module}
+                  </span>
+                  <span className="text-[10px] text-gray-400 dark:text-slate-500">{item.type}</span>
+                </div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.title}</p>
+                {item.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{item.description}</p>
+                )}
+              </div>
+              <ArrowRightIcon className="h-4 w-4 text-gray-300 dark:text-slate-600 shrink-0" />
+            </button>
+          ))}
+          {inboxItems.length > 8 && (
+            <div className="px-5 py-2 text-center">
+              <span className="text-xs text-gray-400">+{inboxItems.length - 8} more items</span>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function CommandCenter() {
@@ -815,6 +1015,9 @@ export function CommandCenter() {
               </div>
             </div>
           </Card>
+
+          {/* ── Unified Workflow Inbox ─────────────────────── */}
+          <UnifiedWorkflowInbox />
 
           {/* ── Module Stat Tiles ─────────────────────────── */}
           <div>

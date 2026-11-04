@@ -40,6 +40,11 @@ import {
   FlagIcon,
   PresentationChartBarIcon,
   ScaleIcon,
+  BanknotesIcon,
+  GlobeAltIcon,
+  WrenchScrewdriverIcon,
+  EyeSlashIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -194,18 +199,9 @@ const navigation: NavItem[] = [
       { name: 'Incidents', href: '/risk-management/incidents' },
       { name: 'Approval Workflows', href: '/risk-management/workflows' },
       { name: 'Acceptance Register', href: '/risk-management/acceptances' },
-    ],
-  },
-  {
-    name: 'Control Intelligence',
-    href: '/process-control',
-    icon: ClipboardDocumentListIcon,
-    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
-    children: [
-      { name: 'Control Library', href: '/process-control/controls' },
-      { name: 'Control Testing', href: '/process-control/testing' },
-      { name: 'Deficiencies', href: '/process-control/deficiencies' },
-      { name: 'CCM Dashboard', href: '/process-control/ccm' },
+      { name: 'Risk Scenarios', href: '/risk-management/scenarios' },
+      { name: 'Opportunities', href: '/risk-management/opportunities' },
+      { name: 'Business Objectives', href: '/risk-management/objectives' },
     ],
   },
   {
@@ -215,10 +211,12 @@ const navigation: NavItem[] = [
     permissions: [PERMISSIONS.VIEW_AUDIT_LOG],
     children: [
       { name: 'Dashboard', href: '/audit-management' },
+      { name: 'Audit Universe', href: '/audit-management/universe' },
       { name: 'Planning', href: '/audit-management/planning' },
       { name: 'Engagements', href: '/audit-management/engagements' },
       { name: 'Findings & Actions', href: '/audit-management/findings' },
       { name: 'Workpapers', href: '/audit-management/workpapers' },
+      { name: 'Resources', href: '/audit-management/resources' },
     ],
   },
   {
@@ -375,6 +373,74 @@ const navigation: NavItem[] = [
       { name: 'Active Content', href: '/library/active', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
       { name: 'Update Review', href: '/library/updates', permissions: [PERMISSIONS.VIEW_DASHBOARD] },
       { name: 'Pack Builder', href: '/library/pack-builder', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
+    ],
+  },
+  // ── Wave 2 Modules ────────────────────────────────────────────────────────
+  {
+    name: 'SOX / ICFR',
+    href: '/sox-icfr',
+    icon: ClipboardDocumentCheckIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Privacy & Data',
+    href: '/privacy',
+    icon: EyeSlashIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Regulatory Changes',
+    href: '/regulatory-changes',
+    icon: ScaleIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Board Reporting',
+    href: '/board-reporting',
+    icon: PresentationChartBarIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
+  },
+  {
+    name: 'Operational Risk',
+    href: '/operational-risk',
+    icon: ExclamationTriangleIcon,
+    permissions: [PERMISSIONS.VIEW_RISK_DASHBOARD],
+    children: [
+      { name: 'Loss Events', href: '/operational-risk' },
+      { name: 'SoD Remediation', href: '/sod-remediation' },
+    ],
+  },
+  {
+    name: 'IT Change Risk',
+    href: '/it-change-risk',
+    icon: ComputerDesktopIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Insurance',
+    href: '/insurance',
+    icon: BanknotesIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Sanctions Screening',
+    href: '/sanctions-screening',
+    icon: GlobeAltIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Control Intelligence',
+    href: '/process-control',
+    icon: ClipboardDocumentListIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+    children: [
+      { name: 'Control Library', href: '/process-control/controls' },
+      { name: 'Control Objectives', href: '/process-control/objectives' },
+      { name: 'Control Testing', href: '/process-control/testing' },
+      { name: 'Deficiencies', href: '/process-control/deficiencies' },
+      { name: 'CCM Dashboard', href: '/process-control/ccm' },
+      { name: 'CSA Campaigns', href: '/process-control/csa' },
+      { name: 'Questionnaires', href: '/process-control/questionnaires' },
     ],
   },
   {

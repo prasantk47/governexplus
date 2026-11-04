@@ -182,6 +182,29 @@ import { AuditWorkpapers } from './pages/audit-management/AuditWorkpapers';
 // ML Dashboard
 import { MLDashboard } from './pages/ml';
 
+// Wave 1 additions — audit & process-control
+import { AuditUniverse } from './pages/audit-management/AuditUniverse';
+import { AuditResources } from './pages/audit-management/AuditResources';
+import { CSACampaigns } from './pages/process-control/CSACampaigns';
+import { ControlObjectives } from './pages/process-control/ControlObjectives';
+import { QuestionnaireLibrary } from './pages/process-control/QuestionnaireLibrary';
+
+// Risk Management — scenarios / opportunities / objectives
+import { RiskScenarios } from './pages/risk-management/RiskScenarios';
+import { RiskOpportunities } from './pages/risk-management/RiskOpportunities';
+import { BusinessObjectives } from './pages/risk-management/BusinessObjectives';
+
+// Wave 2 New GRC Modules
+import { SOXICFRModule } from './pages/sox-icfr/SOXICFRModule';
+import { PrivacyDashboard } from './pages/privacy/PrivacyDashboard';
+import { RegulatoryChanges } from './pages/regulatory/RegulatoryChanges';
+import { BoardDashboard } from './pages/board/BoardDashboard';
+import { OperationalRiskEvents } from './pages/operational-risk/OperationalRiskEvents';
+import { SoDRemediation } from './pages/sod-remediation/SoDRemediation';
+import { ITChangeRisk } from './pages/it-change-risk/ITChangeRisk';
+import { InsurancePolicies } from './pages/insurance/InsurancePolicies';
+import { SanctionsScreening } from './pages/sanctions/SanctionsScreening';
+
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -439,6 +462,47 @@ function AppRoutes() {
 
         {/* Audit Workpapers */}
         <Route path="/audit-management/workpapers" element={<AuditWorkpapers />} />
+
+        {/* Audit Management — additions */}
+        <Route path="/audit-management/universe" element={<AuditUniverse />} />
+        <Route path="/audit-management/resources" element={<AuditResources />} />
+
+        {/* Process Control — additions */}
+        <Route path="/process-control/csa" element={<CSACampaigns />} />
+        <Route path="/process-control/objectives" element={<ControlObjectives />} />
+        <Route path="/process-control/questionnaires" element={<QuestionnaireLibrary />} />
+
+        {/* Risk Management — scenarios / opportunities / objectives */}
+        <Route path="/risk-management/scenarios" element={<RiskScenarios />} />
+        <Route path="/risk-management/opportunities" element={<RiskOpportunities />} />
+        <Route path="/risk-management/objectives" element={<BusinessObjectives />} />
+
+        {/* SOX / ICFR */}
+        <Route path="/sox-icfr" element={<SOXICFRModule />} />
+
+        {/* Privacy & Data Protection */}
+        <Route path="/privacy" element={<PrivacyDashboard />} />
+
+        {/* Regulatory Change Management */}
+        <Route path="/regulatory-changes" element={<RegulatoryChanges />} />
+
+        {/* Board & Executive Reporting */}
+        <Route path="/board-reporting" element={<BoardDashboard />} />
+
+        {/* Operational Risk */}
+        <Route path="/operational-risk" element={<OperationalRiskEvents />} />
+
+        {/* SoD Remediation */}
+        <Route path="/sod-remediation" element={<SoDRemediation />} />
+
+        {/* IT Change Risk */}
+        <Route path="/it-change-risk" element={<ITChangeRisk />} />
+
+        {/* Insurance / Risk Transfer */}
+        <Route path="/insurance" element={<InsurancePolicies />} />
+
+        {/* Sanctions Screening */}
+        <Route path="/sanctions-screening" element={<SanctionsScreening />} />
 
       </Route>
 

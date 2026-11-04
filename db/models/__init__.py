@@ -224,6 +224,46 @@ from .template_library import (
     TenantItemActivation,
 )
 
+# Wave 2 — SOX/ICFR
+from .sox_icfr import (
+    ICFRControl,
+    ICFRControlType,
+    ICFRFrequency,
+    ICFREffectiveness,
+    SOXSignoff,
+    SOXSignoffStatus,
+    FinancialCloseTask,
+    FinancialCloseStatus,
+)
+
+# Wave 2 — Privacy & Data Protection
+from .privacy import (
+    DataProcessingActivity,
+    DSARRequest,
+    DSARStatus,
+    DSARType,
+    DPIAAssessment,
+    DPIAStatus,
+    DataBreachIncident,
+    BreachSeverity,
+    BreachStatus,
+)
+
+# Wave 2 — Governance Extended (operational risk, SoD remediation, IT change, insurance, sanctions)
+from .governance_extended import (
+    RegulatoryChange,
+    RegChangeStatus,
+    RegChangeImpact,
+    OperationalLossEvent,
+    LossEventStatus,
+    SoDRemediation,
+    SoDRemediationStatus,
+    ITChangeRisk,
+    InsurancePolicy,
+    SanctionsScreening,
+    ScreeningStatus,
+)
+
 __all__ = [
     # Core
     "Base",
@@ -440,4 +480,35 @@ __all__ = [
     "TemplatePackVersion",
     "TemplateItem",
     "TenantItemActivation",
+    # SOX / ICFR
+    "ICFRControl",
+    "ICFRControlType",
+    "ICFRFrequency",
+    "ICFREffectiveness",
+    "SOXSignoff",
+    "SOXSignoffStatus",
+    "FinancialCloseTask",
+    "FinancialCloseStatus",
+    # Privacy & Data Protection
+    "DataProcessingActivity",
+    "DSARRequest",
+    "DSARStatus",
+    "DSARType",
+    "DPIAAssessment",
+    "DPIAStatus",
+    "DataBreachIncident",
+    "BreachSeverity",
+    "BreachStatus",
+    # Governance Extended
+    "RegulatoryChange",
+    "RegChangeStatus",
+    "RegChangeImpact",
+    "OperationalLossEvent",
+    "LossEventStatus",
+    "SoDRemediation",
+    "SoDRemediationStatus",
+    "ITChangeRisk",
+    "InsurancePolicy",
+    "SanctionsScreening",
+    "ScreeningStatus",
 ]

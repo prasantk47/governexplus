@@ -782,6 +782,54 @@ app.include_router(
     tags=["AI Copilot"], dependencies=_require_auth,
 )
 
+# ── Wave 2 GRC Modules ────────────────────────────────────────────────────────
+from api.routers import sox_icfr as sox_icfr_router
+from api.routers import privacy as privacy_router
+from api.routers import reg_changes as reg_changes_router
+from api.routers import board_reporting as board_reporting_router
+from api.routers import operational_risk as operational_risk_router
+from api.routers import sod_remediation as sod_remediation_router
+from api.routers import it_change_risk as it_change_risk_router
+from api.routers import insurance as insurance_router
+from api.routers import sanctions as sanctions_router
+
+app.include_router(
+    sox_icfr_router.router, prefix="/sox-icfr",
+    tags=["SOX / ICFR"], dependencies=_require_auth,
+)
+app.include_router(
+    privacy_router.router, prefix="/privacy",
+    tags=["Privacy / GDPR"], dependencies=_require_auth,
+)
+app.include_router(
+    reg_changes_router.router, prefix="/regulatory-changes",
+    tags=["Regulatory Change Management"], dependencies=_require_auth,
+)
+app.include_router(
+    board_reporting_router.router, prefix="/board-reporting",
+    tags=["Board Reporting"], dependencies=_require_auth,
+)
+app.include_router(
+    operational_risk_router.router, prefix="/operational-risk",
+    tags=["Operational Risk / RCSA"], dependencies=_require_auth,
+)
+app.include_router(
+    sod_remediation_router.router, prefix="/sod-remediation",
+    tags=["SoD Remediation"], dependencies=_require_auth,
+)
+app.include_router(
+    it_change_risk_router.router, prefix="/it-change-risk",
+    tags=["IT Change Risk / ITGC"], dependencies=_require_auth,
+)
+app.include_router(
+    insurance_router.router, prefix="/insurance",
+    tags=["Insurance / Risk Transfer"], dependencies=_require_auth,
+)
+app.include_router(
+    sanctions_router.router, prefix="/sanctions-screening",
+    tags=["Sanctions Screening"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

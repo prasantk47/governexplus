@@ -17,42 +17,6 @@ router = APIRouter(tags=["Firefighter Monitoring"])
 ff_monitor = FirefighterMonitor()
 
 
-# Seed some sample data for demonstration
-def _seed_sample_session():
-    """Create a sample session for demo"""
-    from datetime import timedelta
-
-    # Register a sample session
-    ff_monitor.register_session(
-        session_id="SESS-DEMO-001",
-        user_id="JSMITH",
-        firefighter_id="FF_EMERGENCY_01",
-        target_system="SAP_PROD",
-        started_at=datetime.now() - timedelta(hours=1),
-        expires_at=datetime.now() + timedelta(hours=2)
-    )
-
-    # Log some sample activities
-    sample_activities = [
-        ("tcode", "SE16", "Data Browser", "BSEG"),
-        ("tcode", "FB03", "Display Document", ""),
-        ("tcode", "XK03", "Display Vendor", ""),
-        ("tcode", "ME23N", "Display Purchase Order", ""),
-        ("tcode", "SM21", "System Log", ""),  # Restricted
-    ]
-
-    for action_type, action_code, desc, target in sample_activities:
-        ff_monitor.log_activity(
-            session_id="SESS-DEMO-001",
-            action_type=action_type,
-            action_code=action_code,
-            action_description=desc,
-            target_object=target,
-            ip_address="10.0.0.100",
-            client="100"
-        )
-
-_seed_sample_session()
 
 
 # =============================================================================

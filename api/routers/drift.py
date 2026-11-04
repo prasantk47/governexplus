@@ -21,7 +21,7 @@ from core.drift.detector import (
 
 router = APIRouter(tags=["Role Drift Detection"])
 
-# Single shared detector instance (mock data is stateless)
+# Per-process detector instance — loads snapshots from DB on first scan
 _detector = DriftDetector()
 
 

@@ -1619,22 +1619,26 @@ def trigger_kri_pull(
             "kri_id": src.kri_id,
         }
 
-    # Automated pull — delegated to connector framework (mock for now)
+    # Automated pull — delegated to connector framework
     pulled_value: Optional[float] = None
     try:
         from core.kri_automation import pull_kri_value
         pulled_value = pull_kri_value(src)
     except ImportError:
-        pass  # core.kri_automation not yet wired — return mock
+        pass  # connector module not installed on this deployment
 
     if pulled_value is None:
-        # Mock: return config info so UI can show the source is configured
+        source_type_str = getattr(src.source_type, "value", src.source_type)
         return {
             "source_id": source_id,
             "kri_id": src.kri_id,
-            "source_type": getattr(src.source_type, "value", src.source_type),
-            "status": "connector_pending",
-            "message": f"{getattr(src.source_type, "value", src.source_type)} connector will be invoked on next scheduled pull",
+            "source_type": source_type_str,
+            "status": "connector_not_configured",
+            "message": (
+                f"{source_type_str} connector is not installed on this instance. "
+                "Use POST /kris/{kri_id}/measurements to record a value manually, "
+                "or install the connector package and redeploy."
+            ),
             "schedule_cron": src.schedule_cron,
             "last_pulled_at": src.last_pulled_at.isoformat() if src.last_pulled_at else None,
         }

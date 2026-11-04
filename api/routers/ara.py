@@ -920,14 +920,44 @@ async def get_behavioral_score(user_id: str):
 
 @router.get("/behavioral/anomalies")
 async def get_all_anomalies(min_severity: str = Query(default="medium")):
-    """Get all detected behavioral anomalies."""
-    analyzer = get_behavioral_analyzer()
+    """Get all detected behavioral anomalies from persisted risk violations."""
+    from db.database import db_manager
+    from db.models.risk import RiskViolation
 
-    # This would typically pull from stored anomalies
-    # For now, return placeholder
+    severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    min_sev_rank = severity_order.get(min_severity.lower(), 1)
+
+    anomalies = []
+    try:
+        db = db_manager.get_session()
+        try:
+            violations = db.query(RiskViolation).filter(
+                RiskViolation.status.in_(["open", "pending_review"]),
+            ).order_by(RiskViolation.created_at.desc()).limit(200).all()
+
+            for v in violations:
+                sev = getattr(v.severity, "value", v.severity) or "medium"
+                if severity_order.get(sev, 0) < min_sev_rank:
+                    continue
+                anomalies.append({
+                    "anomaly_id": v.violation_id,
+                    "user_id": v.user_id,
+                    "severity": sev,
+                    "description": v.rule_description or f"SoD violation: {v.rule_id}",
+                    "rule_id": v.rule_id,
+                    "detected_at": v.created_at.isoformat() if v.created_at else None,
+                    "status": getattr(v.status, "value", v.status),
+                    "risk_score": getattr(v, "severity_score", None),
+                    "source": "sod_violation",
+                })
+        finally:
+            db.close()
+    except Exception:
+        pass
+
     return {
-        "anomalies": [],
-        "total_count": 0,
+        "anomalies": anomalies,
+        "total_count": len(anomalies),
         "min_severity_filter": min_severity,
     }
 

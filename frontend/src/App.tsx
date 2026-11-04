@@ -164,6 +164,11 @@ import { ContentLibrary, ActivationWizard, ActiveContent, UpdateReview, PackBuil
 // Survey Pages
 import { SurveyDesigner, SurveyDistribution, ResponseAnalytics } from './pages/survey';
 
+// New GRC Modules
+import { IssueTracker } from './pages/issue-tracker/IssueTracker';
+import { RegulatoryIntelligence } from './pages/regulatory/RegulatoryIntelligence';
+import { GRCAnalytics } from './pages/grc-analytics/GRCAnalytics';
+
 // ML Dashboard
 import { MLDashboard } from './pages/ml';
 
@@ -405,6 +410,15 @@ function AppRoutes() {
 
         {/* ML Dashboard */}
         <Route path="/ml" element={<MLDashboard />} />
+
+        {/* Issue Tracker */}
+        <Route path="/issue-tracker" element={<IssueTracker />} />
+
+        {/* Regulatory Intelligence */}
+        <Route path="/regulatory" element={<RegulatoryIntelligence />} />
+
+        {/* GRC Analytics */}
+        <Route path="/grc-analytics" element={<GRCAnalytics />} />
 
       </Route>
 

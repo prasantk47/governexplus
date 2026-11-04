@@ -736,6 +736,30 @@ app.include_router(
 )
 
 # Seed the template library on startup (idempotent)
+# ── Issue Tracker — Common GRC issue & remediation engine ────────────────────
+from api.routers import issue_tracker as issue_tracker_router
+
+app.include_router(
+    issue_tracker_router.router, prefix="",
+    tags=["Issue Tracker"], dependencies=_require_auth,
+)
+
+# ── Regulatory Intelligence — Framework, obligation, compliance mapping ───────
+from api.routers import regulatory as regulatory_router
+
+app.include_router(
+    regulatory_router.router, prefix="",
+    tags=["Regulatory Intelligence"], dependencies=_require_auth,
+)
+
+# ── GRC Analytics — Cross-module dashboards and enterprise reporting ──────────
+from api.routers import grc_analytics as grc_analytics_router
+
+app.include_router(
+    grc_analytics_router.router, prefix="",
+    tags=["GRC Analytics"], dependencies=_require_auth,
+)
+
 # ── AI Copilot — Joule-beating AI-powered GRC intelligence ────────────────────
 from api.routers import ai_copilot as ai_copilot_router
 

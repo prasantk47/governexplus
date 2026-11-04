@@ -37,6 +37,9 @@ import {
   ClipboardDocumentCheckIcon,
   CpuChipIcon,
   BookOpenIcon,
+  FlagIcon,
+  PresentationChartBarIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -329,6 +332,24 @@ const navigation: NavItem[] = [
     name: 'ML & Analytics',
     href: '/ml',
     icon: CpuChipIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
+  },
+  {
+    name: 'Issue Tracker',
+    href: '/issue-tracker',
+    icon: FlagIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Regulatory Intelligence',
+    href: '/regulatory',
+    icon: ScaleIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'GRC Analytics',
+    href: '/grc-analytics',
+    icon: PresentationChartBarIcon,
     permissions: [PERMISSIONS.VIEW_DASHBOARD],
   },
   {

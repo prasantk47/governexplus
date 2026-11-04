@@ -109,6 +109,10 @@ const navigation: NavItem[] = [
       { name: 'Request Access', href: '/privileged-access/request', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
       { name: 'Sessions', href: '/privileged-access/sessions', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
       { name: 'Live Monitor', href: '/privileged-access/monitor', permissions: [PERMISSIONS.VIEW_LIVE_SESSIONS] },
+      { name: 'FFID Registry', href: '/privileged-access/registry', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Break-Glass', href: '/privileged-access/break-glass', permissions: [PERMISSIONS.REQUEST_FIREFIGHTER] },
+      { name: 'Certification', href: '/privileged-access/certification', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
+      { name: 'Regional Dashboard', href: '/privileged-access/regional', permissions: [PERMISSIONS.VIEW_FIREFIGHTER] },
     ],
   },
   {

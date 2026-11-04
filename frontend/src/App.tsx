@@ -33,6 +33,10 @@ import { FirefighterDashboard } from './pages/firefighter/FirefighterDashboard';
 import { FirefighterRequest } from './pages/firefighter/FirefighterRequest';
 import { FirefighterSessions } from './pages/firefighter/FirefighterSessions';
 import { LiveSessionMonitor } from './pages/firefighter/LiveSessionMonitor';
+import { FFIDRegistry } from './pages/firefighter/FFIDRegistry';
+import { BreakGlass } from './pages/firefighter/BreakGlass';
+import { FFIDCertification } from './pages/firefighter/FFIDCertification';
+import { RegionalDashboard } from './pages/firefighter/RegionalDashboard';
 
 // Risk Pages
 import { RiskDashboard } from './pages/risk/RiskDashboard';
@@ -238,11 +242,15 @@ function AppRoutes() {
         <Route path="/certification/review" element={<CertificationReview />} />
         <Route path="/certification/:campaignId" element={<CertificationReview />} />
 
-        {/* Firefighter */}
+        {/* Firefighter / Privileged Access */}
         <Route path="/privileged-access" element={<FirefighterDashboard />} />
         <Route path="/privileged-access/request" element={<FirefighterRequest />} />
         <Route path="/privileged-access/sessions" element={<FirefighterSessions />} />
         <Route path="/privileged-access/monitor" element={<LiveSessionMonitor />} />
+        <Route path="/privileged-access/registry" element={<FFIDRegistry />} />
+        <Route path="/privileged-access/break-glass" element={<BreakGlass />} />
+        <Route path="/privileged-access/certification" element={<FFIDCertification />} />
+        <Route path="/privileged-access/regional" element={<RegionalDashboard />} />
 
         {/* Risk */}
         <Route path="/risk" element={<RiskDashboard />} />

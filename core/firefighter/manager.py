@@ -1619,30 +1619,20 @@ class FirefighterManager:
         except Exception as e:
             logger.debug(f"DB controller lookup failed for {firefighter_id}: {e}")
 
-        # --- Hardcoded fallback ---
-        controller_mapping = {
-            'FF_EMERGENCY_01': {
-                'id': 'controller1',
-                'name': 'SAP Controller',
-                'email': 'sap.controller@company.com'
-            },
-            'FF_EMERGENCY_02': {
-                'id': 'controller1',
-                'name': 'SAP Controller',
-                'email': 'sap.controller@company.com'
-            },
-            'FF_BASIS_01': {
-                'id': 'controller2',
-                'name': 'Basis Controller',
-                'email': 'basis.controller@company.com'
+        # --- FFID registry fallback (replaces hardcoded mapping) ---
+        rec = self.ffid_registry.get(firefighter_id)
+        if rec and rec.controller_id:
+            return {
+                'id': rec.controller_id,
+                'name': rec.controller_name or rec.controller_id,
+                'email': f"{rec.controller_id}@company.com",
             }
-        }
 
-        return controller_mapping.get(firefighter_id, {
+        return {
             'id': 'default_controller',
             'name': 'Default Controller',
             'email': 'ff.controller@company.com'
-        })
+        }
 
     async def _check_review_sla(self, session: FirefighterSession):
         """Check and escalate if review SLA is breached"""

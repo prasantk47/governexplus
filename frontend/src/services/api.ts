@@ -195,6 +195,27 @@ export const firefighterApi = {
 
   // Statistics
   getStatistics: () => api.get('/privileged-access/statistics'),
+
+  // FFID Registry CRUD
+  getFirefighterDetail: (id: string) => api.get(`/privileged-access/firefighters/${id}`),
+  createFirefighter: (params: Record<string, any>) =>
+    api.post('/privileged-access/firefighters', null, { params }),
+  updateFirefighter: (id: string, params: Record<string, any>) =>
+    api.put(`/privileged-access/firefighters/${id}`, null, { params }),
+  retireFirefighter: (id: string, retiredBy: string, reason?: string) =>
+    api.post(`/privileged-access/firefighters/${id}/retire`, null, { params: { retired_by: retiredBy, reason: reason || '' } }),
+
+  // Break-Glass Emergency
+  breakGlass: (params: { ffid: string; activated_by: string; incident_reference: string; reason: string; target_system?: string }) =>
+    api.post('/privileged-access/break-glass', null, { params }),
+
+  // FFID Certification / Periodic Review
+  getCertificationDue: () => api.get('/privileged-access/certification/due'),
+  certifyFFID: (id: string, params: { certified_by: string; decision: string; notes?: string }) =>
+    api.post(`/privileged-access/firefighters/${id}/certify`, null, { params }),
+
+  // Regional Monitoring Dashboard
+  getRegionalDashboard: () => api.get('/privileged-access/dashboard/regional'),
 };
 
 // ==================== Risk API ====================

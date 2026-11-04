@@ -760,6 +760,20 @@ app.include_router(
     tags=["GRC Analytics"], dependencies=_require_auth,
 )
 
+from api.routers import risk_acceptance as risk_acceptance_router
+
+app.include_router(
+    risk_acceptance_router.router,
+    tags=["Risk Acceptance Register"], dependencies=_require_auth,
+)
+
+from api.routers import policy_exceptions as policy_exceptions_router
+
+app.include_router(
+    policy_exceptions_router.router,
+    tags=["Policy Exception Register"], dependencies=_require_auth,
+)
+
 # ── AI Copilot — Joule-beating AI-powered GRC intelligence ────────────────────
 from api.routers import ai_copilot as ai_copilot_router
 

@@ -688,6 +688,46 @@ def get_kri_dashboard(
     }
 
 
+def _auto_create_kri_issue(db: Session, kri: "KeyRiskIndicator", tenant_id: str) -> Optional[str]:
+    """Auto-create a GRC Issue when a KRI breaches its threshold (if not already open)."""
+    try:
+        from db.models.issue_tracker import GRCIssue
+        import uuid as _uuid
+        # Check if an open breach issue already exists for this KRI
+        existing = db.query(GRCIssue).filter(
+            GRCIssue.tenant_id == tenant_id,
+            GRCIssue.source_module == "kri",
+            GRCIssue.source_record_id == kri.kri_id,
+            GRCIssue.status.in_(["open", "assigned", "in_remediation", "pending_validation"]),
+        ).first()
+        if existing:
+            return existing.issue_id
+
+        issue_id = f"ISS_{_uuid.uuid4().hex[:12].upper()}"
+        issue = GRCIssue(
+            tenant_id=tenant_id,
+            issue_id=issue_id,
+            title=f"KRI Breach: {kri.name}",
+            description=(
+                f"Key Risk Indicator '{kri.name}' has breached its threshold.\n"
+                f"Current value: {kri.current_value} {kri.unit_of_measure or ''}.\n"
+                f"Red threshold: {kri.threshold_red}."
+            ),
+            issue_type="risk",
+            source_module="kri",
+            source_record_id=kri.kri_id,
+            severity="high",
+            status="open",
+            is_regulatory=False,
+            tags=["kri_breach", "auto_generated"],
+        )
+        db.add(issue)
+        db.flush()
+        return issue_id
+    except Exception:
+        return None
+
+
 @router.post("/kris/{kri_id}/measurements", status_code=201)
 def record_kri_measurement(
     kri_id: str,
@@ -713,9 +753,60 @@ def record_kri_measurement(
     kri.status = _kri_status(kri)
     db.commit()
     db.refresh(m)
+
+    # Auto-create GRC issue on breach
+    auto_issue_id = None
+    new_status = getattr(kri.status, "value", kri.status)
+    if new_status == "breach":
+        auto_issue_id = _auto_create_kri_issue(db, kri, tenant_id)
+        if auto_issue_id:
+            db.commit()
+
     return {
         "measurement": m.to_dict(),
-        "kri_status": getattr(kri.status, "value", kri.status),
+        "kri_status": new_status,
+        "breach_detected": new_status == "breach",
+        "auto_issue_id": auto_issue_id,
+    }
+
+
+@router.post("/kris/scan-breaches")
+def scan_kri_breaches(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(_get_tenant_id),
+):
+    """
+    Scan all active KRIs for threshold breaches and auto-create GRC issues.
+    Safe to call repeatedly — idempotent (won't duplicate open issues).
+    """
+    kris = db.query(KeyRiskIndicator).filter(
+        KeyRiskIndicator.tenant_id == tenant_id,
+        KeyRiskIndicator.is_active.is_(True),
+    ).all()
+
+    breached = []
+    issues_created = []
+
+    for kri in kris:
+        # Recompute status from current value
+        new_status = _kri_status(kri)
+        if getattr(kri.status, 'value', kri.status) != new_status:
+            kri.status = new_status
+
+        if new_status == "breach":
+            breached.append(kri.kri_id)
+            issue_id = _auto_create_kri_issue(db, kri, tenant_id)
+            if issue_id:
+                issues_created.append(issue_id)
+
+    db.commit()
+
+    return {
+        "scanned": len(kris),
+        "breached": len(breached),
+        "breached_kri_ids": breached,
+        "issues_created": len(issues_created),
+        "issue_ids": issues_created,
     }
 
 

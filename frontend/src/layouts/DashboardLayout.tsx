@@ -193,6 +193,7 @@ const navigation: NavItem[] = [
       { name: 'KRI Dashboard', href: '/risk-management/kri' },
       { name: 'Incidents', href: '/risk-management/incidents' },
       { name: 'Approval Workflows', href: '/risk-management/workflows' },
+      { name: 'Acceptance Register', href: '/risk-management/acceptances' },
     ],
   },
   {
@@ -217,6 +218,7 @@ const navigation: NavItem[] = [
       { name: 'Planning', href: '/audit-management/planning' },
       { name: 'Engagements', href: '/audit-management/engagements' },
       { name: 'Findings & Actions', href: '/audit-management/findings' },
+      { name: 'Workpapers', href: '/audit-management/workpapers' },
     ],
   },
   {
@@ -333,6 +335,16 @@ const navigation: NavItem[] = [
     href: '/ml',
     icon: CpuChipIcon,
     permissions: [PERMISSIONS.VIEW_DASHBOARD],
+  },
+  {
+    name: 'Policy Hub',
+    href: '/policy-hub',
+    icon: DocumentCheckIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+    children: [
+      { name: 'Policy Register', href: '/policy-hub' },
+      { name: 'Exception Register', href: '/policy-hub/exceptions' },
+    ],
   },
   {
     name: 'Issue Tracker',

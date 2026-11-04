@@ -169,6 +169,16 @@ import { IssueTracker } from './pages/issue-tracker/IssueTracker';
 import { RegulatoryIntelligence } from './pages/regulatory/RegulatoryIntelligence';
 import { GRCAnalytics } from './pages/grc-analytics/GRCAnalytics';
 
+// Risk Acceptance Register
+import { RiskAcceptanceRegister } from './pages/risk-management/RiskAcceptanceRegister';
+
+// Policy Hub
+import { PolicyList } from './pages/policy-hub/PolicyList';
+import { PolicyExceptionRegister } from './pages/policy-hub/PolicyExceptionRegister';
+
+// Audit Workpapers
+import { AuditWorkpapers } from './pages/audit-management/AuditWorkpapers';
+
 // ML Dashboard
 import { MLDashboard } from './pages/ml';
 
@@ -419,6 +429,16 @@ function AppRoutes() {
 
         {/* GRC Analytics */}
         <Route path="/grc-analytics" element={<GRCAnalytics />} />
+
+        {/* Risk Acceptance Register */}
+        <Route path="/risk-management/acceptances" element={<RiskAcceptanceRegister />} />
+
+        {/* Policy Hub */}
+        <Route path="/policy-hub" element={<PolicyList />} />
+        <Route path="/policy-hub/exceptions" element={<PolicyExceptionRegister />} />
+
+        {/* Audit Workpapers */}
+        <Route path="/audit-management/workpapers" element={<AuditWorkpapers />} />
 
       </Route>
 

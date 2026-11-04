@@ -1330,3 +1330,87 @@ class KRIDataSource(Base, TimestampMixin):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+# ---------------------------------------------------------------------------
+# RiskAcceptance  (RM-ACC)
+# ---------------------------------------------------------------------------
+
+class AcceptanceDecision(enum.Enum):
+    ACCEPTED = "accepted"
+    CONDITIONALLY_ACCEPTED = "conditionally_accepted"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+
+
+class RiskAcceptance(Base, TimestampMixin):
+    """
+    Formal risk acceptance record.
+
+    Captures the board/executive decision to formally accept a residual risk
+    with rationale, authorized signatory, conditions, and expiry date.
+    """
+    __tablename__ = 'risk_acceptances'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    acceptance_id = Column(String(100), nullable=False, index=True)
+    tenant_id = Column(String(100), nullable=False, index=True)
+
+    risk_id = Column(String(100), nullable=False, index=True)
+    risk_title = Column(String(500), nullable=True)
+
+    decision = Column(String(50), nullable=False, default="accepted")
+    rationale = Column(Text, nullable=False)
+    conditions = Column(Text, nullable=True)
+    financial_exposure = Column(Float, nullable=True)
+
+    authorized_by = Column(String(255), nullable=False)
+    authorized_by_role = Column(String(255), nullable=True)
+    authorized_at = Column(DateTime, nullable=True)
+
+    second_approver = Column(String(255), nullable=True)
+    second_approved_at = Column(DateTime, nullable=True)
+
+    effective_date = Column(DateTime, nullable=True)
+    expiry_date = Column(DateTime, nullable=True)
+    renewal_reminder_days = Column(Integer, default=30)
+
+    reviewed_by = Column(String(255), nullable=True)
+    last_reviewed_at = Column(DateTime, nullable=True)
+    next_review_date = Column(DateTime, nullable=True)
+
+    residual_score_snapshot = Column(Float, nullable=True)
+    risk_level_snapshot = Column(String(50), nullable=True)
+
+    is_active = Column(Boolean, default=True, nullable=False)
+    extra = Column(JSON, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'acceptance_id': self.acceptance_id,
+            'tenant_id': self.tenant_id,
+            'risk_id': self.risk_id,
+            'risk_title': self.risk_title,
+            'decision': getattr(self.decision, 'value', self.decision),
+            'rationale': self.rationale,
+            'conditions': self.conditions,
+            'financial_exposure': self.financial_exposure,
+            'authorized_by': self.authorized_by,
+            'authorized_by_role': self.authorized_by_role,
+            'authorized_at': self.authorized_at.isoformat() if self.authorized_at else None,
+            'second_approver': self.second_approver,
+            'second_approved_at': self.second_approved_at.isoformat() if self.second_approved_at else None,
+            'effective_date': self.effective_date.isoformat() if self.effective_date else None,
+            'expiry_date': self.expiry_date.isoformat() if self.expiry_date else None,
+            'renewal_reminder_days': self.renewal_reminder_days,
+            'reviewed_by': self.reviewed_by,
+            'last_reviewed_at': self.last_reviewed_at.isoformat() if self.last_reviewed_at else None,
+            'next_review_date': self.next_review_date.isoformat() if self.next_review_date else None,
+            'residual_score_snapshot': self.residual_score_snapshot,
+            'risk_level_snapshot': self.risk_level_snapshot,
+            'is_active': self.is_active,
+            'extra': self.extra,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }

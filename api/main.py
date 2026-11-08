@@ -830,6 +830,44 @@ app.include_router(
     tags=["Sanctions Screening"], dependencies=_require_auth,
 )
 
+# ── Blueprint Gap Modules ─────────────────────────────────────────────────────
+from api.routers import change_governance as change_governance_router
+from api.routers import config_logging as config_logging_router
+from api.routers import rcm as rcm_router
+from api.routers import obligation_mgmt as obligation_mgmt_router
+from api.routers import evidence_mgmt as evidence_mgmt_router
+from api.routers import continuous_monitoring as continuous_monitoring_router
+from api.routers import esg as esg_router
+
+app.include_router(
+    change_governance_router.router, prefix="/change-governance",
+    tags=["Change Governance"], dependencies=_require_auth,
+)
+app.include_router(
+    config_logging_router.router, prefix="/config-logging",
+    tags=["Config Logging"], dependencies=_require_auth,
+)
+app.include_router(
+    rcm_router.router, prefix="/rcm",
+    tags=["Risk-Control Matrix"], dependencies=_require_auth,
+)
+app.include_router(
+    obligation_mgmt_router.router, prefix="/obligations",
+    tags=["Obligation Management"], dependencies=_require_auth,
+)
+app.include_router(
+    evidence_mgmt_router.router, prefix="/evidence",
+    tags=["Evidence Management"], dependencies=_require_auth,
+)
+app.include_router(
+    continuous_monitoring_router.router, prefix="/monitoring",
+    tags=["Continuous Monitoring"], dependencies=_require_auth,
+)
+app.include_router(
+    esg_router.router, prefix="/esg",
+    tags=["ESG"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

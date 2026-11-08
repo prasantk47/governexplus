@@ -211,6 +211,15 @@ import { ITChangeRisk } from './pages/it-change-risk/ITChangeRisk';
 import { InsurancePolicies } from './pages/insurance/InsurancePolicies';
 import { SanctionsScreening } from './pages/sanctions/SanctionsScreening';
 
+// Blueprint Gap Modules
+import { ChangeGovernance } from './pages/change-governance/ChangeGovernance';
+import { ConfigLogging } from './pages/config-logging/ConfigLogging';
+import { RiskControlMatrix } from './pages/rcm/RiskControlMatrix';
+import { ObligationManagement } from './pages/obligations/ObligationManagement';
+import { EvidenceManagement } from './pages/evidence/EvidenceManagement';
+import { ContinuousMonitoring } from './pages/monitoring/ContinuousMonitoring';
+import { ESGDashboard } from './pages/esg/ESGDashboard';
+
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -513,6 +522,15 @@ function AppRoutes() {
 
         {/* Sanctions Screening */}
         <Route path="/sanctions-screening" element={<SanctionsScreening />} />
+
+        {/* Blueprint Gap Modules */}
+        <Route path="/change-governance" element={<ChangeGovernance />} />
+        <Route path="/config-logging" element={<ConfigLogging />} />
+        <Route path="/rcm" element={<RiskControlMatrix />} />
+        <Route path="/obligations" element={<ObligationManagement />} />
+        <Route path="/evidence" element={<EvidenceManagement />} />
+        <Route path="/monitoring" element={<ContinuousMonitoring />} />
+        <Route path="/esg" element={<ESGDashboard />} />
 
       </Route>
 

@@ -45,6 +45,10 @@ import {
   WrenchScrewdriverIcon,
   EyeSlashIcon,
   ComputerDesktopIcon,
+  TableCellsIcon,
+  DocumentMagnifyingGlassIcon,
+  RectangleStackIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -433,6 +437,49 @@ const navigation: NavItem[] = [
     href: '/sanctions-screening',
     icon: GlobeAltIcon,
     permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  // ── Blueprint Gap Modules ─────────────────────────────────────────────────
+  {
+    name: 'Change Governance',
+    href: '/change-governance',
+    icon: DocumentMagnifyingGlassIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Config Logging',
+    href: '/config-logging',
+    icon: RectangleStackIcon,
+    permissions: [PERMISSIONS.VIEW_AUDIT_LOG],
+  },
+  {
+    name: 'Risk-Control Matrix',
+    href: '/rcm',
+    icon: TableCellsIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Obligations',
+    href: '/obligations',
+    icon: ScaleIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'Evidence Management',
+    href: '/evidence',
+    icon: ClipboardDocumentCheckIcon,
+    permissions: [PERMISSIONS.VIEW_AUDIT_LOG],
+  },
+  {
+    name: 'Continuous Monitoring',
+    href: '/monitoring',
+    icon: ExclamationTriangleIcon,
+    permissions: [PERMISSIONS.VIEW_COMPLIANCE],
+  },
+  {
+    name: 'ESG',
+    href: '/esg',
+    icon: BeakerIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
   },
   {
     name: 'Control Intelligence',

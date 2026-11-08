@@ -264,6 +264,14 @@ from .governance_extended import (
     ScreeningStatus,
 )
 
+# Blueprint Gap modules
+from .change_governance import ChangeRequest
+from .config_logging import ConfigChangeLog, ConfigVersion
+from .obligation_management import Obligation, ObligationAssessment
+from .evidence_management import EvidenceItem, EvidencePackage
+from .continuous_monitoring import MonitoringRule, MonitoringAlert
+from .esg import ESGCommitment, ESGMetric, ESGDisclosure
+
 __all__ = [
     # Core
     "Base",
@@ -511,4 +519,17 @@ __all__ = [
     "InsurancePolicy",
     "SanctionsScreening",
     "ScreeningStatus",
+    # Blueprint Gaps
+    "ChangeRequest",
+    "ConfigChangeLog",
+    "ConfigVersion",
+    "Obligation",
+    "ObligationAssessment",
+    "EvidenceItem",
+    "EvidencePackage",
+    "MonitoringRule",
+    "MonitoringAlert",
+    "ESGCommitment",
+    "ESGMetric",
+    "ESGDisclosure",
 ]

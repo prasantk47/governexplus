@@ -333,6 +333,12 @@ const navigation: NavItem[] = [
     href: '/ml',
     icon: CpuChipIcon,
     permissions: [PERMISSIONS.VIEW_DASHBOARD],
+    children: [
+      { name: 'Dashboard', href: '/ml' },
+      { name: 'Model Management', href: '/ml/models' },
+      { name: 'Predictive Analytics', href: '/ml/predictive' },
+      { name: 'User Behavior', href: '/ml/uba' },
+    ],
   },
   {
     name: 'Policy Hub',
@@ -459,6 +465,7 @@ const navigation: NavItem[] = [
       { name: 'Repo Sync', href: '/settings/repo-sync', permissions: [PERMISSIONS.MANAGE_INTEGRATIONS] },
       { name: 'Transports', href: '/settings/transports', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
       { name: 'Notifications', href: '/settings/notifications', permissions: [PERMISSIONS.VIEW_SETTINGS] },
+      { name: 'Request Form', href: '/settings/request-form', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
     ],
   },
 ];

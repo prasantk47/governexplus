@@ -179,8 +179,14 @@ import { PolicyExceptionRegister } from './pages/policy-hub/PolicyExceptionRegis
 // Audit Workpapers
 import { AuditWorkpapers } from './pages/audit-management/AuditWorkpapers';
 
-// ML Dashboard
+// ML Dashboard & Analytics
 import { MLDashboard } from './pages/ml';
+import { ModelManagement } from './pages/ml/ModelManagement';
+import { PredictiveAnalytics } from './pages/ml/PredictiveAnalytics';
+import { UserBehaviorAnalytics } from './pages/ml/UserBehaviorAnalytics';
+
+// Request Form Config
+import { RequestFormConfig } from './pages/settings/RequestFormConfig';
 
 // Wave 1 additions — audit & process-control
 import { AuditUniverse } from './pages/audit-management/AuditUniverse';
@@ -326,6 +332,7 @@ function AppRoutes() {
         <Route path="/settings/repo-sync" element={<RepoSync />} />
         <Route path="/settings/transports" element={<TransportManagement />} />
         <Route path="/settings/notifications" element={<NotificationCenter />} />
+        <Route path="/settings/request-form" element={<RequestFormConfig />} />
         <Route path="/settings/email" element={<SmtpSettings />} />
         <Route path="/settings/policies" element={<PolicyManagement />} />
         <Route path="/settings/delegations" element={<DelegationManagement />} />
@@ -441,8 +448,11 @@ function AppRoutes() {
         <Route path="/surveys/distribution" element={<SurveyDistribution />} />
         <Route path="/surveys/analytics" element={<ResponseAnalytics />} />
 
-        {/* ML Dashboard */}
+        {/* ML Dashboard & Analytics */}
         <Route path="/ml" element={<MLDashboard />} />
+        <Route path="/ml/models" element={<ModelManagement />} />
+        <Route path="/ml/predictive" element={<PredictiveAnalytics />} />
+        <Route path="/ml/uba" element={<UserBehaviorAnalytics />} />
 
         {/* Issue Tracker */}
         <Route path="/issue-tracker" element={<IssueTracker />} />

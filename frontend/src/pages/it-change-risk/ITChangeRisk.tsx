@@ -24,9 +24,7 @@ const riskColors: Record<string, string> = {
 };
 
 const nextStatus: Record<string, { label: string; status: string }> = {
-  draft: { label: 'Submit', status: 'submitted' },
-  submitted: { label: 'Start Review', status: 'under_review' },
-  under_review: { label: 'Approve', status: 'approved' },
+  pending: { label: 'Approve', status: 'approved' },
   approved: { label: 'Mark Implemented', status: 'implemented' },
   implemented: { label: 'Close', status: 'closed' },
 };

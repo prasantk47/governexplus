@@ -220,6 +220,9 @@ import { EvidenceManagement } from './pages/evidence/EvidenceManagement';
 import { ContinuousMonitoring } from './pages/monitoring/ContinuousMonitoring';
 import { ESGDashboard } from './pages/esg/ESGDashboard';
 
+// VPN Tunnel Management
+import { VPNTunnels } from './pages/vpn/VPNTunnels';
+
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -531,6 +534,9 @@ function AppRoutes() {
         <Route path="/evidence" element={<EvidenceManagement />} />
         <Route path="/monitoring" element={<ContinuousMonitoring />} />
         <Route path="/esg" element={<ESGDashboard />} />
+
+        {/* VPN Tunnel Management */}
+        <Route path="/vpn" element={<VPNTunnels />} />
 
       </Route>
 

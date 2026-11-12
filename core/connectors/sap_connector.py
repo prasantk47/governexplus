@@ -628,7 +628,15 @@ class SAPConnector(BaseConnector):
         self._executor = ThreadPoolExecutor(max_workers=config.pool_size)
 
     async def _do_connect(self):
-        """Establish SAP RFC connection"""
+        """Establish SAP RFC connection (auto-connects VPN if configured)."""
+        # Ensure VPN tunnel is up before attempting RFC connection
+        try:
+            from core.vpn.tunnel_manager import VPNTunnelManager
+            vpn_mgr = VPNTunnelManager.get_instance()
+            await vpn_mgr.ensure_connected_for_connector(self.config.connector_id)
+        except Exception as e:
+            logger.warning(f"VPN pre-connect check: {e} (proceeding without VPN)")
+
         self._pool = SAPConnectionPool(self.sap_config, self.sap_config.pool_size)
         await self._pool.initialize()
 

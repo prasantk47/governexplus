@@ -513,6 +513,7 @@ const navigation: NavItem[] = [
       { name: 'Transports', href: '/settings/transports', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
       { name: 'Notifications', href: '/settings/notifications', permissions: [PERMISSIONS.VIEW_SETTINGS] },
       { name: 'Request Form', href: '/settings/request-form', permissions: [PERMISSIONS.MANAGE_SYSTEM_CONFIG] },
+      { name: 'VPN Tunnels', href: '/vpn', permissions: [PERMISSIONS.MANAGE_INTEGRATIONS] },
     ],
   },
 ];

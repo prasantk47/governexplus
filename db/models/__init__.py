@@ -272,6 +272,9 @@ from .evidence_management import EvidenceItem, EvidencePackage
 from .continuous_monitoring import MonitoringRule, MonitoringAlert
 from .esg import ESGCommitment, ESGMetric, ESGDisclosure
 
+# VPN Tunnel Management
+from .vpn_config import VPNTunnelConfig
+
 __all__ = [
     # Core
     "Base",
@@ -532,4 +535,6 @@ __all__ = [
     "ESGCommitment",
     "ESGMetric",
     "ESGDisclosure",
+    # VPN
+    "VPNTunnelConfig",
 ]

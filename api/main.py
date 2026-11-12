@@ -868,6 +868,13 @@ app.include_router(
     tags=["ESG"], dependencies=_require_auth,
 )
 
+# ── VPN Tunnel Management ────────────────────────────────────────────────────
+from api.routers import vpn as vpn_router
+app.include_router(
+    vpn_router.router, prefix="/vpn",
+    tags=["VPN Tunnels"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

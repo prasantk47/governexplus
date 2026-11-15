@@ -1,11 +1,11 @@
 """
 VPN Tunnel Manager for GovernexPlus
 ====================================
-Manages Cisco AnyConnect VPN tunnels required for SAP RFC connectivity.
+Manages Palo Alto GlobalProtect VPN tunnels required for SAP RFC connectivity.
 
 Supports:
-- Cisco AnyConnect CLI (vpncli / anyconnect)
-- OpenConnect (open-source alternative)
+- GlobalProtect CLI (globalprotect / PanGPA)
+- OpenConnect (open-source alternative with --protocol=gp)
 - Per-connector VPN profiles
 - Auto-connect before SAP operations
 - Health monitoring and auto-reconnect
@@ -43,6 +43,7 @@ class VPNStatus(str, Enum):
 
 
 class VPNProvider(str, Enum):
+    GLOBALPROTECT = "globalprotect"
     CISCO_ANYCONNECT = "cisco_anyconnect"
     OPENCONNECT = "openconnect"
     IPSEC = "ipsec"
@@ -53,7 +54,7 @@ class VPNConfig:
     """VPN tunnel configuration."""
     tunnel_id: str
     name: str
-    provider: VPNProvider = VPNProvider.CISCO_ANYCONNECT
+    provider: VPNProvider = VPNProvider.GLOBALPROTECT
     gateway: str = ""                   # VPN gateway hostname/IP
     group: str = ""                     # VPN group/profile name
     username: str = ""
@@ -184,7 +185,9 @@ class VPNTunnelManager:
                         await self._run_script(config.pre_connect_script, "pre-connect")
 
                     # Dispatch to provider
-                    if config.provider == VPNProvider.CISCO_ANYCONNECT:
+                    if config.provider == VPNProvider.GLOBALPROTECT:
+                        result = await self._connect_globalprotect(tunnel)
+                    elif config.provider == VPNProvider.CISCO_ANYCONNECT:
                         result = await self._connect_anyconnect(tunnel)
                     elif config.provider == VPNProvider.OPENCONNECT:
                         result = await self._connect_openconnect(tunnel)
@@ -245,7 +248,9 @@ class VPNTunnelManager:
 
             try:
                 config = tunnel.config
-                if config.provider == VPNProvider.CISCO_ANYCONNECT:
+                if config.provider == VPNProvider.GLOBALPROTECT:
+                    await self._disconnect_globalprotect(tunnel)
+                elif config.provider == VPNProvider.CISCO_ANYCONNECT:
                     await self._disconnect_anyconnect(tunnel)
                 elif config.provider == VPNProvider.OPENCONNECT:
                     await self._disconnect_openconnect(tunnel)
@@ -296,6 +301,50 @@ class VPNTunnelManager:
         return True
 
     # ── Provider Implementations ─────────────────────────────────────────────
+
+    async def _connect_globalprotect(self, tunnel: VPNTunnel) -> Dict:
+        """Connect using Palo Alto GlobalProtect CLI."""
+        config = tunnel.config
+        gpcli = self._find_globalprotect_cli()
+
+        cmd = [gpcli, "connect", "--portal", config.gateway]
+        if config.username:
+            cmd.extend(["--username", config.username])
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        # GlobalProtect CLI reads password from stdin
+        stdin_data = f"{config.password}\n"
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=stdin_data.encode()),
+            timeout=60,
+        )
+
+        output = stdout.decode(errors="replace")
+        err_output = stderr.decode(errors="replace")
+
+        if proc.returncode not in (0, None):
+            raise ConnectionError(
+                f"GlobalProtect connect failed (rc={proc.returncode}): "
+                f"{err_output or output}"
+            )
+
+        local_ip = self._parse_field(output, "IP address") or self._parse_field(output, "Virtual Adapter")
+        return {"local_ip": local_ip, "remote_ip": config.gateway, "pid": proc.pid}
+
+    async def _disconnect_globalprotect(self, tunnel: VPNTunnel):
+        """Disconnect GlobalProtect."""
+        gpcli = self._find_globalprotect_cli()
+        proc = await asyncio.create_subprocess_exec(
+            gpcli, "disconnect",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=30)
 
     async def _connect_anyconnect(self, tunnel: VPNTunnel) -> Dict:
         """Connect using Cisco AnyConnect CLI."""
@@ -361,13 +410,15 @@ class VPNTunnelManager:
         )
 
     async def _connect_openconnect(self, tunnel: VPNTunnel) -> Dict:
-        """Connect using openconnect (open-source Cisco VPN client)."""
+        """Connect using openconnect (supports both Cisco AnyConnect and GlobalProtect protocols)."""
         config = tunnel.config
 
+        # openconnect --protocol=gp for GlobalProtect, --protocol=anyconnect for Cisco
+        protocol = "gp" if "globalprotect" in (config.provider.value or "") else "anyconnect"
         cmd = [
             "openconnect",
             "--background",
-            "--protocol=anyconnect",
+            f"--protocol={protocol}",
             f"--user={config.username}",
             f"--passwd-on-stdin",
         ]
@@ -489,6 +540,34 @@ class VPNTunnelManager:
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
+    def _find_globalprotect_cli(self) -> str:
+        """Locate the Palo Alto GlobalProtect CLI binary."""
+        candidates = []
+        if platform.system().lower() == "windows":
+            candidates = [
+                r"C:\Program Files\Palo Alto Networks\GlobalProtect\PanGPA.exe",
+                r"C:\Program Files (x86)\Palo Alto Networks\GlobalProtect\PanGPA.exe",
+                r"C:\Program Files\Palo Alto Networks\GlobalProtect\globalprotect.exe",
+            ]
+        else:
+            candidates = [
+                "/opt/paloaltonetworks/globalprotect/globalprotect",
+                "/usr/local/bin/globalprotect",
+                "/usr/bin/globalprotect",
+            ]
+
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+
+        which = shutil.which("globalprotect") or shutil.which("PanGPA")
+        if which:
+            return which
+
+        raise FileNotFoundError(
+            "GlobalProtect CLI not found. Install GlobalProtect or set path manually."
+        )
+
     def _find_anyconnect_cli(self) -> str:
         """Locate the Cisco AnyConnect CLI binary."""
         candidates = []
@@ -547,8 +626,34 @@ class VPNTunnelManager:
 
     # ── Status ───────────────────────────────────────────────────────────────
 
-    async def get_anyconnect_status(self) -> Dict:
-        """Get the current AnyConnect connection status from CLI."""
+    async def get_provider_status(self, provider: str = "globalprotect") -> Dict:
+        """Get the current VPN client status from CLI."""
+        if provider == "globalprotect":
+            return await self._get_globalprotect_status()
+        elif provider == "cisco_anyconnect":
+            return await self._get_anyconnect_status()
+        return {"installed": False, "connected": False, "raw_status": f"Unknown provider: {provider}"}
+
+    async def _get_globalprotect_status(self) -> Dict:
+        """Get GlobalProtect connection status."""
+        try:
+            gpcli = self._find_globalprotect_cli()
+            proc = await asyncio.create_subprocess_exec(
+                gpcli, "show", "--status",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+            output = stdout.decode(errors="replace")
+            connected = "Connected" in output and "Disconnected" not in output
+            return {"installed": True, "provider": "globalprotect", "connected": connected, "raw_status": output.strip()}
+        except FileNotFoundError:
+            return {"installed": False, "provider": "globalprotect", "connected": False, "raw_status": "GlobalProtect CLI not found"}
+        except Exception as e:
+            return {"installed": True, "provider": "globalprotect", "connected": False, "raw_status": str(e)}
+
+    async def _get_anyconnect_status(self) -> Dict:
+        """Get Cisco AnyConnect connection status."""
         try:
             vpncli = self._find_anyconnect_cli()
             proc = await asyncio.create_subprocess_exec(
@@ -563,12 +668,8 @@ class VPNTunnelManager:
             )
             output = stdout.decode(errors="replace")
             connected = "Connected" in output and "Disconnected" not in output
-            return {
-                "anyconnect_installed": True,
-                "connected": connected,
-                "raw_status": output.strip(),
-            }
+            return {"installed": True, "provider": "cisco_anyconnect", "connected": connected, "raw_status": output.strip()}
         except FileNotFoundError:
-            return {"anyconnect_installed": False, "connected": False, "raw_status": "CLI not found"}
+            return {"installed": False, "provider": "cisco_anyconnect", "connected": False, "raw_status": "AnyConnect CLI not found"}
         except Exception as e:
-            return {"anyconnect_installed": True, "connected": False, "raw_status": str(e)}
+            return {"installed": True, "provider": "cisco_anyconnect", "connected": False, "raw_status": str(e)}

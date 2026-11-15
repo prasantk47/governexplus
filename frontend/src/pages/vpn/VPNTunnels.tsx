@@ -1,6 +1,6 @@
 /**
  * VPN Tunnel Management
- * Manage Cisco AnyConnect VPN tunnels for SAP system connectivity.
+ * Manage GlobalProtect and Cisco AnyConnect VPN tunnels for SAP system connectivity.
  */
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -56,7 +56,7 @@ export function VPNTunnels() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
-    name: '', provider: 'cisco_anyconnect', gateway: '', group: '',
+    name: '', provider: 'globalprotect', gateway: '', group: '',
     username: '', password: '', auth_type: 'password', split_tunnel: true,
     routes: '', mtu: 1406, idle_timeout: 3600, reconnect_attempts: 3,
     linked_connector_ids: '',
@@ -69,8 +69,8 @@ export function VPNTunnels() {
   });
 
   const { data: acStatus } = useQuery({
-    queryKey: ['vpn-anyconnect-status'],
-    queryFn: () => api('/status/anyconnect'),
+    queryKey: ['vpn-provider-status'],
+    queryFn: () => api('/status/provider?provider=globalprotect'),
   });
 
   const createMut = useMutation({
@@ -125,7 +125,7 @@ export function VPNTunnels() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">VPN Tunnels</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Manage Cisco AnyConnect tunnels for SAP system connectivity
+            Manage VPN tunnels (GlobalProtect / Cisco AnyConnect) for SAP connectivity
           </p>
         </div>
         <button
@@ -136,10 +136,10 @@ export function VPNTunnels() {
         </button>
       </div>
 
-      {/* AnyConnect Status Banner */}
+      {/* VPN Provider Status Banner */}
       {acStatus && (
-        <div className={`rounded-lg p-3 text-sm ${acStatus.anyconnect_installed ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'}`}>
-          Cisco AnyConnect CLI: {acStatus.anyconnect_installed ? 'Installed' : 'Not Found'}
+        <div className={`rounded-lg p-3 text-sm ${acStatus.installed ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'}`}>
+          {(acStatus.provider || 'globalprotect') === 'globalprotect' ? 'GlobalProtect' : 'AnyConnect'} CLI: {acStatus.installed ? 'Installed' : 'Not Found'}
           {acStatus.connected && ' — Active connection detected'}
         </div>
       )}
@@ -168,6 +168,7 @@ export function VPNTunnels() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider</label>
               <select value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                 className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white">
+                <option value="globalprotect">GlobalProtect (Palo Alto)</option>
                 <option value="cisco_anyconnect">Cisco AnyConnect</option>
                 <option value="openconnect">OpenConnect</option>
               </select>

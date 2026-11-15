@@ -12,7 +12,7 @@ class VPNTunnelConfig(Base, TimestampMixin):
     id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4())[:12])
     tenant_id = Column(String(100), nullable=False, index=True)
     name = Column(String(200), nullable=False)
-    provider = Column(String(50), nullable=False, default="cisco_anyconnect")
+    provider = Column(String(50), nullable=False, default="globalprotect")
     gateway = Column(String(255), nullable=False)
     group = Column(String(200), default="")
     username = Column(String(200), default="")

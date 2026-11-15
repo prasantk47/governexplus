@@ -2,7 +2,7 @@
 VPN Tunnel Management Router
 ==============================
 CRUD for VPN tunnel configs + connect/disconnect/status operations.
-Used to manage Cisco AnyConnect tunnels required for SAP RFC connectivity.
+Supports GlobalProtect (Palo Alto) and Cisco AnyConnect for SAP RFC connectivity.
 """
 import logging
 from typing import List, Optional
@@ -23,7 +23,7 @@ router = APIRouter()
 
 class VPNTunnelCreate(BaseModel):
     name: str
-    provider: str = "cisco_anyconnect"
+    provider: str = "globalprotect"  # globalprotect | cisco_anyconnect | openconnect
     gateway: str
     group: str = ""
     username: str = ""
@@ -104,7 +104,7 @@ def _db_to_vpn_config(row: VPNTunnelConfig) -> VPNConfig:
     return VPNConfig(
         tunnel_id=row.id,
         name=row.name,
-        provider=VPNProvider(row.provider) if row.provider else VPNProvider.CISCO_ANYCONNECT,
+        provider=VPNProvider(row.provider) if row.provider in [e.value for e in VPNProvider] else VPNProvider.GLOBALPROTECT,
         gateway=row.gateway,
         group=row.group or "",
         username=row.username or "",
@@ -337,11 +337,11 @@ async def reconnect_tunnel(tunnel_id: str, db: Session = Depends(get_db)):
 
 # ── Status & Health ──────────────────────────────────────────────────────────
 
-@router.get("/status/anyconnect")
-async def anyconnect_status():
-    """Check Cisco AnyConnect CLI status on the server."""
+@router.get("/status/provider")
+async def provider_status(provider: str = "globalprotect"):
+    """Check VPN client status on the server (globalprotect or cisco_anyconnect)."""
     mgr = VPNTunnelManager.get_instance()
-    return await mgr.get_anyconnect_status()
+    return await mgr.get_provider_status(provider)
 
 
 @router.get("/status/all")

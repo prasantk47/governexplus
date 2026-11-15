@@ -15,7 +15,7 @@ def upgrade():
         sa.Column('id', sa.String(50), primary_key=True),
         sa.Column('tenant_id', sa.String(100), nullable=False, index=True),
         sa.Column('name', sa.String(200), nullable=False),
-        sa.Column('provider', sa.String(50), nullable=False, server_default='cisco_anyconnect'),
+        sa.Column('provider', sa.String(50), nullable=False, server_default='globalprotect'),
         sa.Column('gateway', sa.String(255), nullable=False),
         sa.Column('group', sa.String(200), server_default=''),
         sa.Column('username', sa.String(200), server_default=''),

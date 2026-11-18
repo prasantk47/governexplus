@@ -875,6 +875,12 @@ app.include_router(
     tags=["VPN Tunnels"], dependencies=_require_auth,
 )
 
+from api.routers import license_intelligence as li_router
+app.include_router(
+    li_router.router, prefix="/license-intelligence",
+    tags=["License Intelligence"], dependencies=_require_auth,
+)
+
 # ── Prometheus Metrics — public (no auth) for Prometheus scraper ──────────────
 app.include_router(metrics_router.router, tags=["Metrics"])
 

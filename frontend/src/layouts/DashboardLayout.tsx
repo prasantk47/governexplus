@@ -481,6 +481,13 @@ const navigation: NavItem[] = [
     icon: BeakerIcon,
     permissions: [PERMISSIONS.VIEW_DASHBOARD],
   },
+  // ── License Intelligence ────────────────────────────────────────────────────
+  {
+    name: 'License Intelligence',
+    href: '/license-intelligence',
+    icon: ChartBarIcon,
+    permissions: [PERMISSIONS.VIEW_DASHBOARD],
+  },
   {
     name: 'Control Intelligence',
     href: '/process-control',

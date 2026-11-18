@@ -275,6 +275,17 @@ from .esg import ESGCommitment, ESGMetric, ESGDisclosure
 # VPN Tunnel Management
 from .vpn_config import VPNTunnelConfig
 
+# License Intelligence
+from .license_intelligence import (
+    LIRulePack, LIRulePackVersion, LIAuthMapping, LITenantOverride,
+    LIContract, LIContractAmendment, LIEntitlementSnapshot,
+    LIClassification, LIClassificationDriver,
+    LIConsumptionSnapshot, LIPositionSnapshot,
+    LIUsageDaily, LIUsageRaw,
+    LIReclamationCase, LIReclamationAction,
+    LICollectionStatus,
+)
+
 __all__ = [
     # Core
     "Base",
@@ -537,4 +548,12 @@ __all__ = [
     "ESGDisclosure",
     # VPN
     "VPNTunnelConfig",
+    # License Intelligence
+    "LIRulePack", "LIRulePackVersion", "LIAuthMapping", "LITenantOverride",
+    "LIContract", "LIContractAmendment", "LIEntitlementSnapshot",
+    "LIClassification", "LIClassificationDriver",
+    "LIConsumptionSnapshot", "LIPositionSnapshot",
+    "LIUsageDaily", "LIUsageRaw",
+    "LIReclamationCase", "LIReclamationAction",
+    "LICollectionStatus",
 ]

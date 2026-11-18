@@ -223,6 +223,9 @@ import { ESGDashboard } from './pages/esg/ESGDashboard';
 // VPN Tunnel Management
 import { VPNTunnels } from './pages/vpn/VPNTunnels';
 
+// License Intelligence / FUE Dashboard
+import { FUEDashboard } from './pages/license-intelligence';
+
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -537,6 +540,10 @@ function AppRoutes() {
 
         {/* VPN Tunnel Management */}
         <Route path="/vpn" element={<VPNTunnels />} />
+
+        {/* License Intelligence / FUE */}
+        <Route path="/license-intelligence" element={<FUEDashboard />} />
+        <Route path="/fue" element={<FUEDashboard />} />
 
       </Route>
 

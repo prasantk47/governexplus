@@ -724,12 +724,12 @@ export function FUEDashboard() {
                       fontSize: '12px',
                     }}
                     formatter={(val: number, name: string) => [fmtNumber(val), name === 'consumed' ? 'Consumed FUE' : 'Contracted FUE']}
-                    labelFormatter={(l) => `Date: ${l}`}
+                    labelFormatter={(l: string) => `Date: ${l}`}
                   />
                   <Legend
                     iconType="circle"
                     iconSize={8}
-                    formatter={(v) => v === 'consumed' ? 'Consumed FUE' : 'Contracted FUE'}
+                    formatter={(v: string) => v === 'consumed' ? 'Consumed FUE' : 'Contracted FUE'}
                     wrapperStyle={{ fontSize: 12 }}
                   />
                   {/* Contracted flat reference */}
